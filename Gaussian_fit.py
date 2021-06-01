@@ -7,7 +7,7 @@ Created on Wed Apr 28 14:19:15 2021
 
 GAUSSIAN FIT
 
-This script contains a function that fit a set of data to a gaussian function,
+This script contains a function that fits a set of data to a gaussian function,
 giving the statistical parameters and plotting the fit. The gaussian function is:
     
     Gauss(x) = Heigh * np.exp(- (x-Mean)**2 / (2 * Std_dev**2)),
@@ -16,10 +16,16 @@ giving the statistical parameters and plotting the fit. The gaussian function is
         Mean = mean value of the gaussian
         Std_dev = standard deviation of the gaussian
 
-Inputs: 1D array (numbers), x and y. 
+*Inputs: 1D array (numbers), x and y. 
+*Outputs: fit parameters and its error, FWHM
 
-Whatch out, because python indexes begin at 0, while normaly the indexes start at 1,
-#s that is the line in your .txt is Z, for python you should type Z-1
+Watch out: 
+	i)Python indexes begin at 0, while usually the indexes start at 1,
+		that is, if the line in your .txt is Z, for python you should type Z-1
+	ii) Sometimes computer error occurs and Std_dev is <0, although the fit is good.
+		This is just a computer error, ignore it. This issue can not be solved
+		by fitting with the variance = std_dev^2 for the moment, in the future I
+		may think how to fix this :)
 
 """
 
@@ -53,7 +59,7 @@ def Gaussian_fit(x,y):
     initial = [max(y_data), x_data[0], (x_data[1] - x_data[0]) * 5 ]
                 #initial guesses for the fit. If None, this does not work, so this
                 #is very important when having an offset! Thank you 
-                #Lucas Hermann Negri (PeakUtils) 	#std ved!!!!
+                #Lucas Hermann Negri (PeakUtils) 
                 
     fit = scipy.optimize.curve_fit(gaussian, x_data, y_data, initial)       #fit
 
@@ -63,8 +69,8 @@ def Gaussian_fit(x,y):
     cov_of_opt_val = fit[1]                     #covariances of the optimal values
                     #the diagonal are the variance of the parameter to estimate.   
     
-    heigh = opt_values[0]                       #heigh of the fit
-    mean = opt_values[1]                        #mean value of the fit 
+    heigh = opt_values[0]                       		#heigh of the fit
+    mean = opt_values[1]                        	#mean value of the fit 
     sigma = opt_values[2]                       #variance of the fit STD DEV!!
     #sigma = np.sqrt(opt_values[2]) 			#std deviation of the fit if using variance as parameter
     
@@ -109,9 +115,3 @@ def Gaussian_fit(x,y):
               'sigma' : sigma, '\Delta(sigma)' : Delta_sigma, 
               'FWHM' : FWHM, '\Delta(FWHM)' : Delta_FWHM}
     return values
-    
-   #4) Comments
-   #sometimes, the std_dev returned is negative, although the fit is perfect. This is just
-   #a computer error, and sadly do not know how to avoid it. If trying to use the variance as
-   #the fitting parameter, the fit does not work, so for the moment I wont do that, simply will
-   #leave this as an open question.

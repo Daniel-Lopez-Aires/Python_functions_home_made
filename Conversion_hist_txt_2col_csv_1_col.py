@@ -48,7 +48,7 @@ def Convert_txt_hist_2col_csv_1col(name,time, new_name):
                 file_object.write(str(counts_st[i]) )
                 file_object.write('\n')
             
-            else:
+            else:                   #for the last element, no line break needed
                 file_object.write(str(counts_st[i]) )
                 
 #Conversion:

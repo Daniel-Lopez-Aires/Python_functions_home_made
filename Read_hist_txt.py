@@ -10,11 +10,13 @@ It needs the name in the proper format: "blablabla.txt". It also needs the measu
 to compute the count rate.
 """
 
+#0) GENERAL PACKAGES, USEFULS
+    
+import numpy as np
+
+
 def Read_hist_txt_CAEN(name, time):
 
-    #0) GENERAL PACKAGES, USEFULS
-    
-    import numpy as np
     
     #1) 
     

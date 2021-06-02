@@ -29,27 +29,16 @@ Watch out:
 
 """
 
-def Gaussian_fit(x,y):
+#######0) General packages useful###########
 
-    
-    #######0) General packages useful###########
-
-    import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
+import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
         #everytime we want to plot something
-    import scipy.optimize              #to do the fit. doing only import scipy sometimes
+import scipy.optimize              #to do the fit. doing only import scipy sometimes
                                 #gives an error, so have to do this
-    import numpy as np          #np contain linspaces as np.linspace(a,b,N)
-    ####
+import numpy as np          #np contain linspaces as np.linspace(a,b,N)
+####
     
-
-
-    #######1) Fit ###########
-     
-     #Fit function:
-     
-    def gaussian(x, Heigh, Mean, Std_dev):
-        return Heigh * np.exp(- (x-Mean)**2 / (2 * Std_dev**2)) 
-     
+def Gaussian_fit(x,y):
     
     #Data:
     x_data = np.array(x)    
@@ -115,3 +104,9 @@ def Gaussian_fit(x,y):
               'sigma' : sigma, '\Delta(sigma)' : Delta_sigma, 
               'FWHM' : FWHM, '\Delta(FWHM)' : Delta_FWHM}
     return values
+
+
+
+######Fit function    
+def gaussian(x, Heigh, Mean, Std_dev):
+	return Heigh * np.exp(- (x-Mean)**2 / (2 * Std_dev**2)) 

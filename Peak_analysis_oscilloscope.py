@@ -157,16 +157,16 @@ def Amplitude(peak,baseline, delta_V):
             .\Delta(amplitude[V])
     """
     
-    if peak > 0 and baseline > 0:             #peak and baseline >0
+    if peak > 0 and baseline >= 0:             #peak and baseline >0
         amp = peak-baseline
             
-    elif peak < 0 and baseline < 0:             #peak and baseline <0
+    elif peak < 0 and baseline <= 0:             #peak and baseline <0
         amp = np.absolute(peak) - np.absolute(baseline)
             
-    elif peak > 0 and baseline < 0:              #peak>0, amplitude <0
+    elif peak > 0 and baseline <= 0:              #peak>0, amplitude <0
         amp = peak-baseline 
             
-    elif peak < 0 and baseline > 0:             #peak<0, baseline >0
+    elif peak < 0 and baseline >= 0:             #peak<0, baseline >0
         amp = np.absolute(peak) + baseline
     
     delta_amp = delta_V * np.sqrt(2)   #[V] error of the amplitude = peak +/- baseline

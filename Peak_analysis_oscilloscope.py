@@ -10,6 +10,8 @@ function to process the data from the histograms for B.1.4. experiment.
 *Inputs:
         .Voltages, Times = variables that contains all the datasets, sepparating the
             datasets by columns (np.arrays)
+        .Signal_type = 'pre' or 'raw'. This indicated whether the peak is positive ('raw')
+        	or negative ('pre'), which is neccessary to compute the amplitude
         .Column_index = colum that contains the data we want to analyse
         .Index that identifies the values (voltage and times), which comes from a variable
             storing all the values
@@ -49,8 +51,8 @@ def Peak_analysis_oscillo(Voltages, Times, signal_type ,column_index, index_min_
         peak_abs = max( np.absolute(Voltages[:,column_index]) )          #[V] |Peak value|
     
     elif signal_type == 'raw':                  #signal from raw ==> positive peak
-        peak = max( np.absolute(Voltages[:,column_index]) )             #[V] |Peak value|
-        peak_abs = max( np.absolute(Voltages[:,column_index]) )         #[V] |Peak value|
+        peak = max( Voltages[:,column_index] )             #[V] |Peak value|
+        peak_abs = max( np.absolute(Voltages[:,column_index]) )          #[V] |Peak value|
         
     
     index_peak = np.where( np.absolute(Voltages[:,column_index]) == peak_abs )[0][0]        #index

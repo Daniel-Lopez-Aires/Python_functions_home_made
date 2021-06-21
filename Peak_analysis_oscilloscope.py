@@ -5,7 +5,8 @@ Created on Mon Jun  7 14:37:16 2021
 
 @author: dla
 
-function to process the data from the histograms for B.1.4. experiment.
+This function is to do the Pulse Shape Analysis (PSA) of a electric pulse (nuclear detectors)
+from the oscilloscope.
 
 *Inputs:
         .Voltages, Times = variables that contains all the datasets, sepparating the

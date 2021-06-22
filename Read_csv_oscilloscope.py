@@ -10,12 +10,13 @@ function to read .csv files from the oscilloscope. It needs the name in the stri
 stored in a numpy array. 1st row contains the time, and 2nd row contains the voltage
 """
 
-def Read_csv_oscilloscope(name):
-
-    #0) GENERAL PACKAGES, USEFULS
+#0) GENERAL PACKAGES, USEFULS
     
-    import csv
-    import numpy as np
+import csv
+import numpy as np
+
+
+def Read_csv_oscilloscope(name):
     
     #1) 
     

@@ -23,7 +23,7 @@ Whatch out, because python indexes begin at 0, while normaly the indexes start a
 
 """
 
-def Gaussian_fit(x,y):
+def Gaussian_fit(x,y,N=1000):
 
     
     #######0) General packages useful###########
@@ -46,9 +46,10 @@ def Gaussian_fit(x,y):
      
     
     #Data:
+    
     x_data = np.array(x)    
     y_data = np.array(y)
-
+    x_vector = np.linspace(min(x_data),max(x_data),N)
     #Fit:
     initial = [max(y_data), x_data[0], (x_data[1] - x_data[0]) * 5 ]
                 #initial guesses for the fit. If None, this does not work, so this
@@ -90,7 +91,7 @@ def Gaussian_fit(x,y):
     ########## 2)Plot of the fit################3
     plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
     plt.plot(x_data, y_data, label = 'data')                         #original data
-    plt.plot(x_data, gaussian(x_data, heigh, mean, sigma), 'ro')           #fit
+    plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'ro')           #fit
     plt.title('Gaussian fit of the data', fontsize=20)                      #title
     #plt.xlabel("E (MeV)", fontsize=10)                                    #xlabel
     #plt.ylabel("Cuentas", fontsize=10)                                    #ylabel

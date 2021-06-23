@@ -9,11 +9,9 @@ This function is to do the Pulse Shape Analysis (PSA) of a electric pulse (nucle
 from the oscilloscope.
 
 *Inputs:
-        .Voltages, Times = variables that contains all the datasets, sepparating the
-            datasets by columns (np.arrays)
+        .Voltage, Time = variables (vectors) that contain the data (np.array)
         .Signal_type = 'pre' or 'raw'. This indicated whether the peak is positive ('raw')
         	or negative ('pre'), which is neccessary to compute the amplitude
-        .Column_index = colum that contains the data we want to analyse
         .Index that identifies the values (voltage and times), which comes from a variable
             storing all the values
         . Indexes that limits the peak
@@ -40,7 +38,7 @@ from scipy import stats as stats     #to find the most commom element in a lis
 
 
 
-def Peak_analysis_oscillo(Voltages, Times, signal_type ,column_index, index_min_peak, index_max_peak, delta_V, delta_t):
+def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_peak, delta_V, delta_t):
     
     ############### 1) Finding the peak (max/min value) ################
     
@@ -48,26 +46,26 @@ def Peak_analysis_oscillo(Voltages, Times, signal_type ,column_index, index_min_
     		#negative signals (from pre) ):
     if signal_type == 'pre':                   #signal from pre ==> negative peak
                 
-        peak = min( Voltages[:,column_index] )                           #[V] Peak value
-        peak_abs = max( np.absolute(Voltages[:,column_index]) )          #[V] |Peak value|
+        peak = min( Voltage )                           #[V] Peak value
+        peak_abs = max( np.absolute(Voltage) )          #[V] |Peak value|
     
     elif signal_type == 'raw':                  #signal from raw ==> positive peak
-        peak = max( Voltages[:,column_index] )             #[V] |Peak value|
-        peak_abs = max( np.absolute(Voltages[:,column_index]) )          #[V] |Peak value|
+        peak = max( Voltage )             #[V] |Peak value|
+        peak_abs = max( np.absolute(Voltage) )          #[V] |Peak value|
         
     
-    index_peak = np.where( np.absolute(Voltages[:,column_index]) == peak_abs )[0][0]        #index
+    index_peak = np.where( np.absolute(Voltage) == peak_abs )[0][0]        #index
             #index_peak is a tuple, which contains a single np.aray, so with [0][0] you get the value
     #using the index of the peak I see the interval by looking at the .csv file
     #and the plot
 
-    voltage_peak_neg = Voltages[:,column_index][index_min_peak-1:index_max_peak-1]  
-    time_peak = Times[:,column_index][index_min_peak-1:index_max_peak-1]
+    voltage_peak_neg = Voltage[index_min_peak-1:index_max_peak-1]  
+    time_peak = Time[index_min_peak-1:index_max_peak-1]
     voltage_peak = np.absolute(voltage_peak_neg)   #abs() because this
         #peak contains both > and ,0 values, so to add them in order to count
         #them, I have to put everything in the positive value
         
-    len_peak =  len(Voltages[:,column_index][index_min_peak-1:index_max_peak-1])           #len of the peak   
+    len_peak =  len(Voltage[index_min_peak-1:index_max_peak-1])           #len of the peak   
 
 
     ################### 2) Finding the baseline #####################
@@ -83,7 +81,7 @@ def Peak_analysis_oscillo(Voltages, Times, signal_type ,column_index, index_min_
         #when the peak starts
         
 
-    baseline = stats.mode(Voltages[:,column_index])[0][0]       #[V] baseline voltage, the most common value
+    baseline = stats.mode(Voltage)[0][0]       #[V] baseline voltage, the most common value
                     #[0]contains the values (array), [1] the frequency (array), so another [0]
                     #is needed to get the value
         
@@ -103,9 +101,9 @@ def Peak_analysis_oscillo(Voltages, Times, signal_type ,column_index, index_min_
 
     ###############3) Computing the rise and decay time######################
     
-    t_decay = Times[index_max_peak,column_index] - Times[index_peak,column_index]  
+    t_decay = Time[index_max_peak] - Time[index_peak]  
     			#time when the peak ends - time when the max value is reached
-    t_rise = -Times[index_min_peak,column_index] + Times[index_peak,column_index]  #peak - start
+    t_rise = -Time[index_min_peak] + Time[index_peak]  #peak - start
 		# -time when the peak starts + time when the max value is reached
     
     delta_t_rise_decay = np.sqrt(2) * delta_t  #error of both t_decay and t_rise
@@ -118,7 +116,7 @@ def Peak_analysis_oscillo(Voltages, Times, signal_type ,column_index, index_min_
     ######################## 5)Plot #####################
     
     plt.figure(figsize=(10,6))  #width, heigh 6.4*4.8 inches by default
-    plt.plot( 1e6 * Times[:,column_index], 1e3 * Voltages[:,column_index], 'b.-')    
+    plt.plot( 1e6 * Time, 1e3 * Voltage, 'b.-')    
     plt.plot( 1e6 * time_peak , 1e3 * voltage_peak_neg, 'r.-')   
     plt.title("Waveform", fontsize=22)           #title
     plt.xlabel("time (us)", fontsize=14)                        #xlabel

@@ -15,12 +15,21 @@ import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
         
     
 
-def LinearRegression(x, y):
+def LinearRegression(x, y, npo = 100):
     '''
     Function that makes a linear regression of the 2 list (numpy preferred) X, Y
     and returns, if the fit equation is y = m x + n:
         m, \Delta{m}, n, \Delta{n}, r (correlation coefficient, aka r^2)
-        '''
+        
+
+    *Inputs:
+        .x, y = 1D numpy arrays containing the data to fit
+        .npo = 'number of points of the linspace for the fit plotting. Default value = 100
+        
+    *Outputs:
+        .fit parameters: slope and its error, intercept and its error, correlation
+        	coefficient
+	'''
     
 
     
@@ -31,9 +40,7 @@ def LinearRegression(x, y):
     
 
     #####0) Preliminary work####
-    x = np.array(x)                         #conversion to np array, in case the list
-                                    #is not an numpy array
-    y = np.array(y)    
+
     N = len(x)                                  #vector length
     
     #1) Fit
@@ -59,7 +66,7 @@ def LinearRegression(x, y):
               '\Delta{intercept}' : delta_intercept}
     
     ####4) Plot of the fit###
-
+    x_vector = np.linspace(min(x),max(x),npo)         #for the fit plotting
     
     plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
     plt.plot(x,y, 'r*')

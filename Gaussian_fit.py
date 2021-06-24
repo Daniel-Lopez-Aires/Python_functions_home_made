@@ -16,10 +16,16 @@ giving the statistical parameters and plotting the fit. The gaussian function is
         Mean = mean value of the gaussian
         Std_dev = standard deviation of the gaussian
 
-*Inputs: 1D numpy array (numbers), x and y. 
-*Outputs: fit parameters and its error, FWHM
+    *Inputs:
+        .x, y = 1D numpy arrays containing the data to fit
+        .npo = 'number of points of the linspace for the fit plotting. Default value = 100
+        
+    *Outputs:
+        .fit parameters: heigh, amplitude and standar deviation and their error
+        .FHWM and its error
 
-Watch out: 
+
+!Watch out! 
 	i)Python indexes begin at 0, while usually the indexes start at 1,
 		that is, if the line in your .txt is Z, for python you should type Z-1
 	ii) Sometimes computer error occurs and Std_dev is <0, although the fit is good.
@@ -38,15 +44,15 @@ import scipy.optimize              #to do the fit. doing only import scipy somet
 import numpy as np          #np contain linspaces as np.linspace(a,b,N)
 ####
     
-def Gaussian_fit(x,y,N=1000):
+def Gaussian_fit(x,y,N=100):
     
     #Fit:
-    initial = [max(y_data), x_data[0], (x_data[1] - x_data[0]) * 5 ]
+    initial = [max(y), x[0], (x[1] - x[0]) * 5 ]
                 #initial guesses for the fit. If None, this does not work, so this
                 #is very important when having an offset! Thank you 
                 #Lucas Hermann Negri (PeakUtils) 
                 
-    fit = scipy.optimize.curve_fit(gaussian, x_data, y_data, initial)       #fit
+    fit = scipy.optimize.curve_fit(gaussian, x, y, initial)       #fit
 
 
     #Obtaining the values from the fit:
@@ -79,11 +85,11 @@ def Gaussian_fit(x,y,N=1000):
 
 
     ########## 2)Plot of the fit################3
-    x_vector = np.linspace(min(x_data),max(x_data),N)         #for the fit plotting
+    x_vector = np.linspace(min(x),max(x),N)         #for the fit plotting
     
     plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
-    plt.plot(x_data, y_data, label = 'data')                         #original data
-    plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'ro')           #fit
+    plt.plot(x, y, label = 'data')                         #original data
+    plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'r.')           #fit
     plt.title('Gaussian fit of the data', fontsize=20)                      #title
     #plt.xlabel("E (MeV)", fontsize=10)                                    #xlabel
     #plt.ylabel("Cuentas", fontsize=10)                                    #ylabel

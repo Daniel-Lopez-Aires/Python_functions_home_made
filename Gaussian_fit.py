@@ -29,7 +29,7 @@ Watch out:
 
 """
 
-#######0) General packages useful###########
+
 
 import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
         #everytime we want to plot something
@@ -38,12 +38,13 @@ import scipy.optimize              #to do the fit. doing only import scipy somet
 import numpy as np          #np contain linspaces as np.linspace(a,b,N)
 ####
     
-def Gaussian_fit(x,y):
+def Gaussian_fit(x,y,N=1000):
     
     #Data:
+    
     x_data = np.array(x)    
     y_data = np.array(y)
-
+    x_vector = np.linspace(min(x_data),max(x_data),N)
     #Fit:
     initial = [max(y_data), x_data[0], (x_data[1] - x_data[0]) * 5 ]
                 #initial guesses for the fit. If None, this does not work, so this
@@ -85,7 +86,7 @@ def Gaussian_fit(x,y):
     ########## 2)Plot of the fit################3
     plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
     plt.plot(x_data, y_data, label = 'data')                         #original data
-    plt.plot(x_data, gaussian(x_data, heigh, mean, sigma), 'ro')           #fit
+    plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'ro')           #fit
     plt.title('Gaussian fit of the data', fontsize=20)                      #title
     #plt.xlabel("E (MeV)", fontsize=10)                                    #xlabel
     #plt.ylabel("Cuentas", fontsize=10)                                    #ylabel

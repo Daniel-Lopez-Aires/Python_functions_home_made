@@ -15,11 +15,19 @@ import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
         
     
 
-def QuadraticRegression(x, y):
+def QuadraticRegression(x, y, npo = 100):
     '''
     Function that makes a linear regression of the 2 list (numpy preferred) X, Y
     and returns, if the fit equation is y = m x + n:
         m, \Delta{m}, n, \Delta{n}, r (correlation coefficient, aka r^2)
+        
+    *Inputs:
+        .x, y = 1D numpy arrays containing the data to fit
+        .npo = 'number of points of the linspace for the fit plotting. Default value = 100
+        
+    *Outputs:
+        .fit parameters and their errors, correlation
+        	coefficient
         '''
     
 
@@ -31,15 +39,13 @@ def QuadraticRegression(x, y):
     
 
     #####0) Preliminary work####
-    x = np.array(x)                         #conversion to np array, in case the list
-                                    #is not an numpy array
-    y = np.array(y)    
+
     N = len(x)                                  #vector length
     
-    #1) Fit
+    ########1) Fit############
 
 
-#initial = [max(y_data), x_data[0], (x_data[1] - x_data[0]) * 5]
+	#initial = [max(y_data), x_data[0], (x_data[1] - x_data[0]) * 5]
                 #initial guesses for the fit. If None, this does not work, so this
                 #is very important when having an offset! Thank you 
                 #Lucas Hermann Negri (PeakUtils)
@@ -68,20 +74,16 @@ def QuadraticRegression(x, y):
 
 
 
-
-    
-    ####2) Error calculation###
-
-    ####3) Storing###
+    ####2) Storing###
     values = {'a' : a, 'b' : b, 'c' : c,
               'r' : r, '\Delta{a}' : delta_a,  '\Delta{b}' : delta_b, 
               '\Delta{c}' : delta_c}
     
-    ####4) Plot of the fit###
-
+    ####3) Plot of the fit####
+    x_vector = np.linspace(min(x),max(x),npo)         #for the fit plotting
     plt.figure(figsize=(10,6))  #width, heigh 6.4*4.8 inches by default
     plt.plot(x, y, 'r*', linewidth=3 )                         #original data
-    plt.plot(x, cuadratic(x, a, b, c), linewidth=3)      #fit
+    plt.plot(x_vector, cuadratic(x_vector, a, b, c), linewidth=3)      #fit
 
     plt.title('Quadratic fit', fontsize=22)          #title
     plt.xlabel("X ", fontsize=14)                                    #xlabel

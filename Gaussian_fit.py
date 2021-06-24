@@ -16,7 +16,7 @@ giving the statistical parameters and plotting the fit. The gaussian function is
         Mean = mean value of the gaussian
         Std_dev = standard deviation of the gaussian
 
-*Inputs: 1D array (numbers), x and y. 
+*Inputs: 1D numpy array (numbers), x and y. 
 *Outputs: fit parameters and its error, FWHM
 
 Watch out: 
@@ -40,11 +40,6 @@ import numpy as np          #np contain linspaces as np.linspace(a,b,N)
     
 def Gaussian_fit(x,y,N=1000):
     
-    #Data:
-    
-    x_data = np.array(x)    
-    y_data = np.array(y)
-    x_vector = np.linspace(min(x_data),max(x_data),N)
     #Fit:
     initial = [max(y_data), x_data[0], (x_data[1] - x_data[0]) * 5 ]
                 #initial guesses for the fit. If None, this does not work, so this
@@ -84,6 +79,8 @@ def Gaussian_fit(x,y,N=1000):
 
 
     ########## 2)Plot of the fit################3
+    x_vector = np.linspace(min(x_data),max(x_data),N)         #for the fit plotting
+    
     plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
     plt.plot(x_data, y_data, label = 'data')                         #original data
     plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'ro')           #fit
@@ -111,3 +108,4 @@ def Gaussian_fit(x,y,N=1000):
 ######Fit function    
 def gaussian(x, Heigh, Mean, Std_dev):
 	return Heigh * np.exp(- (x-Mean)**2 / (2 * Std_dev**2)) 
+

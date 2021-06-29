@@ -100,7 +100,7 @@ def ReadRootCOMPASS(name):
             #the waveform sample    
         
 
-   ########### 6) Return of values ############################
+   ########### 2) Return of values ############################
    
    #the values will be returned in a dictionary indicating what is each
    #value

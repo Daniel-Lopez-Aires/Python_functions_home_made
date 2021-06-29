@@ -68,7 +68,7 @@ def ReadRootCOMPASS(name):
     for event in tree:  #for each event, store the desired values
         E = np.append(E, tree.Energy) 
         board = np.append(board, tree.Board)
-        ch_digi = np.append(ch_digi, tree.Board) 
+        ch_digi = np.append(ch_digi, tree.Channel) 
         timestamp = np.append(timestamp, tree.Timestamp)
         flags = np.append(flags, tree.Flags)
         fN = np.append(fN, tree.Samples.fN)

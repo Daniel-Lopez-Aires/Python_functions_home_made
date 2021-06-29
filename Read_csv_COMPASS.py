@@ -72,12 +72,19 @@ def ReadCsvCOMPASS(name, row=0 ):
     timetag = load_csv[2][row]			     #[ps] Timestamp of the sample
     energy = load_csv[3][row]                       #Energy, in channels    
     
+    #the x axis for the waveform plot is determined by the ADC sampling time, which
+    #is 4ns in our case [CAEN's COMPASS manual], so the X data will then be (the Y data
+    #is the sample):
+    time = np.linspace(0,len(sample)*4, len(sample) )          #[ns] time 
+    
+    
    ########### 6) Return of values ############################
    
    #the values will be returned in a dictionary indicating what is each
    #value
     values = {'Board_ch' : board_channel, 'E (ch)' : energy, 
-              'Sample': sample, 'Timetag' : timetag
+              'Voltage_wave[ch]': sample, 'Timetag' : timetag,
+              'Time_wave[ns]': time
               }
               
     return values

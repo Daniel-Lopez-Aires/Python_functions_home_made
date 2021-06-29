@@ -5,9 +5,11 @@ Created on Tue Jun 29 09:23:48 2021
 
 @author: Daniel López Aires// danlopair@gmail.com
 
-This function is to read .csv data from COMPASS (filtered data, which is the one 
+This function is to read .root data from COMPASS (filtered data, which is the one 
 with the good data), in order to capture the wave, or what we think it should be 
-the wave. 
+the wave. .root better than .csv because it is approx an order of magnitude lighter
+(10MB vs 100MB)
+
 *Inputs:
         .name = filename in string format, eg: 'blablabla.root'
         .row (optional) = the row to be used to extract the data. The .csv contains many rows, 

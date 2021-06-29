@@ -12,9 +12,6 @@ the wave. .root better than .csv because it is approx an order of magnitude ligh
 
 *Inputs:
         .name = filename in string format, eg: 'blablabla.root'
-        .row (optional) = the row to be used to extract the data. The .csv contains many rows, 
-        	each row is a measurement. They are very similar between each other, 
-        	so in general 0 is fine, that's why is the default value
         
 *Outputs:
         .Channel = channel of the peak in the histogram

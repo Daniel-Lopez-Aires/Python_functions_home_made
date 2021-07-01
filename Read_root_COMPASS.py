@@ -46,7 +46,8 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
         .waveform = vector data with the waveform in strange units.
 	.time = vector data for the waveform plot
 	.Flags, Timestamp = vectors given by the.root, but useless for us
-	
+        .n_events = number of events of each hist
+        	
 #Biblio: https://root.cern.ch/doc/master/pyroot002__TTreeAsMatrix_8py.html
         https://root-forum.cern.ch/t/unable-to-read-a-ttree-with-leaves-and-a-branch-tarrays-with-pyroot/45578
         """ 
@@ -113,7 +114,7 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
     #is the sample):      
     time = np.linspace(0, int(fN[-1])*4, int(fN[-1]) )          #[ns] time for
             #the waveform sample    
-        
+    n_events = len(E) 				#number of events of the E hist   
 
    ########### 1.2) Return of values ############################
    
@@ -122,7 +123,7 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
     values = {'Board_ch' : board, 'E[ch]' : E, 
               'Voltage_wave[ch]': waveform, 'Timestamp' : timestamp,
               'Ch_digi' : ch_digi, 'Flags': flags,
-              'Time_wave[ns]': time
+              'Time_wave[ns]': time, 'n_events' : n_events
               }
               
     return values          
@@ -149,6 +150,7 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
                 counts of hist_0; counts of hist-1; etc
         .E[ch] = vector array with the channels, from 0 to the max
         .n_Channels = number of channels
+        .n_events = number of events of each hist
 	
         """ 
 
@@ -160,25 +162,34 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
     #energy histogram data, the one we are interested in (for the moment).
     #To avoid importing 1 hist, and then copy paste that 16 times, will create
     #a loop. To do so, I need to change, in the loop, the name of the hist
-    #to be obtained, which can be done easily:
+    #to be obtained, which can be done easily.
+    #Note that:
+    	#. There is a lot of bins, more than 2100000000, while
+    	#the number of channels is 4096. No idea why this happens, but since I am
+    	#not interested in such high energies (the bin center of the bin 2100000000
+    	#is 2099999999.5), and the content is 0, of course.
+    	#I will only choose the channels close to 4096 ch.
     
     
     aux_1 = '_F_EnergyCH'                   #the hist name, for the loop,1
     aux_2 = '@V1725S_646'                   #the hist name, for the loop,2
     
+    #Initializaiton
     c = np.array( [] )          #Store of the Counts of the energy hist  
+    n_events = np.array( [] )	#store the number of events (entries) on each hist
+    ch_b = np.array( [] )         #store of the bin center of the energy hist
     
     for i in range(0,16): #loop for each hist, from 0 to 15
         
         H = E_folder.Get(aux_1+str(i)+aux_2)  #load of histogram
-        n_ch = H.GetNcells()    #4097, the number of channels in the hist
-        ch = np.linspace(1,n_ch, n_ch)      #channel linspace, for plotting   
-    
+        n_ch = H.GetNcells()    #4097, the number of channels in the hist     
+        n_events = np.append(n_events, H.GetEntries()) #number of events on the 
+    	#histogram. Each hist could have its own n_entries.
+    	
         #To get the bin value of each bin, we need to do a loop, and for each 
-        #iteration, use GetBinContent():
-    
-
-        
+        #iteration, use GetBinContent(). The bin center can be obtained with
+        #GetBinCenter()
+ 
         #Since I do not know how to automatically store things in columns,
         #I could do the following, which works, first use append, then 
         #columnstack
@@ -188,22 +199,30 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
             for j in range(0, n_ch):   #loop through all the bins
             
                 c = np.append(c,H.GetBinContent(j))
-                
+                ch_b = np.append(ch_b,H.GetBinCenter(j))
         else:   #rest of the cases, using columnstack
-            c_aux = np.array( [] ) #auxiliar variable
+            c_aux = np.array( [] ) #auxiliar variable to store the counts
+            ch_aux = np.array( [] ) #auxiliar variable to store the ch
             
             for j in range(0, n_ch):   #loop through all the bins
                 c_aux = np.append(c_aux, H.GetBinContent(j))   
-            
+                ch_aux = np.append(ch_aux, H.GetBinCenter(j))  
+                
             c= np.column_stack((c, c_aux ))      #store in a column; once
-            #we have computed the full new column with c_aux, store it
-
+            #we have computed the full new column with c_aux, store in a 
+            #columns
+            ch_b= np.column_stack((ch_b, ch_aux ))      #store in a column;     	
+    
+    ch = np.linspace(1,n_ch, n_ch)      #channel linspace, for plotting 
+   
+   
    ########### 2.2) Return of values ############################
    
    #the values will be returned in a dictionary indicating what is each
    #value
     values = {'Counts' : c, 'E[ch]' : ch, 
-              'n_Channels': n_ch
+              'n_Channels': n_ch, 'n_events' : n_events,
+              'Bin_center' : ch_b
               }
               
     return values   

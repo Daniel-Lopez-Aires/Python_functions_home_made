@@ -55,7 +55,7 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
     data_root = TFile(name)                          #reading the .root file
     tree=data_root.Data_F                   #getting the Tree
     #Tree.Print()                            #print of the Tree
-    n = tree.GetEntries()            #number of entries of the Tree (numbers)
+    n = tree.GetEntries()            #number of events (entries) of the Tree (numbers)
 
 #Whatch out, that Tree contains leaves (Energy, Sample, etc), but it also 
 #contain a branche, that inside it have more leaves.
@@ -84,10 +84,17 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
         flags = np.append(flags, tree.Flags)
         fN = np.append(fN, tree.Samples.fN)
 
-#I will not loop through all the event because it will give 7321000 numbers,
-#which is too much, and the pc takes a lot, so will choose the last event, which
-#is simply using the variable event, since it will contain the last iteration of the
-#previous loop. 
+#How to get the waveform (fArray)? Seeing the TBrwoser, it has n*1000 entries, which would
+#mean that for each event, it stores 1000 numbers (1000=fN). I can not store all the
+#n*1000 entries becasue the pc takes too long, so will only store the 1000 numbers
+#for a single event, the last. This would is simply mean using the variable event,
+# since it will contain the last iteration of the previous loop, and save the values.
+#Note that:
+	#- size(event.Samples.fArray)>= n*1000, so that each event has more than 1000 values,
+	#  which is extremely range and do not match the hypothesis explained above. 
+	#  If choosing the 1st thousand values, from 0 to 1000, the
+	#  waveform is obtained, while if choosing other range, say from 1000 to 2000, etc, 
+	#  weird results are obtained. Chosssing the value number n*1000 breaks spyder. 
 
 
     for i in range(0,int(fN[-1]) ): #i goes from 0 to 1000=fN[j], for all j
@@ -140,7 +147,7 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
 *Outputs:
         .Counts = counts of all the energy histograms, by columns:
                 counts of hist_0; counts of hist-1; etc
-        .Channels = vector array with the channels, from 0 to the max
+        .E[ch] = vector array with the channels, from 0 to the max
         .n_Channels = number of channels
 	
         """ 
@@ -195,7 +202,7 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
    
    #the values will be returned in a dictionary indicating what is each
    #value
-    values = {'Counts' : c, 'Channels' : ch, 
+    values = {'Counts' : c, 'E[ch]' : ch, 
               'n_Channels': n_ch
               }
               

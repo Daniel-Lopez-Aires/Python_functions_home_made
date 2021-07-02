@@ -10,6 +10,7 @@ Created on Tue Jun 29 09:23:48 2021
 
 #######0) General packages useful#############33
 import numpy as np
+import pandas as pd
 
 #To import things from ROOT, previously you have to source thisroot.sh from 
     #the  command line! So, before opening anaconda to open spyder, you must do:
@@ -120,13 +121,15 @@ This root file contains a Tree, with leafs and a TArrayS.
     n_events = len(E) 				#number of events of the E hist   
 
    ########### 1.2) Return of values ############################
-   
+   #The values will be returned in a dictionary. To return the values, pandas dataframe will be used.
+
+    df_ch_timestamp = pd.DataFrame(data=np.array( [ch_digi,timestamp, E, board, flags] ).T,
+                                   columns=['Ch digitizer', 'Timestamp[ps]', 'E[ch]', 'Board_ch', 'Flags'])
+    df_wave = pd.DataFrame(data=np.array( [time,waveform] ).T, columns=['Time[ns]', 'Voltage [ch]'])
    #the values will be returned in a dictionary indicating what is each
    #value
-    values = {'Board_ch' : board, 'E[ch]' : E, 
-              'Voltage_wave[ch]': waveform, 'Timestamp' : timestamp,
-              'Ch_digi' : ch_digi, 'Flags': flags,
-              'Time_wave[ns]': time, 'n_events' : n_events
+    values = {'Waveform' : df_wave,
+              'Hist' : df_ch_timestamp
               }
               
     return values          

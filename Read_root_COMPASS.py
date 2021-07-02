@@ -36,6 +36,8 @@ one  with the good data) if storing each channel in a single .root.
 (10MB vs 100MB). Note that to obtain the wave, each channel have to be saved
 in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
 
+This root file contains a Tree, with leafs and a TArrayS.
+
 *Inputs:
         .name = filename in string format, eg: 
                 'DataF_CH14@V1725S_646_run.root'
@@ -66,7 +68,7 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
 #There is a simple function called AsMatrix, but since it will be removed,
 #will not use it. eg of that function:
         #E = Tree.AsMatrix(columns=["Energy"])
-#Other version to read the values , similar to the one used in C== is:
+#Other version to read the values , similar to the one used in C++ is:
     
     E = np.array( [] )                    #store the Energy
     board = np.array( [] )                #store the Board
@@ -75,7 +77,6 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
     flags = np.array( [] )      #store the flags
     fN = np.array( [] )         #store fn, the number of points
                 #of the waveform
-    waveform = np.array( [] )    #store of the waveform 
                
     for event in tree:  #for each event, store the desired values
         E = np.append(E, tree.Energy) 
@@ -97,7 +98,9 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
 	#  waveform is obtained, while if choosing other range, say from 1000 to 2000, etc, 
 	#  weird results are obtained. Chosssing the value number n*1000 breaks spyder. 
 
-
+    waveform = np.array( [] )    #store of the waveform 
+    
+    
     for i in range(0,int(fN[-1]) ): #i goes from 0 to 1000=fN[j], for all j
         waveform = np.append(waveform,event.Samples.fArray[i])      
         #print(event.Samples.fArray[i])     
@@ -139,7 +142,9 @@ This function is to read .root data from COMPASS (filtered data, which is the
 one  with the good data) if storing all the channels in a single .root.
 .root better than .csv because it is approx an order of magnitude lighter 
 (10MB vs 100MB). Note that to obtain the wave, each channel have to be saved
-in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
+in a .root, and the .root weights an order of magnitude more (8MB vs 200kB).
+
+This root contains only histograms, inside folders.
 
 *Inputs:
         .name = filename in string format, eg: 
@@ -174,7 +179,7 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
     aux_1 = '_F_EnergyCH'                   #the hist name, for the loop,1
     aux_2 = '@V1725S_646'                   #the hist name, for the loop,2
     
-    #Initializaiton
+    #Initialization
     c = np.array( [] )          #Store of the Counts of the energy hist  
     n_events = np.array( [] )	#store the number of events (entries) on each hist
     ch_b = np.array( [] )         #store of the bin center of the energy hist

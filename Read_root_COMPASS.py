@@ -274,7 +274,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
         .data = data from the root file, from the function
             ReadRootSingleCOMPASS
         .ch_A, ch_B = channels of the digitizer to be used to make the coincidences
-        .gate [ps] = (t_2 - t_1)/t_1 , the time interval of the gate, which will be
+        .gate [ps] = the time interval of the gate, which will be
             used to check whether 2 events are in coincidence or not. Default gate by
             COMPASS = 300ns = 3e5 ps
 

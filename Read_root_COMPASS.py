@@ -234,3 +234,139 @@ This root contains only histograms, inside folders.
               }
               
     return values   
+
+#%%  ###############################################################
+####### 3) Function to make coincidences from the .root with all the channels######
+####################################################################
+
+def Coincidences_2ch_root(data, ch_A, ch_B, gate = 3e5):
+
+    """
+This function is to make coincidences between 2 channels of MARS. It needs the
+data from a single .root containng all the channels Time sorted, to load the
+file 'SDataF_run.root'.
+
+To do the coincidence, event by event, have to:
+    1) Choose an event
+    2) Check if the next one is from the other Channel or not
+    3) If yes, coincidences are possible. Check if the time interval
+           betweeen those events are small enough.
+    4) Store the single energy values if the time interval is small enough,
+            which will be the coincidences energies
+            
+The time interval to compare with its the gate, since once the gate is opened, 
+the ADC records signals, so that, if the time interval between 2 measurements is
+greater than the gate, those measurements were taken with 2 different gates and not
+the same, and hence they are not in coincidence. Counterwise, if for a single gate
+2 measurements were taken, those measurements are in coincidence.
+
+@WATCH OUT:
+    .To do the comparisons, I choose one event, and then I compare it with the next one,
+        and I vary the original event. So, say event 1 is in coincidence with event 2.
+        In the nex loop, it will choose event 2 and try t compare it with event 3.
+        They won't be in coincidence, event 3 is from another gate (remember the gate
+        is optimized to fit tightly the wave to avoid piling up events). 
+        
+        !!!!!!!!!!Could remove this to improve the
+        computational time!!!!!
+
+*Inputs:
+        .data = data from the root file, from the function
+            ReadRootSingleCOMPASS
+        .ch_A, ch_B = channels of the digitizer to be used to make the coincidences
+        .gate [ps] = (t_2 - t_1)/t_1 , the time interval of the gate, which will be
+            used to check whether 2 events are in coincidence or not. Default gate by
+            COMPASS = 300ns = 3e5 ps
+
+*Outputs:
+        .A dictionary with:
+            - Single energies values of both channels
+            - Pandas dataframe containg the coincidence energies for 
+            both channels (this is simply a subset of the single energies)
+
+        """
+
+    n_events = len(data['Hist'])   #number of events; rows goes from 0 to
+            #n_events - 1
+
+
+#################1) Single E extraction############
+#This is very easy, just check the channel, and depending on that store the energy
+            
+#Initialization
+    E_A = np.array( [] )                #Single energies of digi channel A
+    E_B = np.array( [] )                #Single energies of digi channel B
+
+
+    for i in range(0,n_events):  #events goes from 0 to n_events-1
+
+        if data['Hist']['Ch digitizer'][i] == ch_A:  #If the event is ch 14
+        
+            E_A = np.append(E_A, data['Hist']['E[ch]'][i] )  #storing of the
+                    #single energy
+        elif data['Hist']['Ch digitizer'][i] == ch_B:  #If the event is ch 15
+        
+            E_B = np.append(E_B, data['Hist']['E[ch]'][i] )  #storing of the
+                    #single energy  
+
+#################2) Coincidences############
+#To do the coincidence, event by event, have to:
+    #1) Choose an event
+    #2) Check if the next one is from the other Channel or not
+    #3) If yes, coincidences are possible. Check if the time interval
+           #betweeen those events are small enough.
+    #4) Store the single energy values if the time interval is small enough,
+            #which will be the coincidences energies
+
+
+#Initialization
+    E_A_c = np.array( [] )      #Energies of the ch A in coincidence with B
+    E_B_c = np.array( [] )      #Energies of the ch B in coincidence with A
+
+    for i in range(0,n_events-2):           #loop through all events
+
+
+        if data['Hist']['Ch digitizer'][i] == ch_A:  #Check if the event is ch A
+
+            if data['Hist']['Ch digitizer'][i + 1]== ch_B: #Check if the following row
+                    #of the data correspond to the other channel (B)==> coincidence possible
+
+                delta_t = data['Hist']['Timestamp[ps]'][i + 1] - data['Hist']['Timestamp[ps]'][i] 
+                    #[ns] time interval between the events
+
+                if delta_t <= gate :  #Check if the time interval is small enough
+                        #to consider these 2 events a coincidence
+                    E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i] )
+                    E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i+1] )
+
+
+        elif data['Hist']['Ch digitizer'][i] == ch_B:  #If the event is ch B
+
+            if data['Hist']['Ch digitizer'][i + 1]== ch_A: #Check if the following row
+                    #of the data correspond to the other channel (A)==> coincidence possible
+
+                delta_t = data['Hist']['Timestamp[ps]'][i + 1] - data['Hist']['Timestamp[ps]'][i]
+
+                if delta_t <= gate :
+                    E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i+1] )
+                    E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i] )
+
+   ########### 3) Return of values ############################
+   #The values will be returned in a dictionary. To return the values, 
+   #pandas dataframe will be used. Since E_A and E_B do not need to have the same
+   #length, creating np.arrays with both of them do not work properly, so that
+   #they will be stored via a dictionary
+
+    #df_single_E = pd.DataFrame(data= np.array( [E_A, E_B] ).T,
+                                   #columns=['E_single_ch', 'E_single_ch' ] )
+                                   
+    df_coinc_E = pd.DataFrame(data=np.array( [E_A_c, E_B_c] ).T, 
+                              columns=['E_coinc_ch'+str(ch_A), 
+                                       'E_coinc_ch'+str(ch_B)] )
+   #the values will be returned in a dictionary indicating what is each
+   #value
+    values = {'E_single_ch'+str(ch_A) : E_A, 'E_single_ch'+str(ch_B) : E_B,
+              'E_coinc' : df_coinc_E
+              }
+              
+    return values   

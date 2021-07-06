@@ -267,8 +267,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
         They won't be in coincidence, event 3 is from another gate (remember the gate
         is optimized to fit tightly the wave to avoid piling up events). 
         
-        !!!!!!!!!!Could remove this to improve the
-        computational time!!!!!
+            FIXED!!!
 
 *Inputs:
         .data = data from the root file, from the function
@@ -322,9 +321,19 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
 #Initialization
     E_A_c = np.array( [] )      #Energies of the ch A in coincidence with B
     E_B_c = np.array( [] )      #Energies of the ch B in coincidence with A
-
+    coinci = False              #Variable to avoid comparing with events that
+        #already have coincidences
+    
+    
     for i in range(0,n_events-2):           #loop through all events
 
+        if coinci:   #if coinc =True, avoid the instructions and go directly to 
+                    #the next iteration without doing anything, so that you do 
+                    #not seek for a coincidence with an event that already has
+                    #a coincidence
+                    
+            coinci = False                  #reset of the variable
+            continue
 
         if data['Hist']['Ch digitizer'][i] == ch_A:  #Check if the event is ch A
 
@@ -338,7 +347,8 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
                         #to consider these 2 events a coincidence
                     E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i] )
                     E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i+1] )
-
+                    
+                    coinci = True       #To avoid comparison if there is coincidences
 
         elif data['Hist']['Ch digitizer'][i] == ch_B:  #If the event is ch B
 
@@ -350,6 +360,8 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
                 if delta_t <= gate :
                     E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i+1] )
                     E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i] )
+                    
+                    coinci = True       
 
    ########### 3) Return of values ############################
    #The values will be returned in a dictionary. To return the values, 

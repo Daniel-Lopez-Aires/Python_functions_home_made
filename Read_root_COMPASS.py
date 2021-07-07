@@ -11,6 +11,7 @@ Created on Tue Jun 29 09:23:48 2021
 #######0) General packages useful#############33
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 #To import things from ROOT, previously you have to source thisroot.sh from 
     #the  command line! So, before opening anaconda to open spyder, you must do:
@@ -278,15 +279,17 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             COMPASS = 300ns = 3e5 ps
 
 *Outputs:
-        .A dictionary with:
+        .Dictionary with:
             - Single energies values of both channels
             - Pandas dataframe containg the coincidence energies for 
             both channels (this is simply a subset of the single energies)
+        .Plots of single E spectras and 2D spectra in subplots.
 
         """
 
     n_events = len(data['Hist'])   #number of events; rows goes from 0 to
             #n_events - 1
+
 
 
 #################1) Single E extraction############
@@ -307,6 +310,8 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
         
             E_B = np.append(E_B, data['Hist']['E[ch]'][i] )  #storing of the
                     #single energy  
+
+
 
 #################2) Coincidences############
 #To do the coincidence, event by event, have to:
@@ -363,7 +368,61 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
                     
                     coinci = True       
 
-   ########### 3) Return of values ############################
+
+
+   ########3) Plot ##############################3
+   #Here both the single spectra and the 2D spectra will be plotted. To plot 
+   #the single spectra, since we do not have counts, we have to do:
+          
+   
+    plt.figure(figsize=(21,12))  #width, heigh 6.4*4.8 inches by default
+   #plt.suptitle("Spectra of the LED driver varying its amplitude", fontsize=22, wrap=True)           #title
+
+    #1D spectra, ch A
+    u, inv = np.unique(E_A, return_inverse=True)
+    counts = np.bincount(inv)
+
+    plt.subplot(1, 3, 1)
+    plt.bar(u, counts, width = u[1]-u[0], edgecolor="black")   
+    plt.title("Spectra ch "+ str(ch_A), fontsize=22)           #title
+    plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
+    plt.ylabel("Counts", fontsize=14)              #ylabel
+    # Set size of tick labels.
+    plt.tick_params(axis='both', labelsize=14)              #size of axis
+    plt.grid(True) 
+    #plt.xlim(min(ADC_channel_8ampl),3000)                       #limits of x axis
+
+    
+#1D spectra, ch B
+    u, inv = np.unique(E_B, return_inverse=True)
+    counts = np.bincount(inv)
+
+    plt.subplot(1, 3, 2)
+    plt.bar(u, counts, width = u[1]-u[0], edgecolor="black")   
+    plt.title("Spectra ch "+ str(ch_B), fontsize=22)           #title
+    plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
+    plt.ylabel("Counts", fontsize=14)              #ylabel
+    # Set size of tick labels.
+    plt.tick_params(axis='both', labelsize=14)              #size of axis
+    plt.grid(True) 
+    #plt.xlim(min(ADC_channel_8ampl),3000)                       #limits of x axis
+    
+    
+    #2D spectra
+    plt.subplot(1, 3, 3)
+    plt.plot(E_A_c,E_B_c,'b.')
+   #plt.xlim(0,data_root['n_Channels'])
+   #plt.ylim(0,data_root['n_Channels'])
+    plt.title("2D spectra, ch "+str(ch_A) + " and "+ str(ch_B) + " coincidence", fontsize=22, wrap=True)           #title
+    plt.xlabel("E(ch) [ch" + str(ch_A) +"]", fontsize=14)                        #xlabel
+    plt.ylabel("E(ch) [ch" + str(ch_B) +"]", fontsize=14)             #ylabel
+    plt.tick_params(axis='both', labelsize=14)              #size of axis
+    plt.grid(True) 
+   #plt.xlim(min(ADC_channel_8ampl),3000)                       #limits of x axis
+
+
+
+   ########### 4) Return of values ############################
    #The values will be returned in a dictionary. To return the values, 
    #pandas dataframe will be used. Since E_A and E_B do not need to have the same
    #length, creating np.arrays with both of them do not work properly, so that

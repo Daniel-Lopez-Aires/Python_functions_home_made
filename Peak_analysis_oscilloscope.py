@@ -3,12 +3,26 @@
 """
 Created on Mon Jun  7 14:37:16 2021
 
-@author: dla
+@author: Daniel López Aires // danlopair@gmail.com
 
-This function is to do the Pulse Shape Analysis (PSA) of a electric pulse (nuclear detectors)
+"""
+
+################### 0) General useful packages ##################
+
+import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
+        #everytime we want to plot something
+import numpy as np          #np contain linspaces as np.linspace(a,b,N)
+from scipy import stats    #to find the most commom element in a lis
+##################################
+
+
+
+def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_peak, delta_V, delta_t):
+    '''
+    This function is to do the Pulse Shape Analysis (PSA) of a electric pulse (nuclear detectors)
 from the oscilloscope.
 
-*Inputs:
+    *Inputs:
         .Voltage, Time = variables (vectors) that contain the data (np.array)
         .Signal_type = 'pre' or 'raw'. This indicated whether the peak is positive ('raw')
         	or negative ('pre'), which is neccessary to compute the amplitude
@@ -16,30 +30,16 @@ from the oscilloscope.
             storing all the values
         . Indexes that limits the peak
         .delta_V, delta_t = error of the measurements, from the oscilloscope
-        
-*Outputs:
+
+    *Outputs:
         .Peak value (V)
         .Baseline (V)
         .delta_V and delta_t
         .Integral of the peak and its error
         .Number of elements of the peak
         .Rise and decay time of the peak, and their error (same for both)
-"""
+    '''
 
-################### 0) General useful packages ##################
-
-import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
-        #everytime we want to plot something
-import scipy.optimize              #to do the fit. doing only import scipy sometimes
-                                #gives an error, so have to do this
-import numpy as np          #np contain linspaces as np.linspace(a,b,N)
-from scipy import stats as stats     #to find the most commom element in a lis
-####
-
-
-
-def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_peak, delta_V, delta_t):
-    
     ############### 1) Finding the peak (max/min value) ################
     
     	#to find the peak I could easily do (absolute value to be able to detect positive peaks (raw signal) and 
@@ -71,7 +71,7 @@ def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_
     ################### 2) Finding the baseline #####################
     
         #to choose the baseline, the 1st approach was to do the mean between channel 0 and the
-        #channel where the peak start to appear. But this is abd idea becaue the error is very high,
+        #channel where the peak start to appear. But this is a ad idea becaue the error is very high,
         #so the 2nd approach will simply be choose the most frquent value
 
     #len_baseline_signal_points = len(Voltages[column_index][0:index_min_peak-1])  #length of the voltages used
@@ -89,6 +89,13 @@ def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_
                         #the baseline, so that this is the real voltage created!! Baseline-voltage because
                         #voltage of the amplitude is the greatest. DO NOT NEED IT ANYMORE!!!!
 
+
+    ####################### 3) Computing the integral of the peak ###################
+    #The area under the peak (integral) can be computed numerically using the trapz method.
+    #NEED TO THINK OF A WAY TO STIMATE ITS ERROR!!! I tried to put the error of the area of a rectange:
+    # (Vmax-Vmin)*(tmax-tmin).
+
+
     integral = np.trapz(voltage_peak, time_peak)        #[V*t] area under the peak
     delta_integral = 2 * np.sqrt( delta_V / (max(voltage_peak) - min(voltage_peak) ) 
                              + delta_t/ (max(time_peak) - min(time_peak) ) )    #overstimation of the
@@ -99,7 +106,7 @@ def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_
     #len_baseline_signal_points_stored.append(len_baseline_signal_points)
 
 
-    ###############3) Computing the rise and decay time######################
+    ############### 4) Computing the rise and decay time ######################
     
     t_decay = Time[index_max_peak] - Time[index_peak]  
     			#time when the peak ends - time when the max value is reached
@@ -109,11 +116,13 @@ def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_
     delta_t_rise_decay = np.sqrt(2) * delta_t  #error of both t_decay and t_rise
     
     
-    #############4) Computing amplitude##################
+    ############# 5) Computing amplitude ##################
+
     amplitude = Amplitude(peak, baseline, delta_V)['amplitude[V]' ]
     delta_amplitude = Amplitude(peak, baseline, delta_V)['\Delta(amplitude[V])']
     
-    ######################## 5)Plot #####################
+
+    ######################## 6)Plot #####################
     
     plt.figure(figsize=(10,6))  #width, heigh 6.4*4.8 inches by default
     plt.plot( 1e6 * Time, 1e3 * Voltage, 'b.-')    
@@ -128,7 +137,7 @@ def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_
     #plt.savefig('Signal_LYSO_sum.png', format='png') 
     
     
-   ########### 6) Return of values ############################
+   ########### 7) Return of values ############################
    
    #the values will be returned in a dictionary indicating what is each
    #value
@@ -143,6 +152,8 @@ def Peak_analysis_oscillo(Voltage, Time, signal_type, index_min_peak, index_max_
     return values
 
 
+
+
 ###########################################################################
 ###########################################################################
 #Function to compute the amplitude
@@ -152,7 +163,7 @@ def Amplitude(peak,baseline, delta_V):
     """Funciton to compute the amplitude of a peak from the oscilloscope
         *Inputs:
             .Peak: peak value [V] (with its sign)
-            .Baseline: baseline value [V]
+            .Baseline: baseline value [V] (with its sign)
         *Outputs
             .Amplitude value [V]
             .\Delta(amplitude[V])

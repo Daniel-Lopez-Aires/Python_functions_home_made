@@ -250,11 +250,11 @@ This root contains only histograms, inside folders.
 ####### 3) Function to make coincidences from the .root with all the channels######
 ####################################################################
 
-def Coincidences_2ch_root(name, ch_A, ch_B, gate = 3e5):
+def Coincidences_2ch_root(name, ch_A, ch_B, n_channels = 4096, gate = 3e5):
 
     """
 This function is to make coincidences between 2 channels of MARS. It needs the
-data from a single .root containng all the channels Time sorted, to load the
+data from a single .root containng all the channels Time sorted, i.e., to load the
 file 'SDataF_run.root'.
 
 To do the coincidence, event by event, have to:
@@ -287,6 +287,11 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
         .gate [ps] = the time interval of the gate, which will be
             used to check whether 2 events are in coincidence or not. Default gate by
             COMPASS = 300ns = 3e5 ps
+        .n_channels = number of channels of the ADC. Default: 4096
+            NOTE that this could also be obtained from the other root, the one
+            with the histograms, but to avoid loading 2 histos, could give it 
+            as an input (in the load function from that file, it can be seen how
+             the number of channels can be obtained). 
 
 *Outputs:
         .Dictionary with:
@@ -404,7 +409,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     # Set size of tick labels.
     plt.tick_params(axis='both', labelsize=14)              #size of axis
     plt.grid(True) 
-    #plt.xlim(min(ADC_channel_8ampl),3000)                       #limits of x axis
+    plt.xlim(0,n_channels)                       #limits of x axis
 
     
 #1D spectra, ch B
@@ -419,20 +424,21 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     # Set size of tick labels.
     plt.tick_params(axis='both', labelsize=14)              #size of axis
     plt.grid(True) 
-    #plt.xlim(min(ADC_channel_8ampl),3000)                       #limits of x axis
+    plt.xlim(0,n_channels)                       #limits of x axis
     
     
     #2D spectra
     plt.subplot(1, 3, 3)
     plt.plot(E_A_c,E_B_c,'b.')
-   #plt.xlim(0,data_root['n_Channels'])
-   #plt.ylim(0,data_root['n_Channels'])
     plt.title("2D spectra, ch "+str(ch_A) + " and "+ str(ch_B) + " coincidence", fontsize=22, wrap=True)           #title
     plt.xlabel("E(ch) [ch" + str(ch_A) +"]", fontsize=14)                        #xlabel
     plt.ylabel("E(ch) [ch" + str(ch_B) +"]", fontsize=14)             #ylabel
     plt.tick_params(axis='both', labelsize=14)              #size of axis
     plt.grid(True) 
-   #plt.xlim(min(ADC_channel_8ampl),3000)                       #limits of x axis
+    plt.xlim(0,n_channels)                       #limits of x axis
+    plt.ylim(0,n_channels)                       #limits of y axis
+        #both axis goes from 0 to the number of channels (each one to one digi 
+            #channel)
 
 
 

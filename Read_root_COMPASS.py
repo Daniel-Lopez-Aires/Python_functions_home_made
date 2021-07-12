@@ -250,7 +250,8 @@ This root contains only histograms, inside folders.
 ####### 3) Function to make coincidences from the .root with all the channels######
 ####################################################################
 
-def Coincidences_2ch_root(name, ch_A, ch_B, n_channels = 4096, gate = 3e5):
+def Coincidences_2ch_root(name, ch_A, ch_B, n_channels = 4096, gate = 3e5, 
+                          save = True):
 
     """
 This function is to make coincidences between 2 channels of MARS. It needs the
@@ -292,7 +293,8 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             with the histograms, but to avoid loading 2 histos, could give it 
             as an input (in the load function from that file, it can be seen how
              the number of channels can be obtained). 
-
+        .save = if True the plots with the single energies and the coincidences
+            are saved. Default = True
 *Outputs:
         .Dictionary with:
             - Single energies values of both channels
@@ -402,14 +404,14 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     counts = np.bincount(inv)
 
     plt.subplot(1, 3, 1)
-    plt.bar(u, counts, width = u[1]-u[0], edgecolor="black")   
+    plt.bar(u, counts, edgecolor="black")
     plt.title("Spectra ch "+ str(ch_A), fontsize=22)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
     plt.ylabel("Counts", fontsize=14)              #ylabel
     # Set size of tick labels.
     plt.tick_params(axis='both', labelsize=14)              #size of axis
     plt.grid(True) 
-    plt.xlim(0,n_channels)                       #limits of x axis
+    #plt.xlim(0,n_channels)                       #limits of x axis
 
     
 #1D spectra, ch B
@@ -417,14 +419,14 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     counts = np.bincount(inv)
 
     plt.subplot(1, 3, 2)
-    plt.bar(u, counts, width = u[1]-u[0], edgecolor="black")   
+    plt.bar(u, counts, edgecolor="black")
     plt.title("Spectra ch "+ str(ch_B), fontsize=22)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
     plt.ylabel("Counts", fontsize=14)              #ylabel
     # Set size of tick labels.
     plt.tick_params(axis='both', labelsize=14)              #size of axis
     plt.grid(True) 
-    plt.xlim(0,n_channels)                       #limits of x axis
+    #plt.xlim(0,n_channels)                       #limits of x axis
     
     
     #2D spectra
@@ -439,6 +441,10 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     plt.ylim(0,n_channels)                       #limits of y axis
         #both axis goes from 0 to the number of channels (each one to one digi 
             #channel)
+    
+    if save:     #to save the plot    
+        plt.savefig('Spectras_single_coinc_ch'+ str(ch_A) +
+                '_ch'+ str(ch_B)+ '.png', format='png')      
 
 
 

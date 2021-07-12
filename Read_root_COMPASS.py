@@ -25,7 +25,7 @@ from ROOT import TPad, TPaveLabel, TTreeReader
 
 
 #%%  ###############################################################
-######## 1) Function to read .root files containing a single channels######
+### 1) Function to read .root files containing a single channel (waveform included) ###
 ####################################################################
 
 
@@ -42,16 +42,20 @@ This root file contains a Tree, with leafs and a TArrayS.
 
 *Inputs:
         .name = filename in string format, eg: 
-                'DataF_CH14@V1725S_646_run.root'
+                'DataF_CH14@V1725S_646_run.root' / 'SDataF_run.root'
+                                                    (S from time sorted)
         
 *Outputs:
-        .Channel = channel of the peak in the histogram
-        .Board channel = board channel, the ch of the digitizer used (usually 15)
-        .waveform = vector data with the waveform in strange units.
-	.time = vector data for the waveform plot
-	.Flags, Timestamp = vectors given by the.root, but useless for us
-        .n_events = number of events of each hist
-        	
+        .A dictionary with 2 dafaframes:
+            .Dataframe with:
+                -Channel = channel of the peak in the histogram
+                -Board channel = board channel, the ch of the digitizer used (usually 15)
+                -Flags, Timestamp = vectors given by the.root, but useless for us
+            .Dataframe with:
+                - waveform = vector data with the waveform in strange units.
+                -time = vector data for the waveform plot
+
+
 #Biblio: https://root.cern.ch/doc/master/pyroot002__TTreeAsMatrix_8py.html
         https://root-forum.cern.ch/t/unable-to-read-a-ttree-with-leaves-and-a-branch-tarrays-with-pyroot/45578
         """ 
@@ -135,8 +139,11 @@ This root file contains a Tree, with leafs and a TArrayS.
               
     return values          
 
+
+
+
 #%%  ###############################################################
-####### 2) Function to read .root files containing all the channels######
+#### 2) Function to read .root files containing all the channels (only hist) ######
 ####################################################################
 
 def ReadRootFullCOMPASS(name):
@@ -236,11 +243,14 @@ This root contains only histograms, inside folders.
               
     return values   
 
+
+
+
 #%%  ###############################################################
 ####### 3) Function to make coincidences from the .root with all the channels######
 ####################################################################
 
-def Coincidences_2ch_root(data, ch_A, ch_B, gate = 3e5):
+def Coincidences_2ch_root(name, ch_A, ch_B, gate = 3e5):
 
     """
 This function is to make coincidences between 2 channels of MARS. It needs the
@@ -271,8 +281,8 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             FIXED!!!
 
 *Inputs:
-        .data = data from the root file, from the function
-            ReadRootSingleCOMPASS
+        .name = filename in string format, eg:
+                'SDataF_run.root'      (S from time sorted)
         .ch_A, ch_B = channels of the digitizer to be used to make the coincidences
         .gate [ps] = the time interval of the gate, which will be
             used to check whether 2 events are in coincidence or not. Default gate by
@@ -283,13 +293,17 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             - Single energies values of both channels
             - Pandas dataframe containg the coincidence energies for 
             both channels (this is simply a subset of the single energies)
+            - Dictionary with dataframes with the data from the .root file
         .Plots of single E spectras and 2D spectra in subplots.
 
         """
 
-    n_events = len(data['Hist'])   #number of events; rows goes from 0 to
-            #n_events - 1
+#################0) Initialization ############
 
+    data  = ReadRootSingleCOMPASS(name)                     #data loading
+
+    n_events = len(data['Hist'])   #number of events. Rows go from 0 to
+            #n_events - 1
 
 
 #################1) Single E extraction############
@@ -437,7 +451,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
    #the values will be returned in a dictionary indicating what is each
    #value
     values = {'E_single_ch'+str(ch_A) : E_A, 'E_single_ch'+str(ch_B) : E_B,
-              'E_coinc' : df_coinc_E
+              'E_coinc' : df_coinc_E, 'Data_root' : data
               }
               
     return values   

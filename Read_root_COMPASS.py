@@ -405,7 +405,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
 
     plt.subplot(1, 3, 1)
     plt.bar(u, counts, edgecolor="black")
-    plt.title("Spectra ch "+ str(ch_A), fontsize=22)           #title
+    plt.title("Spectrum ch "+ str(ch_A), fontsize=22)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
     plt.ylabel("Counts", fontsize=14)              #ylabel
     # Set size of tick labels.
@@ -420,7 +420,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
 
     plt.subplot(1, 3, 2)
     plt.bar(u, counts, edgecolor="black")
-    plt.title("Spectra ch "+ str(ch_B), fontsize=22)           #title
+    plt.title("Spectrum ch "+ str(ch_B), fontsize=22)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
     plt.ylabel("Counts", fontsize=14)              #ylabel
     # Set size of tick labels.
@@ -432,7 +432,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     #2D spectra
     plt.subplot(1, 3, 3)
     plt.plot(E_A_c,E_B_c,'b.')
-    plt.title("2D spectra, ch "+str(ch_A) + " and "+ str(ch_B) + " coincidence", fontsize=22, wrap=True)           #title
+    plt.title("2D spectrum, ch "+str(ch_A) + " and "+ str(ch_B) + " coincidence", fontsize=22, wrap=True)           #title
     plt.xlabel("E(ch) [ch" + str(ch_A) +"]", fontsize=14)                        #xlabel
     plt.ylabel("E(ch) [ch" + str(ch_B) +"]", fontsize=14)             #ylabel
     plt.tick_params(axis='both', labelsize=14)              #size of axis
@@ -445,6 +445,48 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     if save:     #to save the plot    
         plt.savefig('Spectras_single_coinc_ch'+ str(ch_A) +
                 '_ch'+ str(ch_B)+ '.png', format='png')      
+
+
+    #########Debug plots###3
+    #The plot of the energies values of each digi channels that is in 
+    #coincidence with other energy value from the other channel will be plotted
+    #as a debug method.
+    
+    plt.figure(figsize=(18,8))  #width, heigh 6.4*4.8 inches by default
+    plt.suptitle("Spectra of the singles that have coincidences (subset of all the singles)",
+                    fontsize=22, wrap=True)           #title
+
+    #1D spectra, ch A
+    u, inv = np.unique(E_A_c, return_inverse=True)
+    counts = np.bincount(inv)
+
+    plt.subplot(1, 2, 1)
+    plt.bar(u, counts, edgecolor="black")
+    plt.title("Spectrum (subset) ch " + str(ch_A), fontsize=20)           #title
+    plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
+    plt.ylabel("Counts", fontsize=14)              #ylabel
+    # Set size of tick labels.
+    plt.tick_params(axis='both', labelsize=14)              #size of axis
+    plt.grid(True) 
+    #plt.xlim(0,n_channels)                       #limits of x axis
+    
+    u, inv = np.unique(E_B_c, return_inverse=True)
+    counts = np.bincount(inv)
+
+    plt.subplot(1, 2, 2)
+    plt.bar(u, counts, edgecolor="black")
+    plt.title("Spectrum (subset) ch "+ str(ch_B), fontsize=20)           #title
+    plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
+    plt.ylabel("Counts", fontsize=14)              #ylabel
+    # Set size of tick labels.
+    plt.tick_params(axis='both', labelsize=14)              #size of axis
+    plt.grid(True) 
+    #plt.xlim(0,n_channels)                       #limits of x axis
+
+    if save:     #to save the plot    
+        plt.savefig('Spectras_debug_ch'+ str(ch_A) +
+                '_ch'+ str(ch_B)+ '.png', format='png')      
+
 
 
 

@@ -12,7 +12,7 @@ Created on Tue Jun 29 09:23:48 2021
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import time     #to measure the time
 #To import things from ROOT, previously you have to source thisroot.sh from 
     #the  command line! So, before opening anaconda to open spyder, you must do:
                 #cd root/bin
@@ -302,12 +302,17 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             both channels (this is simply a subset of the single energies)
             - Dictionary with dataframes with the data from the .root file
         .Plots of single E spectras and 2D spectra in subplots.
+        .Run time of the data loading and the coincidence making
 
         """
 
 #################0) Initialization ############
+    t_begin = time.time()       #to measure time
 
     data  = ReadRootSingleCOMPASS(name)                     #data loading
+    t_end_load = time.time()
+
+    t_load = t_end_load - t_begin   #[s] time spent loading
 
     n_events = len(data['Hist'])   #number of events. Rows go from 0 to
             #n_events - 1
@@ -315,7 +320,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
 
 #################1) Single E extraction############
 #This is very easy, just check the channel, and depending on that store the energy
-            
+    t_begin_coin = time.time()
 #Initialization
     E_A = np.array( [] )                #Single energies of digi channel A
     E_B = np.array( [] )                #Single energies of digi channel B
@@ -387,9 +392,10 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
                     E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i+1] )
                     E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i] )
                     
-                    coinci = True       
+                    coinci = True
 
-
+    time_end_coin = time.time()
+    t_coin = time_end_coin - t_begin_coin       #[s] time spent in the comparison
 
    ########3) Plot ##############################3
    #Here both the single spectra and the 2D spectra will be plotted. To plot 
@@ -505,7 +511,8 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
    #the values will be returned in a dictionary indicating what is each
    #value
     values = {'E_single_ch'+str(ch_A) : E_A, 'E_single_ch'+str(ch_B) : E_B,
-              'E_coinc' : df_coinc_E, 'Data_root' : data
+              'E_coinc' : df_coinc_E, 'Data_root' : data,
+              'Run_time_load' : t_load , 'Run_time_coinc' : t_coin
               }
               
     return values   

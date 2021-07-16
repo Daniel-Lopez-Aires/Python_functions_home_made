@@ -29,7 +29,7 @@ from ROOT import TPad, TPaveLabel, TTreeReader
 ####################################################################
 
 
-def ReadRootSingleCOMPASS(name):
+def ReadRootSingleCOMPASS(name, Waveform_saving = False):
 
     """
 This function is to read .root data from COMPASS (filtered data, which is the 
@@ -40,10 +40,19 @@ in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
 
 This root file contains a Tree, with leafs and a TArrayS.
 
+The data can be readed in 2 ways, using a function that will be removed called 
+AsMatrix(), which is very fast (comparable to C++), and the other way, which
+is the one found in the bilbio (example). The first takes about 0.5s, and the 
+0ther 50s ==> 10 times shorter. So, will use it as long as it exists. When it
+ceases to exist, the funciton automatically will sswitch to the other (try
+    except blocks)
+
 *Inputs:
         .name = filename in string format, eg: 
                 'DataF_CH14@V1725S_646_run.root' / 'SDataF_run.root'
                                                     (S from time sorted)
+        .Waveform_saving = if True, the outputs return the waveform. Default
+            value = False
         
 *Outputs:
         .A dictionary with 2 dafaframes:
@@ -51,7 +60,7 @@ This root file contains a Tree, with leafs and a TArrayS.
                 -Channel = channel of the peak in the histogram
                 -Board channel = board channel, the ch of the digitizer used (usually 15)
                 -Flags, Timestamp = vectors given by the.root, but useless for us
-            .Dataframe with:
+            .Dataframe with:  ONLY IF WAVEFORM_SAVING = TRUE
                 - waveform = vector data with the waveform in strange units.
                 -time = vector data for the waveform plot
 
@@ -62,7 +71,7 @@ This root file contains a Tree, with leafs and a TArrayS.
 
 
     data_root = TFile(name)                          #reading the .root file
-    tree=data_root.Data_F                   #getting the Tree
+    tree = data_root.Data_F                   #getting the Tree
     #Tree.Print()                            #print of the Tree
     n = tree.GetEntries()            #number of events (entries) of the Tree (numbers)
 
@@ -71,26 +80,51 @@ This root file contains a Tree, with leafs and a TArrayS.
 
 
 ######### 1.1)Read only specific branches #############
-#There is a simple function called AsMatrix, but since it will be removed,
-#will not use it. eg of that function:
-        #E = Tree.AsMatrix(columns=["Energy"])
-#Other version to read the values , similar to the one used in C++ is:
+#There is a simple function called AsMatrix, which is incredibly faster, like
+#20 times faster. However, it will be removed on root 6.26 (On July 2021, last
+#version is root 6.24/00). So, will use it, but will implement a Try except bock,
+#so that when that function do not exist, will run the other (more time 
+#consuming) way, which is more similar to the C++ way.
+
+    try:    #short way toe xtract the data, but which will be deleted, so that
+        #when this do no exist, the except block will be executed
     
-    E = np.array( [] )                    #store the Energy
-    board = np.array( [] )                #store the Board
-    ch_digi = np.array( [] )              #store the Channel
-    timestamp = np.array( [] )            #store the Timestamp
-    flags = np.array( [] )      #store the flags
-    fN = np.array( [] )         #store fn, the number of points
+        dat = tree.AsMatrix(exclude=["Samples"])
+            #load of all the data except the waveform.
+        E = dat[:,3]
+        board = dat[:,2]
+        ch_digi = dat[:,0]
+        timestamp = dat[:,1]
+        flags = dat[:,5]
+        
+        #this way, the wave can not be loaded, so have to load the wave the old
+        #way:
+            
+        if Waveform_saving:     #If Waveform_saving is True, then retrieve
+            fN = np.array( [] )         #store fn, the number of points
+                #of the waveform            
+                
+            for event in tree:  #for each event, store fN
+                fN = np.append(fN, tree.Samples.fN)        
+                
+                
+    except:                 #long way to extract the data
+    
+        E = np.array( [] )                    #store the Energy
+        board = np.array( [] )                #store the Board
+        ch_digi = np.array( [] )              #store the Channel
+        timestamp = np.array( [] )            #store the Timestamp
+        flags = np.array( [] )      #store the flags
+        fN = np.array( [] )         #store fn, the number of points
                 #of the waveform
                
-    for event in tree:  #for each event, store the desired values
-        E = np.append(E, tree.Energy) 
-        board = np.append(board, tree.Board)
-        ch_digi = np.append(ch_digi, tree.Channel) 
-        timestamp = np.append(timestamp, tree.Timestamp)
-        flags = np.append(flags, tree.Flags)
-        fN = np.append(fN, tree.Samples.fN)
+        for event in tree:  #for each event, store the desired values
+            E = np.append(E, tree.Energy) 
+            board = np.append(board, tree.Board)
+            ch_digi = np.append(ch_digi, tree.Channel) 
+            timestamp = np.append(timestamp, tree.Timestamp)
+            flags = np.append(flags, tree.Flags)
+            fN = np.append(fN, tree.Samples.fN)
 
 #How to get the waveform (fArray)? Seeing the TBrwoser, it has n*1000 entries, which would
 #mean that for each event, it stores 1000 numbers (1000=fN). I can not store all the
@@ -103,44 +137,55 @@ This root file contains a Tree, with leafs and a TArrayS.
 	#  If choosing the 1st thousand values, from 0 to 1000, the
 	#  waveform is obtained, while if choosing other range, say from 1000 to 2000, etc, 
 	#  weird results are obtained. Chosssing the value number n*1000 breaks spyder. 
-
-    waveform = np.array( [] )    #store of the waveform 
+    
+    if Waveform_saving:     #If Waveform_saving is True, then retrieve
+            #the waveform from the .root
+            
+        waveform = np.array( [] )    #store of the waveform 
     
     
-    for i in range(0,int(fN[-1]) ): #i goes from 0 to 1000=fN[j], for all j
-        waveform = np.append(waveform,event.Samples.fArray[i])      
-        #print(event.Samples.fArray[i])     
-    
-
+        for i in range(0,int(fN[-1]) ): #i goes from 0 to 1000=fN[j], for all j
+            waveform = np.append(waveform,event.Samples.fArray[i])      
+        #print(event.Samples.fArray[i])    
+        
  # for elem in event.Samples.fArray: #for last event of the previous loop
  #        print(elem)
  #        Waveform = np.append(Waveform, elem)
 #This loop do not end!!!  
 
-
     #the x axis for the waveform plot is determined by the ADC sampling time, which
     #is 4ns in our case [CAEN's COMPASS manual], so the X data will then be (the Y data
     #is the sample):      
-    time = np.linspace(0, int(fN[-1])*4, int(fN[-1]) )          #[ns] time for
+        time = np.linspace(0, int(fN[-1])*4, int(fN[-1]) )          #[ns] time for
             #the waveform sample    
-    n_events = len(E) 				#number of events of the E hist   
+    
+
 
    ########### 1.2) Return of values ############################
-   #The values will be returned in a dictionary. To return the values, pandas dataframe will be used.
+   #The values will be returned in a dictionary. To return the values, pandas 
+   #dataframe will be used.
 
-    df_ch_timestamp = pd.DataFrame(data=np.array( [ch_digi,timestamp, E, board, flags] ).T,
+    try:        #if using the AsMatrix version to load
+        df_ch_timestamp = pd.DataFrame(data= dat,
                                    columns=['Ch digitizer', 'Timestamp[ps]', 'E[ch]', 'Board_ch', 'Flags'])
-    df_wave = pd.DataFrame(data=np.array( [time,waveform] ).T, columns=['Time[ns]', 'Voltage [ch]'])
-   #the values will be returned in a dictionary indicating what is each
-   #value
-    values = {'Waveform' : df_wave,
-              'Hist' : df_ch_timestamp
-              }
-              
+    
+    except: #if loadind the data with the long way (loops)
+        df_ch_timestamp = pd.DataFrame(data=np.array( [ch_digi,timestamp, E, board, flags] ).T,
+                                   columns=['Ch digitizer', 'Timestamp[ps]', 'E[ch]', 'Board_ch', 'Flags'])
+    
+    
+    if Waveform_saving:     #If waveform_saving is True, return the waveform too
+        df_wave = pd.DataFrame(data=np.array( [time,waveform] ).T, columns=['Time[ns]', 'Voltage [ch]'])
+        #the values will be returned in a dictionary indicating what is each
+            #value
+        values = {'Waveform' : df_wave,
+              'Hist' : df_ch_timestamp}
+        
+    else:   #Waveform_saving = false, do not store it          
+            values = {
+              'Hist' : df_ch_timestamp}        
+    
     return values          
-
-
-
 
 #%%  ###############################################################
 #### 2) Function to read .root files containing all the channels (only hist) ######

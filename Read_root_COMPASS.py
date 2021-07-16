@@ -397,57 +397,61 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
 #Initialization
     E_A_c = np.array( [] )      #Energies of the ch A in coincidence with B
     E_B_c = np.array( [] )      #Energies of the ch B in coincidence with A
-    coinci = False              #Variable to avoid comparing with events that
-        #already have coincidences
     
     
     for i in range(0,n_events-2):           #loop through all events
-
-        if coinci:   #if coinc =True, avoid the instructions and go directly to 
-                    #the next iteration without doing anything, so that you do 
-                    #not seek for a coincidence with an event that already has
-                    #a coincidence
-                    
-            coinci = False                  #reset of the variable
-            continue
-
-        if data['Hist']['Ch digitizer'][i] == ch_A:  #Check if the event is ch A
-
-            if data['Hist']['Ch digitizer'][i + 1]== ch_B: #Check if the following row
-                    #of the data correspond to the other channel (B)==> coincidence possible
-
-                delta_t = data['Hist']['Timestamp[ps]'][i + 1] - data['Hist']['Timestamp[ps]'][i] 
+        
+        #Time interval between the event i and the next one
+        delta_t = data['Hist']['Timestamp[ps]'][i + 1] - data['Hist']['Timestamp[ps]'][i] 
                     #[ns] time interval between the events
-
-                if delta_t <= gate :  #Check if the time interval is small enough
-                        #to consider these 2 events a coincidence
-                    E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i] )
-                    E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i+1] )
                     
-                    coinci = True       #To avoid comparison if there is coincidences
+        if delta_t < gate: #if True, we have coincidences
+            #now we have to find the channels of the events, to store it, or not
+            #if the events are from the same channel
+            
+            if data['Hist']['Ch digitizer'][i] == ch_A:  #Check if the event is ch A
+            
+                if data['Hist']['Ch digitizer'][i + 1]== ch_B: #Check if the 
+                #following row of the data correspond to the other 
+                #channel (B)==> coincidence possible            
+            
+                    E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i] )
+                    E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i+1] ) 
 
-        elif data['Hist']['Ch digitizer'][i] == ch_B:  #If the event is ch B
-
-            if data['Hist']['Ch digitizer'][i + 1]== ch_A: #Check if the following row
-                    #of the data correspond to the other channel (A)==> coincidence possible
-
-                delta_t = data['Hist']['Timestamp[ps]'][i + 1] - data['Hist']['Timestamp[ps]'][i]
-
-                if delta_t <= gate :
+            else: #data['Hist']['Ch digitizer'][i] == ch_B:
+                
+                if data['Hist']['Ch digitizer'][i + 1]== ch_A: #Check if the 
+                #following row of the data correspond to the other 
+                #channel (A)==> coincidence possible  
                     E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i+1] )
                     E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i] )
-                    
-                    coinci = True
+                      
 
     time_end_coin = time.time()
     t_coin = time_end_coin - t_begin_coin       #[s] time spent in the comparison
 
-   ########3) Plot ##############################3
+    
+    #The coincidences will be stores in a dataframe
+    df_aux = pd.DataFrame(data=np.array( [E_A_c, E_B_c] ).T, 
+                              columns=['E_coinc_ch'+str(ch_A), 
+                                       'E_coinc_ch'+str(ch_B)] )
+        #dataframe that contains the coincidence values.
+        
+    #To counts how many times do each pair appear, one can do:
+    df_coinc_E = df_aux.groupby(df_aux.columns.tolist(),as_index=False).size()
+    df_coinc_E.rename(columns = {'size':'Counts'}, inplace = True) #rename of
+            #the new column to give it a good name
+    
+    #duplicate = df_coinc_E.duplicated()
+   
+    
+   
+    ########3) Plot ##############################3
    #Here both the single spectra and the 2D spectra will be plotted. To plot 
    #the single spectra, since we do not have counts, we have to do:
           
    
-    plt.figure(figsize=(21,12))  #width, heigh 6.4*4.8 inches by default
+    plt.figure(figsize=(20,20))  #width, heigh 6.4*4.8 inches by default
    #plt.suptitle("Spectra of the LED driver varying its amplitude", fontsize=22, wrap=True)           #title
 
     #1D spectra, ch A
@@ -482,22 +486,26 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     
     #2D spectra
     plt.subplot(1, 3, 3)
-    plt.plot(E_A_c,E_B_c,'b.')
+    plt.scatter(df_coinc_E['E_coinc_ch8'], df_coinc_E['E_coinc_ch11'], 
+                df_coinc_E['Counts'], c=df_coinc_E.Counts)
     plt.title("2D spectrum, ch "+str(ch_A) + " and "+ str(ch_B) + " coincidence", fontsize=22, wrap=True)           #title
     plt.xlabel("E(ch) [ch" + str(ch_A) +"]", fontsize=14)                        #xlabel
     plt.ylabel("E(ch) [ch" + str(ch_B) +"]", fontsize=14)             #ylabel
     plt.tick_params(axis='both', labelsize=14)              #size of axis
     plt.grid(True) 
+    cbar = plt.colorbar()                                      #Show the colorbar    
+    cbar.set_label('Counts', fontsize=14)
     plt.xlim(0,n_channels)                       #limits of x axis
     plt.ylim(0,n_channels)                       #limits of y axis
         #both axis goes from 0 to the number of channels (each one to one digi 
             #channel)
+    #plt.axis('scaled')
     
     if save:     #to save the plot    
         plt.savefig('Spectras_single_coinc_ch'+ str(ch_A) +
                 '_ch'+ str(ch_B)+ '.png', format='png')      
 
-
+    
     #########Debug plots###3
     #The plot of the energies values of each digi channels that is in 
     #coincidence with other energy value from the other channel will be plotted
@@ -540,7 +548,6 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
 
 
 
-
    ########### 4) Return of values ############################
    #The values will be returned in a dictionary. To return the values, 
    #pandas dataframe will be used. Since E_A and E_B do not need to have the same
@@ -550,9 +557,6 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     #df_single_E = pd.DataFrame(data= np.array( [E_A, E_B] ).T,
                                    #columns=['E_single_ch', 'E_single_ch' ] )
                                    
-    df_coinc_E = pd.DataFrame(data=np.array( [E_A_c, E_B_c] ).T, 
-                              columns=['E_coinc_ch'+str(ch_A), 
-                                       'E_coinc_ch'+str(ch_B)] )
    #the values will be returned in a dictionary indicating what is each
    #value
     values = {'E_single_ch'+str(ch_A) : E_A, 'E_single_ch'+str(ch_B) : E_B,

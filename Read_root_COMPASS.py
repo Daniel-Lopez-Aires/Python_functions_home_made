@@ -17,7 +17,7 @@ import time     #to measure the time
     #the  command line! So, before opening anaconda to open spyder, you must do:
                 #cd root/bin
                 #source thisroot.sh
-from ROOT import TCanvas, TFormula, TF1, TH1F, TTree, TFile, TArrayS
+from ROOT import TCanvas, TFormula, TF1, TH1F, TH2F, TTree, TFile, TArrayS
 from ROOT import gROOT, TPaveText, TGraphErrors, TGraph
 from ROOT import TPad, TPaveLabel, TTreeReader
 
@@ -63,7 +63,9 @@ ceases to exist, the funciton automatically will sswitch to the other (try
             .Dataframe with:  ONLY IF WAVEFORM_SAVING = TRUE
                 - waveform = vector data with the waveform in strange units.
                 -time = vector data for the waveform plot
-
+        .Plot (python) of the 1D spectra and the 2D spectrum. Root plot, TH2F
+                    computed but not plotted because it slows down a lot the PC
+                    to play with that plot
 
 #Biblio: https://root.cern.ch/doc/master/pyroot002__TTreeAsMatrix_8py.html
         https://root-forum.cern.ch/t/unable-to-read-a-ttree-with-leaves-and-a-branch-tarrays-with-pyroot/45578
@@ -296,7 +298,7 @@ This root contains only histograms, inside folders.
 ####################################################################
 
 def Coincidences_2ch_root(name, ch_A, ch_B, n_channels = 4096, gate = 3e5, 
-                          save = True):
+                          save = True, debug = False):
 
     """
 This function is to make coincidences between 2 channels of MARS. It needs the
@@ -340,6 +342,9 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
              the number of channels can be obtained). 
         .save = if True the plots with the single energies and the coincidences
             are saved. Default = True
+        .debug: if debug = True, it plots the single energy that have 
+            coincidences to tet the results obtained
+        
 *Outputs:
         .Dictionary with:
             - Single energies values of both channels
@@ -348,6 +353,10 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             - Dictionary with dataframes with the data from the .root file
         .Plots of single E spectras and 2D spectra in subplots.
         .Run time of the data loading and the coincidence making
+
+
+@@@@@@@@@@ TO DO:
+    1) TH2F plot do not generated if running this on terminal.
 
         """
 
@@ -393,6 +402,11 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     #4) Store the single energy values if the time interval is small enough,
             #which will be the coincidences energies
 
+#A creation of a Th2F plot object (root) will also be implemented, since it is
+#more faster than the matplotlib plot
+
+    hist_2D = TH2F('2Dhist', '2Dhist', 4096, 0, 4096, 4096, 0, 4096)    #root hist
+
 
 #Initialization
     E_A_c = np.array( [] )      #Energies of the ch A in coincidence with B
@@ -417,7 +431,10 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             
                     E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i] )
                     E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i+1] ) 
-
+                    
+                    hist_2D.Fill( data['Hist']['E[ch]'][i], 
+                                 data['Hist']['E[ch]'][i+1] ) #fill of the hist
+            
             else: #data['Hist']['Ch digitizer'][i] == ch_B:
                 
                 if data['Hist']['Ch digitizer'][i + 1]== ch_A: #Check if the 
@@ -425,16 +442,18 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
                 #channel (A)==> coincidence possible  
                     E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i+1] )
                     E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i] )
-                      
+                    
+                    hist_2D.Fill( data['Hist']['E[ch]'][i+1], 
+                                 data['Hist']['E[ch]'][i] ) #fill of the hist 
+
 
     time_end_coin = time.time()
     t_coin = time_end_coin - t_begin_coin       #[s] time spent in the comparison
-
     
     #The coincidences will be stores in a dataframe
     df_aux = pd.DataFrame(data=np.array( [E_A_c, E_B_c] ).T, 
                               columns=['E_coinc_ch'+str(ch_A), 
-                                       'E_coinc_ch'+str(ch_B)] )
+                                        'E_coinc_ch'+str(ch_B)] )
         #dataframe that contains the coincidence values.
         
     #To counts how many times do each pair appear, one can do:
@@ -447,18 +466,18 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     
    
     ########3) Plot ##############################3
-   #Here both the single spectra and the 2D spectra will be plotted. To plot 
-   #the single spectra, since we do not have counts, we have to do:
-          
-   
-    plt.figure(figsize=(20,20))  #width, heigh 6.4*4.8 inches by default
-   #plt.suptitle("Spectra of the LED driver varying its amplitude", fontsize=22, wrap=True)           #title
+    #Here both the single spectra and the 2D spectra will be plotted. To plot 
+    #the single spectra with python, since we do not have counts, we have to do
+    #the following. 
+
+    plt.figure(figsize=(16,12))  #width, heigh 6.4*4.8 inches by default
+    #plt.suptitle("Spectra of the LED driver varying its amplitude", fontsize=22, wrap=True)           #title
 
     #1D spectra, ch A
     u, inv = np.unique(E_A, return_inverse=True)
     counts = np.bincount(inv)
 
-    plt.subplot(1, 3, 1)
+    plt.subplot(1, 2, 1)
     plt.bar(u, counts, edgecolor="black")
     plt.title("Spectrum ch "+ str(ch_A), fontsize=22)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
@@ -473,7 +492,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     u, inv = np.unique(E_B, return_inverse=True)
     counts = np.bincount(inv)
 
-    plt.subplot(1, 3, 2)
+    plt.subplot(1, 2, 2)
     plt.bar(u, counts, edgecolor="black")
     plt.title("Spectrum ch "+ str(ch_B), fontsize=22)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
@@ -483,9 +502,17 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     plt.grid(True) 
     #plt.xlim(0,n_channels)                       #limits of x axis
     
+    if save:     #to save the plot    
+        plt.savefig('Spectras_single_ch'+ str(ch_A) +
+                '_ch'+ str(ch_B)+ '.png', format='png')        
+
+
+
     
     #2D spectra
-    plt.subplot(1, 3, 3)
+    t_beggin_py_plot = time.time()
+    
+    plt.figure(figsize=(10,6))  #width, heigh 6.4*4.8 inches by default
     plt.scatter(df_coinc_E['E_coinc_ch8'], df_coinc_E['E_coinc_ch11'], 
                 df_coinc_E['Counts'], c=df_coinc_E.Counts)
     plt.title("2D spectrum, ch "+str(ch_A) + " and "+ str(ch_B) + " coincidence", fontsize=22, wrap=True)           #title
@@ -501,8 +528,10 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             #channel)
     #plt.axis('scaled')
     
+    t_plot_python_2D = time.time()- t_beggin_py_plot
+    
     if save:     #to save the plot    
-        plt.savefig('Spectras_single_coinc_ch'+ str(ch_A) +
+        plt.savefig('2D_spectrum_coinc_ch'+ str(ch_A) +
                 '_ch'+ str(ch_B)+ '.png', format='png')      
 
     
@@ -510,58 +539,72 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     #The plot of the energies values of each digi channels that is in 
     #coincidence with other energy value from the other channel will be plotted
     #as a debug method.
-    
-    plt.figure(figsize=(18,8))  #width, heigh 6.4*4.8 inches by default
-    plt.suptitle("Spectra of the singles that have coincidences (subset of all the singles)",
+    if debug:
+        
+        plt.figure(figsize=(18,8))  #width, heigh 6.4*4.8 inches by default
+        plt.suptitle("Spectra of the singles that have coincidences (subset of all the singles)",
                     fontsize=22, wrap=True)           #title
 
-    #1D spectra, ch A
-    u, inv = np.unique(E_A_c, return_inverse=True)
-    counts = np.bincount(inv)
+        #1D spectra, ch A
+        u, inv = np.unique(E_A_c, return_inverse=True)
+        counts = np.bincount(inv)
 
-    plt.subplot(1, 2, 1)
-    plt.bar(u, counts, edgecolor="black")
-    plt.title("Spectrum (subset) ch " + str(ch_A), fontsize=20)           #title
-    plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
-    plt.ylabel("Counts", fontsize=14)              #ylabel
+        plt.subplot(1, 2, 1)
+        plt.bar(u, counts, edgecolor="black")
+        plt.title("Spectrum (subset) ch " + str(ch_A), fontsize=20)           #title
+        plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
+        plt.ylabel("Counts", fontsize=14)              #ylabel
     # Set size of tick labels.
-    plt.tick_params(axis='both', labelsize=14)              #size of axis
-    plt.grid(True) 
+        plt.tick_params(axis='both', labelsize=14)              #size of axis
+        plt.grid(True) 
     #plt.xlim(0,n_channels)                       #limits of x axis
     
-    u, inv = np.unique(E_B_c, return_inverse=True)
-    counts = np.bincount(inv)
+        u, inv = np.unique(E_B_c, return_inverse=True)
+        counts = np.bincount(inv)
 
-    plt.subplot(1, 2, 2)
-    plt.bar(u, counts, edgecolor="black")
-    plt.title("Spectrum (subset) ch "+ str(ch_B), fontsize=20)           #title
-    plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
-    plt.ylabel("Counts", fontsize=14)              #ylabel
+        plt.subplot(1, 2, 2)
+        plt.bar(u, counts, edgecolor="black")
+        plt.title("Spectrum (subset) ch "+ str(ch_B), fontsize=20)           #title
+        plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
+        plt.ylabel("Counts", fontsize=14)              #ylabel
     # Set size of tick labels.
-    plt.tick_params(axis='both', labelsize=14)              #size of axis
-    plt.grid(True) 
+        plt.tick_params(axis='both', labelsize=14)              #size of axis
+        plt.grid(True) 
     #plt.xlim(0,n_channels)                       #limits of x axis
 
-    if save:     #to save the plot    
-        plt.savefig('Spectras_debug_ch'+ str(ch_A) +
+        if save:     #to save the plot    
+            plt.savefig('Spectras_debug_ch'+ str(ch_A) +
                 '_ch'+ str(ch_B)+ '.png', format='png')      
+    
+    
 
 
-
-   ########### 4) Return of values ############################
-   #The values will be returned in a dictionary. To return the values, 
-   #pandas dataframe will be used. Since E_A and E_B do not need to have the same
-   #length, creating np.arrays with both of them do not work properly, so that
-   #they will be stored via a dictionary
+    ########### 4) Return of values ############################
+    #The values will be returned in a dictionary. To return the values, 
+    #pandas dataframe will be used. Since E_A and E_B do not need to have the same
+    #length, creating np.arrays with both of them do not work properly, so that
+    #they will be stored via a dictionary
 
     #df_single_E = pd.DataFrame(data= np.array( [E_A, E_B] ).T,
-                                   #columns=['E_single_ch', 'E_single_ch' ] )
+                                    #columns=['E_single_ch', 'E_single_ch' ] )
                                    
-   #the values will be returned in a dictionary indicating what is each
-   #value
+    #the values will be returned in a dictionary indicating what is each
+    #value
     values = {'E_single_ch'+str(ch_A) : E_A, 'E_single_ch'+str(ch_B) : E_B,
               'E_coinc' : df_coinc_E, 'Data_root' : data,
-              'Run_time_load' : t_load , 'Run_time_coinc' : t_coin
-              }
-              
+              'Run_time_load' : t_load , 'Run_time_coinc' : t_coin,
+              #'Run_time_plot_TH2F' : t_root_plot, 
+              'Run_time_plot_2D_python' : t_plot_python_2D}
+
+
+    ############ 5) Plots, for command line run ############
+    plt.show()  #call it at the end, to print all the plots
+    #hist_2D.DrawCopy('colz')   #To plot the TH2F. Simpley Draw does not work
+        #Since this slows down a lot th epc, although the generation is 
+        #incredibly fast (1e-5s), will comment it, and use the python plot, 
+        #which is virtually the same ;)
+          
     return values   
+    
+
+

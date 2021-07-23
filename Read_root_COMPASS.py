@@ -33,12 +33,15 @@ def ReadRootSingleCOMPASS(name, Waveform_saving = False):
 
     """
 This function is to read .root data from COMPASS (filtered data, which is the 
-one  with the good data) if storing each channel in a single .root.
+one  with the good data) if 
+	i) storing each channel in a single .root.
+	ii) a single .root for all channels, but loading the file with a Tree 
+
+Those files contains a Tree, with leafs and a TArrayS with the waveform
+
 .root better than .csv because it is approx an order of magnitude lighter 
 (10MB vs 100MB). Note that to obtain the wave, each channel have to be saved
 in a .root, and the .root weights an order of magnitude more (8MB vs 200kB)
-
-This root file contains a Tree, with leafs and a TArrayS.
 
 The data can be readed in 2 ways, using a function that will be removed called 
 AsMatrix(), which is very fast (comparable to C++), and the other way, which
@@ -177,7 +180,7 @@ ceases to exist, the funciton automatically will sswitch to the other (try
     
     
     if Waveform_saving:     #If waveform_saving is True, return the waveform too
-        df_wave = pd.DataFrame(data=np.array( [time,waveform] ).T, columns=['Time[ns]', 'Voltage [ch]'])
+        df_wave = pd.DataFrame(data=np.array( [time,waveform] ).T, columns=['Time[ns]', 'Voltage[ch]'])
         #the values will be returned in a dictionary indicating what is each
             #value
         values = {'Waveform' : df_wave,
@@ -193,16 +196,20 @@ ceases to exist, the funciton automatically will sswitch to the other (try
 #### 2) Function to read .root files containing all the channels (only hist) ######
 ####################################################################
 
-def ReadRootFullCOMPASS(name):
+def ReadRootHistCOMPASS(name):
 
     """
 This function is to read .root data from COMPASS (filtered data, which is the 
-one  with the good data) if storing all the channels in a single .root.
+one  with the good data) if storing all the channels in a single .root. This reads
+the .root that contains histograms, inside folders.
+
+Actually, I do not use this, the other .root is the relevant one, but in any case here it
+is this function just in case :))
+
+
 .root better than .csv because it is approx an order of magnitude lighter 
 (10MB vs 100MB). Note that to obtain the wave, each channel have to be saved
 in a .root, and the .root weights an order of magnitude more (8MB vs 200kB).
-
-This root contains only histograms, inside folders.
 
 *Inputs:
         .name = filename in string format, eg: 
@@ -298,7 +305,7 @@ This root contains only histograms, inside folders.
 ####################################################################
 
 def Coincidences_2ch_root(name, ch_A, ch_B, n_channels = 4096, gate = 3e5, 
-                          save = True, debug = False):
+                          save = True, debug = False, nbins = 70):
 
     """
 This function is to make coincidences between 2 channels of MARS. It needs the
@@ -344,6 +351,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             are saved. Default = True
         .debug: if debug = True, it plots the single energy that have 
             coincidences to tet the results obtained
+        .nbins = number of bins for the single hist plots! DEfault value = 70
         
 *Outputs:
         .Dictionary with:
@@ -466,19 +474,15 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     
    
     ########3) Plot ##############################3
-    #Here both the single spectra and the 2D spectra will be plotted. To plot 
-    #the single spectra with python, since we do not have counts, we have to do
-    #the following. 
+    #Here both the single spectra and the 2D spectra will be plotted. 
 
     plt.figure(figsize=(16,12))  #width, heigh 6.4*4.8 inches by default
     #plt.suptitle("Spectra of the LED driver varying its amplitude", fontsize=22, wrap=True)           #title
 
     #1D spectra, ch A
-    u, inv = np.unique(E_A, return_inverse=True)
-    counts = np.bincount(inv)
 
     plt.subplot(1, 2, 1)
-    plt.bar(u, counts, edgecolor="black")
+    plt.hist(E_A, bins = nbins)
     plt.title("Spectrum ch "+ str(ch_A), fontsize=22)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
     plt.ylabel("Counts", fontsize=14)              #ylabel
@@ -489,11 +493,9 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
 
     
 #1D spectra, ch B
-    u, inv = np.unique(E_B, return_inverse=True)
-    counts = np.bincount(inv)
 
     plt.subplot(1, 2, 2)
-    plt.bar(u, counts, edgecolor="black")
+    plt.hist(E_B, bins = nbins)
     plt.title("Spectrum ch "+ str(ch_B), fontsize=22)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
     plt.ylabel("Counts", fontsize=14)              #ylabel
@@ -545,12 +547,9 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
         plt.suptitle("Spectra of the singles that have coincidences (subset of all the singles)",
                     fontsize=22, wrap=True)           #title
 
-        #1D spectra, ch A
-        u, inv = np.unique(E_A_c, return_inverse=True)
-        counts = np.bincount(inv)
 
         plt.subplot(1, 2, 1)
-        plt.bar(u, counts, edgecolor="black")
+        plt.hist(E_A_c, bins = nbins)
         plt.title("Spectrum (subset) ch " + str(ch_A), fontsize=20)           #title
         plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
         plt.ylabel("Counts", fontsize=14)              #ylabel
@@ -559,11 +558,9 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
         plt.grid(True) 
     #plt.xlim(0,n_channels)                       #limits of x axis
     
-        u, inv = np.unique(E_B_c, return_inverse=True)
-        counts = np.bincount(inv)
 
         plt.subplot(1, 2, 2)
-        plt.bar(u, counts, edgecolor="black")
+        plt.hist(E_B_c, bins = nbins)
         plt.title("Spectrum (subset) ch "+ str(ch_B), fontsize=20)           #title
         plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
         plt.ylabel("Counts", fontsize=14)              #ylabel
@@ -606,5 +603,28 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
           
     return values   
     
+    
+    
+   #####################GARBAGE###############
+   
+   
+   
+   #### 1) ALTERNATIVE MEHTOD TO MAKE HISTOGRAMS
+   
+   #To plot the single spectra with python, since we do not have counts, we have to do
+    #the following. 
+    
+    #u, inv = np.unique(E_A, return_inverse=True)
+    #counts = np.bincount(inv)
+
+    #plt.subplot(1, 2, 1)
+    #plt.bar(u, counts, edgecolor="black")
+    #plt.title("Spectrum ch "+ str(ch_A), fontsize=22)           #title
+    #plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
+    #plt.ylabel("Counts", fontsize=14)              #ylabel
+    	# Set size of tick labels.
+    #plt.tick_params(axis='both', labelsize=14)              #size of axis
+    #plt.grid(True) 
+    #plt.xlim(0,n_channels)                       #limits of x axis
 
 

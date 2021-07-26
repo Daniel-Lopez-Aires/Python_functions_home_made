@@ -29,7 +29,8 @@ from ROOT import TPad, TPaveLabel, TTreeReader
 ####################################################################
 
 
-def ReadRootSingleCOMPASS(name, Waveform_saving = False):
+def ReadRootSingleCOMPASS(name, Waveform_saving = False, 
+                          En_interval_peak = np.array([]) , n_bins = 100 ):
 
     """
 This function is to read .root data from COMPASS (filtered data, which is the 
@@ -57,7 +58,14 @@ ceases to exist, the funciton automatically will sswitch to the other (try
                                                     (S from time sorted)
         .Waveform_saving = if True, the outputs return the waveform. Default
             value = False
-        
+        .En_interval_peak. It defines the interval were the peak in the energy
+            spectrum is founded, in order to save the waveform of a event 
+            corresponding to that peak. Eg:
+                 En_interval_peak = np.aray([E1,E2]), E1<E2
+            Default value = np.array([]) ==> by  default it saves the waveform
+            of the last event
+        .n_bins = number of bins in the energy spectrum. Default = 100
+            
 *Outputs:
         .A dictionary with 2 dafaframes:
             .Dataframe with:
@@ -85,14 +93,15 @@ ceases to exist, the funciton automatically will sswitch to the other (try
 #contain a branche, that inside it have more leaves.
 
 
-######### 1.1)Read only specific branches #############
+################# 1)Data loading ######################
+
 #There is a simple function called AsMatrix, which is incredibly faster, like
 #20 times faster. However, it will be removed on root 6.26 (On July 2021, last
 #version is root 6.24/00). So, will use it, but will implement a Try except bock,
 #so that when that function do not exist, will run the other (more time 
 #consuming) way, which is more similar to the C++ way.
 
-    try:    #short way toe xtract the data, but which will be deleted, so that
+    try:    #short way to extract the data, but which will be deleted, so that
         #when this do no exist, the except block will be executed
     
         dat = tree.AsMatrix(exclude=["Samples"])
@@ -132,11 +141,15 @@ ceases to exist, the funciton automatically will sswitch to the other (try
             flags = np.append(flags, tree.Flags)
             fN = np.append(fN, tree.Samples.fN)
 
+
+##### 1.1) Waveform loading ####
+
 #How to get the waveform (fArray)? Seeing the TBrwoser, it has n*1000 entries, which would
 #mean that for each event, it stores 1000 numbers (1000=fN). I can not store all the
-#n*1000 entries becasue the pc takes too long, so will only store the 1000 numbers
+#n*1000 entries becasue the pc takes too long, so will only store the 1st 1000 numbers
 #for a single event, the last. This would is simply mean using the variable event,
 # since it will contain the last iteration of the previous loop, and save the values.
+
 #Note that:
 	#- size(event.Samples.fArray)>= n*1000, so that each event has more than 1000 values,
 	#  which is extremely range and do not match the hypothesis explained above. 
@@ -147,28 +160,76 @@ ceases to exist, the funciton automatically will sswitch to the other (try
     
     if Waveform_saving:     #If Waveform_saving is True, then retrieve
             #the waveform from the .root
-            
-        waveform = np.array( [] )    #store of the waveform 
+
+    #the x axis for the waveform plot is determined by the ADC sampling time, which
+    #is 4ns in our case [CAEN's COMPASS manual], so the X data will then be (the Y data
+    #is the sample):  
+        
+        time = np.linspace(0, int(fN[-1])*4, int(fN[-1]) )          #[ns] time for
+            					#the waveform sample                
+        waveform = np.array( [] )           #store of the waveform 
+        
+        if np.size(En_interval_peak) > 0: #if that variable is not empty, save the
+            #waveform of an event having its energy in that interval
     
+            for event in tree:  #for each event, seek the waveform
     
-        for i in range(0,int(fN[-1]) ): #i goes from 0 to 1000=fN[j], for all j
-            waveform = np.append(waveform,event.Samples.fArray[i])      
-        #print(event.Samples.fArray[i])    
+                if np.size(waveform) > 0 : #if a waveform has been stored, stop the loop! so
+            #that you only save one waveform
+                    break
+
+                if tree.Energy > En_interval_peak[0] and tree.Energy < En_interval_peak[1]: 
+                        #if True, the energy of the event is in the desired interval
+        
+                    for i in range(0,int(tree.Samples.fN) ): 
+                        waveform = np.append(waveform,event.Samples.fArray[i])      
+        
+    
+        else: #NO interval given, so will save the wave of the last event
+        
+            for i in range(0,int(fN[-1]) ): #i goes from 0 to 1000=fN[j], for all j
+                waveform = np.append(waveform,event.Samples.fArray[i])      
+                #print(event.Samples.fArray[i])    
         
  # for elem in event.Samples.fArray: #for last event of the previous loop
  #        print(elem)
  #        Waveform = np.append(Waveform, elem)
 #This loop do not end!!!  
 
-    #the x axis for the waveform plot is determined by the ADC sampling time, which
-    #is 4ns in our case [CAEN's COMPASS manual], so the X data will then be (the Y data
-    #is the sample):      
-        time = np.linspace(0, int(fN[-1])*4, int(fN[-1]) )          #[ns] time for
-            					#the waveform sample    
+
     
+   ########### 2) Plotting ############################    
+   #Now both the energy hist and the waveform (if enabled), will be plotted)
+   
+   
+   ###Energy spectrum
+   
+    plt.figure(figsize=(10,8))  #width, heigh 6.4*4.8 inches by default
+    plt.hist(E, bins = n_bins)
+    plt.title("Spectrum", fontsize=20)           #title
+    plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
+    plt.ylabel("Counts", fontsize=14)              #ylabel
+    # Set size of tick labels.
+    plt.tick_params(axis='both', labelsize=14)              #size of axis
+    plt.grid(True) 
 
+    
+    ### Waveform spectrum####
+    
+    if Waveform_saving: #If True, plot the wave
+    
+        plt.figure(figsize=(10,8))  #width, heigh 6.4*4.8 inches by default
+            #plt.plot(np.linspace(1, len(data_csv['Sample']), len(data_csv['Sample']) ),data_csv['Sample'], 'b.-')        
+        plt.plot( time, waveform ,'b.-')
+        plt.title("Waveform", fontsize=22)           #title
+        plt.xlabel("time (ns)", fontsize=14)                        #xlabel
+        plt.ylabel("ADC channels", fontsize=14)              #ylabel
+        # Set size of tick labels.
+        plt.tick_params(axis='both', labelsize=14)              #size of axis
+        plt.grid(True) 
+        #plt.xlim(min(ADC_channel_8ampl),3000)                       #limits of x axis
 
-   ########### 1.2) Return of values ############################
+   ########### 3) Return of values ############################
    #The values will be returned in a dictionary. To return the values, pandas 
    #dataframe will be used.
 

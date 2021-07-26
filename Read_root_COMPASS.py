@@ -35,7 +35,8 @@ def ReadRootSingleCOMPASS(name, Waveform_saving = False):
 This function is to read .root data from COMPASS (filtered data, which is the 
 one  with the good data) if 
 	i) storing each channel in a single .root.
-	ii) a single .root for all channels, but loading the file with a Tree 
+	ii) a single .root for all channels (time sorted), but loading the file 
+			with a Tree 
 
 Those files contains a Tree, with leafs and a TArrayS with the waveform
 
@@ -64,7 +65,7 @@ ceases to exist, the funciton automatically will sswitch to the other (try
                 -Board channel = board channel, the ch of the digitizer used (usually 15)
                 -Flags, Timestamp = vectors given by the.root, but useless for us
             .Dataframe with:  ONLY IF WAVEFORM_SAVING = TRUE
-                - waveform = vector data with the waveform in strange units.
+                -waveform = vector data with the waveform of the last event in channels.
                 -time = vector data for the waveform plot
         .Plot (python) of the 1D spectra and the 2D spectrum. Root plot, TH2F
                     computed but not plotted because it slows down a lot the PC
@@ -143,6 +144,7 @@ ceases to exist, the funciton automatically will sswitch to the other (try
 	#  waveform is obtained, while if choosing other range, say from 1000 to 2000, etc, 
 	#  weird results are obtained. Chosssing the value number n*1000 breaks spyder. 
     
+    
     if Waveform_saving:     #If Waveform_saving is True, then retrieve
             #the waveform from the .root
             
@@ -162,7 +164,7 @@ ceases to exist, the funciton automatically will sswitch to the other (try
     #is 4ns in our case [CAEN's COMPASS manual], so the X data will then be (the Y data
     #is the sample):      
         time = np.linspace(0, int(fN[-1])*4, int(fN[-1]) )          #[ns] time for
-            #the waveform sample    
+            					#the waveform sample    
     
 
 
@@ -191,6 +193,8 @@ ceases to exist, the funciton automatically will sswitch to the other (try
               'Hist' : df_ch_timestamp}        
     
     return values          
+
+
 
 #%%  ###############################################################
 #### 2) Function to read .root files containing all the channels (only hist) ######
@@ -312,13 +316,11 @@ This function is to make coincidences between 2 channels of MARS. It needs the
 data from a single .root containng all the channels Time sorted, i.e., to load the
 file 'SDataF_run.root'.
 
-To do the coincidence, event by event, have to:
-    1) Choose an event
-    2) Check if the next one is from the other Channel or not
-    3) If yes, coincidences are possible. Check if the time interval
-           betweeen those events are small enough.
-    4) Store the single energy values if the time interval is small enough,
-            which will be the coincidences energies
+To do the coincidences, event by event, we do:
+    1) For each event, compute the Time interval between the event and the next event
+    2) If the time interval is small enough, coincidences could be possible
+    3) Check if the events are from different channels
+    4) Store the single energy values if both events are from different channels
             
 The time interval to compare with its the gate, since once the gate is opened, 
 the ADC records signals, so that, if the time interval between 2 measurements is
@@ -326,14 +328,7 @@ greater than the gate, those measurements were taken with 2 different gates and 
 the same, and hence they are not in coincidence. Counterwise, if for a single gate
 2 measurements were taken, those measurements are in coincidence.
 
-@WATCH OUT:
-    .To do the comparisons, I choose one event, and then I compare it with the next one,
-        and I vary the original event. So, say event 1 is in coincidence with event 2.
-        In the nex loop, it will choose event 2 and try t compare it with event 3.
-        They won't be in coincidence, event 3 is from another gate (remember the gate
-        is optimized to fit tightly the wave to avoid piling up events). 
-        
-            FIXED!!!
+
 
 *Inputs:
         .name = filename in string format, eg:
@@ -346,7 +341,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
             NOTE that this could also be obtained from the other root, the one
             with the histograms, but to avoid loading 2 histos, could give it 
             as an input (in the load function from that file, it can be seen how
-             the number of channels can be obtained). 
+            the number of channels can be obtained). 
         .save = if True the plots with the single energies and the coincidences
             are saved. Default = True
         .debug: if debug = True, it plots the single energy that have 
@@ -357,15 +352,23 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
         .Dictionary with:
             - Single energies values of both channels
             - Pandas dataframe containg the coincidence energies for 
-            both channels (this is simply a subset of the single energies)
+            	both channels (this is simply a subset of the single energies)
             - Dictionary with dataframes with the data from the .root file
         .Plots of single E spectras and 2D spectra in subplots.
         .Run time of the data loading and the coincidence making
 
 
-@@@@@@@@@@ TO DO:
+@@@@@@@@@@ Issues to be solved:
     1) TH2F plot do not generated if running this on terminal.
 
+
+@WATCH OUT:
+    .To do the comparisons, I choose one event, and then I compare it with the next one,
+        and I vary the original event. So, say event 1 is in coincidence with event 2.
+        In the nex loop, it will choose event 2 and try t compare it with event 3.
+        They won't be in coincidence, event 3 is from another gate (remember the gate
+        is optimized to fit tightly the wave to avoid piling up events). But this is not
+        time consuming, so good enough :)
         """
 
 #################0) Initialization ############
@@ -448,6 +451,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
                 if data['Hist']['Ch digitizer'][i + 1]== ch_A: #Check if the 
                 #following row of the data correspond to the other 
                 #channel (A)==> coincidence possible  
+                
                     E_A_c = np.append(E_A_c, data['Hist']['E[ch]'][i+1] )
                     E_B_c = np.append(E_B_c, data['Hist']['E[ch]'][i] )
                     
@@ -605,8 +609,10 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     
     
     
+    
+   ###########################################
    #####################GARBAGE###############
-   
+   ##########################################
    
    
    #### 1) ALTERNATIVE MEHTOD TO MAKE HISTOGRAMS

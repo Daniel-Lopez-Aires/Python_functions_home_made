@@ -30,7 +30,7 @@ from ROOT import TPad, TPaveLabel, TTreeReader
 
 
 def ReadRootSingleCOMPASS(name, Waveform_saving = False, 
-                          En_interval_peak = np.array([]) , n_bins = 100 ):
+                          En_interval_peak = np.array([]) , n_bins = 200 ):
 
     """
 This function is to read .root data from COMPASS (filtered data, which is the 
@@ -64,10 +64,10 @@ ceases to exist, the funciton automatically will sswitch to the other (try
                  En_interval_peak = np.aray([E1,E2]), E1<E2
             Default value = np.array([]) ==> by  default it saves the waveform
             of the last event
-        .n_bins = number of bins in the energy spectrum. Default = 100
+        .n_bins = number of bins in the energy spectrum. Default = 200
             
 *Outputs:
-        .A dictionary with 2 dafaframes:
+        .A dictionary with 3 dafaframes:
             .Dataframe with:
                 -Channel = channel of the peak in the histogram
                 -Board channel = board channel, the ch of the digitizer used (usually 15)
@@ -75,6 +75,8 @@ ceases to exist, the funciton automatically will sswitch to the other (try
             .Dataframe with:  ONLY IF WAVEFORM_SAVING = TRUE
                 -waveform = vector data with the waveform of the last event in channels.
                 -time = vector data for the waveform plot
+            .Dataframe with the data of the energy histogram (bins and counts)
+            
         .Plot (python) of the 1D spectra and the 2D spectrum. Root plot, TH2F
                     computed but not plotted because it slows down a lot the PC
                     to play with that plot
@@ -205,7 +207,7 @@ ceases to exist, the funciton automatically will sswitch to the other (try
    ###Energy spectrum
    
     plt.figure(figsize=(10,8))  #width, heigh 6.4*4.8 inches by default
-    plt.hist(E, bins = n_bins)
+    counts, bin_edges, bars = plt.hist(E, bins = n_bins, edgecolor="black")
     plt.title("Spectrum", fontsize=20)           #title
     plt.xlabel("ADC Channels", fontsize=14)                        #xlabel
     plt.ylabel("Counts", fontsize=14)              #ylabel
@@ -213,6 +215,13 @@ ceases to exist, the funciton automatically will sswitch to the other (try
     plt.tick_params(axis='both', labelsize=14)              #size of axis
     plt.grid(True) 
 
+    #I can extract the centroid of the bins. Since bin_edges contains the edges of
+    #each bin, the centroid will simply be the middle point between those 2 edges:
+        
+    centroid = np.array( [(bin_edges[i+1] + bin_edges[i] ) /2 
+                          for i in range(0,len(bin_edges)-1) ] ) #centroid of the bins
+    
+    
     
     ### Waveform spectrum####
     
@@ -233,6 +242,11 @@ ceases to exist, the funciton automatically will sswitch to the other (try
    #The values will be returned in a dictionary. To return the values, pandas 
    #dataframe will be used.
 
+    df_hist_E = pd.DataFrame(data=np.array( [centroid, counts] ).T, 
+                             columns=['E[ch]', 'Counts'] ) #df containing the 
+                #energy spectrum data, for peak analysis
+                
+
     try:        #if using the AsMatrix version to load
         df_ch_timestamp = pd.DataFrame(data= dat,
                                    columns=['Ch digitizer', 'Timestamp[ps]', 'E[ch]', 'Board_ch', 'Flags'])
@@ -247,11 +261,11 @@ ceases to exist, the funciton automatically will sswitch to the other (try
         #the values will be returned in a dictionary indicating what is each
             #value
         values = {'Waveform' : df_wave,
-              'Hist' : df_ch_timestamp}
+              'Data' : df_ch_timestamp, 'Hist' : df_hist_E}
         
     else:   #Waveform_saving = false, do not store it          
             values = {
-              'Hist' : df_ch_timestamp}        
+              'Data' : df_ch_timestamp, 'Hist' : df_hist_E}         
     
     return values          
 
@@ -477,7 +491,8 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
 #A creation of a Th2F plot object (root) will also be implemented, since it is
 #more faster than the matplotlib plot
 
-    hist_2D = TH2F('2Dhist', '2Dhist', 4096, 0, 4096, 4096, 0, 4096)    #root hist
+    hist_2D = TH2F('2Dhist', '2Dhist', n_channels, 0, n_channels, 
+                   n_channels, 0, n_channels)    #root hist
 
 
 #Initialization
@@ -671,7 +686,7 @@ the same, and hence they are not in coincidence. Counterwise, if for a single ga
     
     
     
-   ###########################################
+   #%% ##########################################
    #####################GARBAGE###############
    ##########################################
    

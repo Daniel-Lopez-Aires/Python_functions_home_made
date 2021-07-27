@@ -295,12 +295,16 @@ def Gaussian_fit(x,y,N=100):
   #source: 
   #https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
 
+
     #Now lets compute other useful parameters:                  
 
     FWHM = 2 * np.sqrt(2 * np.log(2)) * sigma                   #FWHM of the peak
     Delta_FWHM = 2 * np.sqrt(2 * np.log(2)) * Delta_sigma     #error of the FWHM
     #print('FWHM: ' + str(FWHM) + ' +/- ' + str(Delta_FWHM) + ' MeV')
 
+    R = 100 * FWHM / mean                               #Resolution [%]
+    Delta_R = R * np.sqrt( (Delta_FWHM / FWHM)**2 + (Delta_mean / mean)**2 )
+                                                    #Error of the resolution [%]
 
 
     ########## 3.2) Plot of the fit################3
@@ -325,7 +329,9 @@ def Gaussian_fit(x,y,N=100):
     values = {'heigh' : heigh, '\Delta(heigh)' : Delta_heigh, 
               'mean' : mean, '\Delta(mean)' : Delta_mean,  
               'sigma' : sigma, '\Delta(sigma)' : Delta_sigma, 
-              'FWHM' : FWHM, '\Delta(FWHM)' : Delta_FWHM}
+              'FWHM' : FWHM, '\Delta(FWHM)' : Delta_FWHM,
+              'R[%]' : R, '\Delta(R[%])' : Delta_R
+              }
     return values
 
 

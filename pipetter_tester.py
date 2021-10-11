@@ -65,13 +65,13 @@ def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001):
     #To make a bar plot with the error, first I have to create an histogram, store
     #its variables, and use them for the bar plot
     
-    counts, bin_edges, bars = plt.hist(m_inc, bins = 15, edgecolor="black")
+    counts, bin_edges = np.histogram(m_inc, bins = 15)
     
     #The bin center can be computed easily, provided that the previous line returns 
     #all the borders of the bars (so, if there is 3 bars, 4 borders):
     
     bin_center = np.array([ (bin_edges[i+1] + bin_edges[i]) /2 for 
-                       i in range(0,len(bin_edges)-1 )] ) #center of the bins
+                       i in range(0,len(bin_edges)-1 )] )       #center of the bins
     
     
     ############# 3) Plot ######################

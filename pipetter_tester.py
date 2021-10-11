@@ -19,7 +19,7 @@ import pandas as pd
 
 
 
-def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001):
+def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001, bins = 15):
     '''
     Python function to test your pipetting skills
     pippete volume in mL
@@ -27,6 +27,7 @@ def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001):
         .pipette_volume: volume of the pippete [mL]
         .mass_measurements: arrays (not numpy) with the measurements from the balance [g].
         .delta_m = error of the balance. 
+        .bins = bin number for the hist plot. Default value = 15
         
     *Outputs:
         .Dictionary with lot of things: slope and its error, intercept and its error, correlation
@@ -49,8 +50,11 @@ def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001):
                                 #the value
 
     #The standar deviation is:
-            # sigma = sqrt(1/N * sum_i(x_i - <x>) ) 
-    sigma = np.sqrt( 1/len(m_inc) * sum( (m_inc - m_mean)**2 ) )  #[g]
+            # sigma = sqrt(1/(N-1) * sum_i(x_i - <x>) ) 
+            #Note that Ecel uses N-1, but N is also used!!
+            
+            
+    sigma = np.sqrt( 1/(len(m_inc)-1) * sum( (m_inc - m_mean)**2 ) )  #[g]
 
 
     #This guys computes the systematic and random error as (ranodm is associated to you,
@@ -65,7 +69,7 @@ def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001):
     #To make a bar plot with the error, first I have to create an histogram, store
     #its variables, and use them for the bar plot
     
-    counts, bin_edges = np.histogram(m_inc, bins = 15)
+    counts, bin_edges = np.histogram(m_inc, bins)
     
     #The bin center can be computed easily, provided that the previous line returns 
     #all the borders of the bars (so, if there is 3 bars, 4 borders):
@@ -84,23 +88,24 @@ def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001):
     # Set size of tick labels.
     plt.tick_params(axis='both', labelsize=14)              #size of axis
     plt.grid(True) 
-    plt.savefig('Pipeting_skills.png', format='png') 
+    plt.savefig('Pipeting_skills_' + str(pipette_volume) + '_mL.png', format='png') 
     
     
     ########## 4) Results ###########
     #Randome error should be less than 0.2%, systematic depend on the quantity:
         
+    print("Pipete volume (max 1mL): " + str(pipette_volume) + "mL")    
     print("Random error: " + str(rand_error) + "%. Ideally <= 0.2%")       #random error printing
     
     #Since the random error depends on the quantity, ahve to do if statements:
     if pipette_volume == 1: #1ml
-        print("Systematic error: " + str(syst_error) + "%. Ideally <= 0.6%")       #random error printing
+        print("Systematic error: " + str(syst_error) + "%. Ideally <= 0.6%" + "\n")       #random error printing
    
     elif pipette_volume == .5: #.5ml
-        print("Systematic error: " + str(syst_error) + "%. Ideally <= 0.1%")       #random error printing
+        print("Systematic error: " + str(syst_error) + "%. Ideally <= 0.1%" + "\n")       #random error printing
             
     elif pipette_volume == .1: #.1ml
-        print("Systematic error: " + str(syst_error) + "%. Ideally <= 3%")       #random error printing
+        print("Systematic error: " + str(syst_error) + "%. Ideally <= 3%" + "\n")       #random error printing
            
             
            

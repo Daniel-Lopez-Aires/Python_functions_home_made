@@ -21,17 +21,16 @@ import pandas as pd
 
 def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001, bins = 15):
     '''
-    Python function to test your pipetting skills
-    pippete volume in mL
-        *Inputs:
-        .pipette_volume: volume of the pippete [mL]
+    Python function to test your pipetting skills with the pipette p-1000uL
+    
+    *Inputs:
+        .pipette_volume: volume of the pippete [mL]. Values: 1, .5 or .1 
         .mass_measurements: arrays (not numpy) with the measurements from the balance [g].
-        .delta_m = error of the balance. 
+        .delta_m = error of the balance [g]. Default value = .00001 g
         .bins = bin number for the hist plot. Default value = 15
         
     *Outputs:
-        .Dictionary with lot of things: slope and its error, intercept and its error, correlation
-        	coefficient
+        .Dictionary with all the data xD
     '''
     mass_measurements = np.array(mass_measurements)     #conversion to numpy array
     N = len(mass_measurements)                                        #number of measurements
@@ -95,18 +94,19 @@ def Pipetting_tester(pipette_volume, mass_measurements, delta_m = .00001, bins =
     #Randome error should be less than 0.2%, systematic depend on the quantity:
         
     print("Pipete volume (max 1mL): " + str(pipette_volume) + "mL")    
-    print("Random error: " + str(rand_error) + "%. Ideally <= 0.2%")       #random error printing
+    
     
     #Since the random error depends on the quantity, ahve to do if statements:
     if pipette_volume == 1: #1ml
-        print("Systematic error: " + str(syst_error) + "%. Ideally <= 0.6%" + "\n")       #random error printing
+        print("Systematic error: " + str(syst_error) + "%. Ideally <= 0.6%")       #random error printing
+        print("Random error: " + str(rand_error) + "%. Ideally <= 0.2%" + "\n")       #random error printing
    
     elif pipette_volume == .5: #.5ml
-        print("Systematic error: " + str(syst_error) + "%. Ideally <= 0.1%" + "\n")       #random error printing
-            
+        print("Systematic error: " + str(syst_error) + "%. Ideally <= 1%")       #random error printing
+        print("Random error: " + str(rand_error) + "%. Ideally <= 0.2%" + "\n")       #random error printing    
     elif pipette_volume == .1: #.1ml
-        print("Systematic error: " + str(syst_error) + "%. Ideally <= 3%" + "\n")       #random error printing
-           
+        print("Systematic error: " + str(syst_error) + "%. Ideally <= 3%")       #random error printing
+        print("Random error: " + str(rand_error) + "%. Ideally <= 0.3%" + "\n")       #random error printing   
             
            
     #################5) Return of values############

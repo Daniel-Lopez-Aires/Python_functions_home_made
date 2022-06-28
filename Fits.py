@@ -54,27 +54,33 @@ def LinearRegression(x, y, npo = 100):
     delta_slope = 3 * np.sqrt(slope**2/(N-2) * (1/r**2 - 1))
     delta_intercept = 3 * np.sqrt( sum(x**2) * delta_slope**2 / N)
   
-    ####3) Storing###
+    
+    ################ 3) Storing #########################
     values = {'Slope' : slope, 'Intercept' : intercept, 'r' : r, 
               '\Delta{slope}' : delta_slope, 
               '\Delta{intercept}' : delta_intercept}
     
     
     
-    #############3) Plot of the fit##########
+    ############# 4) Plot of the fit##########
     x_vector = np.linspace(min(x),max(x),npo)         #for the fit plotting
     
-    plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
-    plt.plot(x,y, 'r*')
-    plt.plot(x_vector, linear(x_vector, values['Slope'], values['Intercept']) )      #fit
-    plt.title('Linear regression', fontsize=22)          #title
-    plt.xlabel("x ", fontsize=14)                                    #xlabel
-    plt.ylabel('y', fontsize=14)                                    #ylabel
-    plt.tick_params(axis='both', labelsize=14)            #size of tick labels  
-    plt.grid(True)                                              #show grid
-    plt.legend(['data','linear fit'], fontsize=14)             #legend
-     
-    
+    fig = plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
+    ax = fig.add_subplot(111)
+    ax.plot(x,y, 'r*')
+    ax.plot(x_vector, linear(x_vector, values['Slope'], values['Intercept']) )      #fit
+    ax.set_title('Linear regression', fontsize=22)          #title
+    ax.set_xlabel("x ", fontsize=14)                                    #xlabel
+    ax.set_ylabel('y', fontsize=14)                                    #ylabel
+    ax.tick_params(axis='both', labelsize=14)            #size of tick labels  
+    ax.grid(True)                                              #show grid
+    ax.legend(['data','linear fit'], fontsize=14)             #legend
+    ax.text(0.5,0.1, 'y(x) = {0:1.3f}x + {1:1.3f} ; r = {2:1.3f}'.format(values['Slope'],
+                values['Intercept'],values['r']), horizontalalignment='center',
+     verticalalignment='center', transform=ax.transAxes, fontsize=14) 
+                    #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
+                    
+                    ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
     
     
     #################4) Return of values############

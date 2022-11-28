@@ -26,9 +26,7 @@ from the oscilloscope.
         .Voltage, Time = variables (vectors) that contain the data (np.array)
         .Signal_type = 'pre' or 'raw'. This indicated whether the peak is positive ('raw')
         	or negative ('pre'), which is neccessary to compute the amplitude
-        .Index that identifies the values (voltage and times), which comes from a variable
-            storing all the values
-        . Indexes that limits the peak
+        .Indexes: indexes that limits the peak, eye spotted (will be plotted to confirm the selection)
         .delta_V, delta_t = error of the measurements, from the oscilloscope
 
     *Outputs:

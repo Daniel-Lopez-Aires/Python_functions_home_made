@@ -239,7 +239,7 @@ def r_square(x, y, degree):
 ############### 3) Gaussian fit function ############################
 ####################################################################
     
-def Gaussian_fit(x,y,N=100):
+def Gaussian_fit(x, y, index_df = 0, N = 100):
     """GAUSSIAN FIT
 
     This script contains a function that fits a set of data to a gaussian function,
@@ -253,7 +253,8 @@ def Gaussian_fit(x,y,N=100):
 
     *Inputs:
         .x, y = 1D numpy arrays containing the data to fit
-        .npo = 'number of points of the linspace for the fit plotting. Default value = 100
+        .index_df = index of the dataframe containing the outputs
+        .N = 'number of points of the linspace for the fit plotting. Default value = 100
         
     *Outputs:
         .fit parameters: heigh, amplitude and standar deviation and their error
@@ -320,8 +321,8 @@ def Gaussian_fit(x,y,N=100):
     plt.plot(x, y, 'b.')                         #original data
     plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'r--')           #fit
     plt.title('Gaussian fit of the data', fontsize=20)                      #title
-    #plt.xlabel("E (MeV)", fontsize=10)                                    #xlabel
-    #plt.ylabel("Cuentas", fontsize=10)                                    #ylabel
+    plt.xlabel("X", fontsize=10)                                    #xlabel
+    plt.ylabel("Y", fontsize=10)                                    #ylabel
     plt.legend(['data', 'gaussian fit'], fontsize=10) 
     plt.tick_params(axis='both', labelsize=10)                  #size of tick labels  
     plt.grid(True)                                              #show grid
@@ -330,14 +331,15 @@ def Gaussian_fit(x,y,N=100):
     
     
    #3.3 ) Return of values########################
-   #the values will be returned in a dictionary indicating what is each
+   #the values will be returned in a DataFrame indicating what is each
    #value
-    values = {'heigh' : heigh, '\Delta(heigh)' : Delta_heigh, 
+    aux = {'heigh' : heigh, '\Delta(heigh)' : Delta_heigh, 
               'mean' : mean, '\Delta(mean)' : Delta_mean,  
               'sigma' : sigma, '\Delta(sigma)' : Delta_sigma, 
               'FWHM' : FWHM, '\Delta(FWHM)' : Delta_FWHM,
               'R[%]' : R, '\Delta(R[%])' : Delta_R
-              }
+              }     #variable containing everyting
+    values = pd.DataFrame(aux, index = [index_df])  #dataframe creation
     return values
 
 

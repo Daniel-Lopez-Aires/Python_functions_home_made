@@ -33,8 +33,10 @@ import Fits, Peak_analyis_spectra
 def Read_TGA (name):
     '''
     Function that reads the .txt file from TGA/DTA (HeHeHe), returning a dataframe with the
-    relevant data (omitting intro)
+    relevant data (omitting intro).
+
     '''
+    
     with open(name) as file_obj:
         lines = file_obj.readlines()
         #print('the number of lines of the document is',len(lines))
@@ -77,8 +79,21 @@ def Read_TGA (name):
 def Read_XRD_WB (name):
     '''
     Function that reads the .dat file from XRD in F141 (W Bonani), returning a df
-    with the relevant info
+    with the relevant info.
+    
+    Note the files give Q, I and Delta I (its error). Q is the module of the scattering vector,
+    the vector that goes from the initial momentum vector to the final, being 2Theta the angle that
+    covers. Then it can be proved that
+    [https://physics.stackexchange.com/questions/123297/why-is-scattering-vector-vecq-called-vector-of-momentum-transfer#123300]
+
+    Q = 4pi/lambda * sin (theta)
+    
+    But we want 2Theta so we will convert that by doing:
+        Theta = asin (Q * lambda /4pi)
+    Taking care since the trigonometric operations are in radians, so we need to convert the angle
+    to degrees
     '''
+    
     with open(name) as f_obj:
         lines = f_obj.readlines()       # to read all the lines, 1 by 1, and store them
         #
@@ -108,8 +123,12 @@ def Read_XRD_WB (name):
             I = np.append( I, aux_2[1])
             E = np.append( E, aux_2[2] )
         
+        #I can compute now 2theta:
+        Lambda = 1.54184            #[Ang] wavelength of Kalpha of Cu
+        Theta = np.arcsin(Lambda * Q / (4* np.pi )) * 180 / np.pi
+        
         #Now lets create a dictionary to create a dataframe:
-        dic = {'Q' : Q, 'I' : I, 'Delta_I' : E}
+        dic = {'2Theta' : 2 * Theta, 'I' : I, 'Delta_I' : E}
         df = pd.DataFrame.from_dict( dic)
         #
         #Finally return the df:

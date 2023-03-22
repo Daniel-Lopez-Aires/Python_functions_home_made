@@ -25,6 +25,98 @@ sys.path.insert(0, '//net1.cec.eu.int/jrc-services/KRU-Users/lopedan/Desktop/PhD
 import Fits, Peak_analyis_spectra
 
 
+#############################################################
+
+
+
+######################################
+#%% ######### ICPMS excel reader #############
+#####################################
+
+def Read_ICPMS_excel (name):
+    '''
+    Function that will read the excel file from ICPMS adn will return df with the relevant
+    information, for easier handling /plotting. Note the excel should be a bit preprocessed:
+            1) Including sample preparation
+            2) Computing D_f * cps in a new sheet called 'Df_cps'
+    
+    Maybe that could be automatized? note that requires computing stuff from different sheets,
+    and the D_f position could differ from file to file, so maybe more challenging that simply
+    wworking with the excels a bit (Eww)
+    
+    *Inputs:
+        .name: string with the name of the excel, without the .xlsx
+        
+    *Outputs:
+        .several df with the Df_cps, %rsd, cps. Note that if I return X outputs, if I want
+        to obtain a variable per output, in the script I should call X variables, like:
+            a, b, .. = Read_ICPMS_excel(name)
+            
+            
+    TO DO:
+        .Include way to substract blank if desired (indicating which one is blank, etc)  
+        .Include plotting, also sorting out what happens with the automatization of indexes (-5, -4,
+                                                                                             etc)
+        '''
+    
+    
+    ########### 1) Raw load ###########
+    '''
+    Can be done easily with pandas. Since th excel sheet containing the cps and the excel file only
+    differs in the .xlsx we can define the excel sheet name with the name given as input:
+    '''
+    excel_name = name + '.xlsx'
+    
+    #Load
+    Dat_cps = pd.read_excel(excel_name, name, header = [1])
+        #header 1 means take row 1 to give names to the columns
+        #That contains the cps and cps*dil factor
+        
+    Dat_sig = pd.read_excel(excel_name, '%rsd', header = [1])
+        #This contains the sigma values (measured 3 times, automatically computed average)
+        
+    Dat_cpsDf = pd.read_excel(excel_name, 'Df_cps', header = [1])
+    
+    '''
+    Note there, the 1st row, the isotopes row, have no name, since stefaan do the excel in the 
+    way he do it, so we need to set it manually:
+    
+    '''
+    Dat_cps.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   #changing column
+                            #name from Unnamed to Isotopes
+    Dat_sig.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   
+    Dat_cpsDf.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)  
+
+    ############### 2) Clean df, 1 ############
+    '''
+    After the raw load, we can clean that a bit, creating a handful df, not the preovious, which
+    are literally the excel in a df. That is, only collecting the relevant columns and putting them
+    in a df, for further analysis (plotting, etc).
+    
+    Nevertheless, here could be relevant the fact of removing the blank or not, and for that you should
+    say if you have a blank and if you want to delete it.
+    
+    The 1st cleaning is removing the 1st 4 rows, which contain bullshit, so we could do it with the 
+    .drop method. Note the index are no longer used, simply erased.
+    '''
+    df_cps = Dat_cps.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
+    df_cpsDf = Dat_cpsDf.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
+    df_sig = Dat_sig.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
+    
+    '''
+    A further step could be the blank removal, a bit trickier, but possibly could be though. 
+    To do it in the future when I need it...
+    '''
+    
+    
+    ############## Ouptuts
+    raw_df = {'cps' : Dat_cps, 'sigma' : Dat_sig, 'cpsDf' : Dat_cpsDf}    #raw stuff, the excel
+                    #essentially, for debug
+                    
+    return df_cps, df_sig, df_cpsDf, raw_df
+    
+    
+    
 ######################################
 #%% ########## TGA reader ############ 
 ######################################

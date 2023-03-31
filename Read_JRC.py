@@ -33,19 +33,24 @@ import Fits, Peak_analyis_spectra
 #%% ######### ICPMS excel reader #############
 #####################################
 
-def Read_ICPMS_excel (name):
+def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     '''
     Function that will read the excel file from ICPMS adn will return df with the relevant
     information, for easier handling /plotting. Note the excel should be a bit preprocessed:
-            1) Including sample preparation
-            2) Computing D_f * cps in a new sheet called 'Df_cps'
+            1) Including sample preparation (neccesary to get the Dilution factor)
+            2) Clean sheet where only the intensity data is, to load it. THe name must be:
+                To_read
     
     Maybe that could be automatized? note that requires computing stuff from different sheets,
     and the D_f position could differ from file to file, so maybe more challenging that simply
     wworking with the excels a bit (Eww)
     
     *Inputs:
-        .name: string with the name of the excel, without the .xlsx
+        .exc_name: string with the name of the excel, without the .xlsx
+        .sheet_name: string with the name of the sheet with the data to read. Default value:
+            'Df_cps' (from acid vs no acid test)
+        .D_f_data: array with the column number and the row interval in which that data is found.
+            Df_data = [1, 3, 5] means from row 1 to 3 (included) and column 5 (E in letters)
         
     *Outputs:
         .several df with the Df_cps, %rsd, cps. Note that if I return X outputs, if I want
@@ -65,29 +70,40 @@ def Read_ICPMS_excel (name):
     Can be done easily with pandas. Since th excel sheet containing the cps and the excel file only
     differs in the .xlsx we can define the excel sheet name with the name given as input:
     '''
-    excel_name = name + '.xlsx'
+    excel_name = exc_name + '.xlsx'
     
     #Load
-    Dat_cps = pd.read_excel(excel_name, name, header = [1])
+    Dat_cps = pd.read_excel(excel_name, exc_name, header = [1])
         #header 1 means take row 1 to give names to the columns
         #That contains the cps and cps*dil factor
         
-    Dat_sig = pd.read_excel(excel_name, '%rsd', header = [1])
-        #This contains the sigma values (measured 3 times, automatically computed average)
-        
-    Dat_cpsDf = pd.read_excel(excel_name, 'Df_cps', header = [1])
+    Dat_rsd = pd.read_excel(excel_name, '%rsd', header = [1])
+        #This contains the rsd values (measured 3 times, automatically computed average)
+    Dat_sa_prep = pd.read_excel(excel_name, 'Sampl_prep', header = None)
+                #Sample prep sheet. Ensure it has that name!!!!    
     
+    Dat_cpsDf = pd.read_excel(excel_name, sheet_name, header = [1])
+    
+        
+    '''
+    From the sampl prep sheet I should get the dilutions factors, useful for correcting
+    for it in both the RSD and in the cps
+    '''
+    D_f = Dat_sa_prep.iloc[D_f_data[0]-1 : D_f_data[1]-1, D_f_data[2]-1 ]   #Dilution factor (pandas Series)
+            #The -1 is because python start in 0 while excel in 1 for counting rows
+    
+    
+    ############### 2) Clean df, 1 ############
     '''
     Note there, the 1st row, the isotopes row, have no name, since stefaan do the excel in the 
-    way he do it, so we need to set it manually:
+    way he do it, so we need to change the name manually like:
     
     '''
     Dat_cps.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   #changing column
                             #name from Unnamed to Isotopes
-    Dat_sig.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   
+    Dat_rsd.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   
     Dat_cpsDf.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)  
 
-    ############### 2) Clean df, 1 ############
     '''
     After the raw load, we can clean that a bit, creating a handful df, not the preovious, which
     are literally the excel in a df. That is, only collecting the relevant columns and putting them
@@ -101,19 +117,39 @@ def Read_ICPMS_excel (name):
     '''
     df_cps = Dat_cps.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
     df_cpsDf = Dat_cpsDf.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
-    df_sig = Dat_sig.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
+    df_sig = Dat_rsd.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
     
     '''
     A further step could be the blank removal, a bit trickier, but possibly could be though. 
     To do it in the future when I need it...
     '''
     
+    ################## 3) Derived calcs ###################################
+    '''
+    Note the sig is RSD = relative standard deviation. I should compute sigma (std dev),
+    which could be plotted in the temporal plots for ex as error bar. Thats easy:
+            RSD = sigma / <x> * 100 ==> sigma = RSD * <x> /100
+    
+    Note RSD I have in 1 df (for each measurement (column) I have lot of elements (rows) ),
+    and 1 df is for RSD; the other is for the mean values, so I need to do operations between 
+    them. Column 1 is the isotopes name so not to be sued, the rest can be used! 
+    
+    I can get all the columns but the first by doing:
+        df_cps.iloc[:,1:]   gives everything but 1st column!
+        
+    Still, note the cps are multiplied by the dilution factor Df and applied some corrections
+    (blanks, IS). i will forget about the 2nd things, more or less minor, and will consider the
+    Df correction, which is essentially multiplying by it. So, I should multiply the RSD by the Df,
+    and then apply that
+    '''
+    
+    
     
     ############## Ouptuts
-    raw_df = {'cps' : Dat_cps, 'sigma' : Dat_sig, 'cpsDf' : Dat_cpsDf}    #raw stuff, the excel
+    raw_df = {'cps' : Dat_cps, 'sigma' : Dat_rsd, 'cpsDf' : Dat_cpsDf}    #raw stuff, the excel
                     #essentially, for debug
                     
-    return df_cps, df_sig, df_cpsDf, raw_df
+    return df_cps, df_sig, df_cpsDf, raw_df, D_f
     
     
     

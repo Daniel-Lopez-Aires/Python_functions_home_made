@@ -35,11 +35,14 @@ import Fits, Peak_analyis_spectra
 
 def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     '''
-    Function that will read the excel file from ICPMS adn will return df with the relevant
+    Function that will read the excel file from ICPMS and will return df with the relevant
     information, for easier handling /plotting. Note the excel should be a bit preprocessed:
-            1) Including sample preparation (neccesary to get the Dilution factor)
+            1) Including sample preparation (neccesary to get the Dilution factor). In this excel,
+               the sample names (1st colum where the Df is) must be the same as the names in the top
+               of the ICPMS data (do it manually, lazy spaniard, less siesta and more work!)
             2) Clean sheet where only the intensity data is, to load it. THe name must be:
-                To_read
+                "To_read"
+            3) Prepare a similar sheet for the %rsd, called "%rsd_to_read"
     
     Maybe that could be automatized? note that requires computing stuff from different sheets,
     and the D_f position could differ from file to file, so maybe more challenging that simply
@@ -47,8 +50,8 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     
     *Inputs:
         .exc_name: string with the name of the excel, without the .xlsx
-        .sheet_name: string with the name of the sheet with the data to read. Default value:
-            'Df_cps' (from acid vs no acid test)
+        .sheet_name: string with the name of the sheet with the data to read (with counts, in the
+            future maybe also concentration values?). Default value: 'Df_cps' (from acid vs no acid test)
         .D_f_data: array with the column number and the row interval in which that data is found.
             Df_data = [1, 3, 5] means from row 1 to 3 (included) and column 5 (E in letters)
         
@@ -58,8 +61,9 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
             a, b, .. = Read_ICPMS_excel(name)
             
             
-    TO DO:
-        .Include way to substract blank if desired (indicating which one is blank, etc)  
+    ######## TO DO ########
+        .Include way to substract blank if desired (indicating which one is blank, etc) ? Note now
+        you just read the sheet you prepared to read, maybe could be more optimized?
         .Include plotting, also sorting out what happens with the automatization of indexes (-5, -4,
                                                                                              etc)
         '''
@@ -73,27 +77,28 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     excel_name = exc_name + '.xlsx'
     
     #Load
-    Dat_cps = pd.read_excel(excel_name, exc_name, header = [1])
+    Dat_cps = pd.read_excel(excel_name, sheet_name, header = [1])
         #header 1 means take row 1 to give names to the columns
         #That contains the cps and cps*dil factor
         
-    Dat_rsd = pd.read_excel(excel_name, '%rsd', header = [1])
+    Dat_rsd = pd.read_excel(excel_name, '%rsd_to_read', header = [1])
         #This contains the rsd values (measured 3 times, automatically computed average)
     Dat_sa_prep = pd.read_excel(excel_name, 'Sampl_prep', header = None)
                 #Sample prep sheet. Ensure it has that name!!!!    
-    
-    Dat_cpsDf = pd.read_excel(excel_name, sheet_name, header = [1])
     
         
     '''
     From the sampl prep sheet I should get the dilutions factors, useful for correcting
     for it in both the RSD and in the cps
     '''
-    D_f = Dat_sa_prep.iloc[D_f_data[0]-1 : D_f_data[1]-1, D_f_data[2]-1 ]   #Dilution factor (pandas Series)
+    D_f = Dat_sa_prep.iloc[D_f_data[0]-1 : D_f_data[1], D_f_data[2]-1 ]   #Dilution factor (pandas Series)
             #The -1 is because python start in 0 while excel in 1 for counting rows
+    #I need to put the correct index names for the operations, that can be done like:
+    D_f.index = Dat_sa_prep.iloc[D_f_data[0]-1 : D_f_data[1], 0 ]     #proper index name (to operate)
     
     
     ############### 2) Clean df, 1 ############
+    
     '''
     Note there, the 1st row, the isotopes row, have no name, since stefaan do the excel in the 
     way he do it, so we need to change the name manually like:
@@ -102,7 +107,6 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     Dat_cps.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   #changing column
                             #name from Unnamed to Isotopes
     Dat_rsd.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   
-    Dat_cpsDf.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)  
 
     '''
     After the raw load, we can clean that a bit, creating a handful df, not the preovious, which
@@ -116,13 +120,21 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     .drop method. Note the index are no longer used, simply erased.
     '''
     df_cps = Dat_cps.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
-    df_cpsDf = Dat_cpsDf.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
-    df_sig = Dat_rsd.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
+    df_rsd = Dat_rsd.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
     
     '''
     A further step could be the blank removal, a bit trickier, but possibly could be though. 
     To do it in the future when I need it...
     '''
+    
+    '''
+    Note the rsd file have the samples, then blank, then std, and then wash. 2 more columns in acid
+    vs no acid than teh cps file. I should delete them in order to operate 
+    (correct for the Df). For that, I could just create a new rsd df with the columns in common,
+    since I know the name
+    
+    '''
+    
     
     ################## 3) Derived calcs ###################################
     '''
@@ -142,16 +154,37 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     Df correction, which is essentially multiplying by it. So, I should multiply the RSD by the Df,
     and then apply that
     '''
+    df_std= pd.DataFrame(df_cps.iloc[:,1:] * df_rsd.iloc[:,1:].values / 100, 
+                  columns=df_cps.columns, index=df_cps.index)   #std df
+    
+    '''
+    Now, I can apply the Dilution factor to both the std and the cps, should be straightforward, same
+    fashion than above.
+    '''
+    
+    df_stdDf = pd.DataFrame(df_std.iloc[:,1:] * D_f, 
+                  columns=df_std.columns, index=df_std.index)           # std*Df df
+    df_cpsDf = pd.DataFrame(df_cps.iloc[:,1:] * D_f, 
+                  columns=df_cps.columns, index=df_std.index)           # std*Df df    
+    
+    '''
+    TO end that, note the isotopes column non is NaN since the multiplications, so lets redefine it again:
+    '''
+    df_stdDf['Isotopes'] = Dat_cps['Isotopes']              #redefining the isotopes column
+    df_cpsDf['Isotopes'] = Dat_cps['Isotopes']
     
     
+    ############## 4) Ouptuts ######################
     
-    ############## Ouptuts
-    raw_df = {'cps' : Dat_cps, 'sigma' : Dat_rsd, 'cpsDf' : Dat_cpsDf}    #raw stuff, the excel
-                    #essentially, for debug
-                    
-    return df_cps, df_sig, df_cpsDf, raw_df, D_f
+    debug_df = {'df_cps': df_cps,'df_std': df_std,
+                'raw_cps' : Dat_cps, 'raw_rsd' : Dat_rsd }   #Dataframes for debug                
+    
+    return df_cpsDf, df_stdDf, D_f, debug_df                #return of values
     
     
+    '''
+    Sucessfully debbugged, enjoy bro!
+    '''
     
 ######################################
 #%% ########## TGA reader ############ 

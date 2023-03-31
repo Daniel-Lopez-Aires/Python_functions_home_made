@@ -159,7 +159,8 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     
     '''
     Now, I can apply the Dilution factor to both the std and the cps, should be straightforward, same
-    fashion than above.
+    fashion than above. Well, not as simple, since for the multiplication the indexes should be the same
+    so, I redefined (above) the Df indexes so they matched the Df ones, and then that calc is straightforward
     '''
     
     df_stdDf = pd.DataFrame(df_std.iloc[:,1:] * D_f, 

@@ -8,8 +8,8 @@ This script will contain all the functions I create to read files from experimen
 say TGA, XRD, etc (the ones that needed ofc)
 """
 
-######################################
-#%% ######### 0) General packages ###########
+#%%######################################
+############## 0) General packages ###########
 ######################################
 
 
@@ -29,8 +29,8 @@ import Fits, Peak_analyis_spectra
 
 
 
-######################################
-#%% ######### ICPMS excel reader #############
+#%%######################################
+########### ICPMS excel reader #############
 #####################################
 
 def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
@@ -41,8 +41,9 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
                the sample names (1st colum where the Df is) must be the same as the names in the top
                of the ICPMS data (do it manually, lazy spaniard, less siesta and more work!)
             2) Clean sheet where only the intensity data is, to load it. THe name must be:
-                "To_read"
-            3) Prepare a similar sheet for the %rsd, called "%rsd_to_read"
+                "To_read". Remove ICPMS blanks (std 0, etc)
+            3) Prepare a similar sheet for the %rsd, called "%rsd_to_read" (same dimension as the 
+                                                        other sheet, ofc!)
     
     Maybe that could be automatized? note that requires computing stuff from different sheets,
     and the D_f position could differ from file to file, so maybe more challenging that simply
@@ -62,6 +63,8 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
             
             
     ######## TO DO ########
+        . Try-excepts blocks for error in spotting D_f? Maybe relevant when I implement plotting in
+            another function
         .Include way to substract blank if desired (indicating which one is blank, etc) ? Note now
         you just read the sheet you prepared to read, maybe could be more optimized?
         .Include plotting, also sorting out what happens with the automatization of indexes (-5, -4,
@@ -93,6 +96,8 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     '''
     D_f = Dat_sa_prep.iloc[D_f_data[0]-1 : D_f_data[1], D_f_data[2]-1 ]   #Dilution factor (pandas Series)
             #The -1 is because python start in 0 while excel in 1 for counting rows
+    
+    
     #I need to put the correct index names for the operations, that can be done like:
     D_f.index = Dat_sa_prep.iloc[D_f_data[0]-1 : D_f_data[1], 0 ]     #proper index name (to operate)
     
@@ -177,7 +182,7 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     
     ############## 4) Ouptuts ######################
     
-    debug_df = {'df_cps': df_cps,'df_std': df_std,
+    debug_df = {'df_cps': df_cps,'df_std': df_std, 'df_rsd': df_rsd,
                 'raw_cps' : Dat_cps, 'raw_rsd' : Dat_rsd }   #Dataframes for debug                
     
     return df_cpsDf, df_stdDf, D_f, debug_df                #return of values
@@ -187,9 +192,9 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     Sucessfully debbugged, enjoy bro!
     '''
     
-######################################
-#%% ########## TGA reader ############ 
-######################################
+#%% ###############################################
+################### TGA reader ##################### 
+##################################################
 
 
 def Read_TGA (name):
@@ -234,9 +239,9 @@ def Read_TGA (name):
     
     
  
-######################################
-#%% ########## XRD reader ############ 
-######################################    
+#%%##################################################
+##################### XRD reader #################### 
+######################################################
  
 def Read_XRD_WB (name):
     '''

@@ -53,7 +53,8 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
         .exc_name: string with the name of the excel, without the .xlsx
         .sheet_name: string with the name of the sheet with the data to read (with counts, in the
             future maybe also concentration values?). Default value: 'Df_cps' (from acid vs no acid test)
-        .D_f_data: array with the column number and the row interval in which that data is found.
+        .D_f_data: array with the column number and the row interval in which that data (D_f) is found.
+            Note that info is also important for getting the index labels!
             Df_data = [1, 3, 5] means from row 1 to 3 (included) and column 5 (E in letters)
         
     *Outputs:
@@ -89,7 +90,13 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     Dat_sa_prep = pd.read_excel(excel_name, 'Sampl_prep', header = None)
                 #Sample prep sheet. Ensure it has that name!!!!    
     
-        
+    '''
+    Note once I suffered that the dimesions of those were not similar, and in one sheet they
+    were loadingn NaN values. I just erase those empty stuff in excel (selecting and delete)
+    and after it worked!
+    '''
+    
+    
     '''
     From the sampl prep sheet I should get the dilutions factors, useful for correcting
     for it in both the RSD and in the cps

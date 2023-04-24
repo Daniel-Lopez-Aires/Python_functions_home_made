@@ -19,11 +19,11 @@ import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
 import numpy as np
     #np contain linspaces as np.linspace(a,b,N)
 import pandas as pd
-import sys                   #to import functions from other folders!!
+import os, sys                   #to import functions from other folders!!
 sys.path.insert(0, '//net1.cec.eu.int/jrc-services/KRU-Users/lopedan/Desktop/PhD_Residuos_nucleares/Python/Functions')   
                                     #path where I have the functions
 import Fits, Peak_analyis_spectra
-
+import time as tr                                #to measure the running time
 
 #############################################################
 
@@ -66,10 +66,9 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     ######## TO DO ########
         . Try-excepts blocks for error in spotting D_f? Maybe relevant when I implement plotting in
             another function
-        .Include way to substract blank if desired (indicating which one is blank, etc) ? Note now
-        you just read the sheet you prepared to read, maybe could be more optimized?
-        .Include plotting, also sorting out what happens with the automatization of indexes (-5, -4,
-                                                                                             etc)
+        . Include 2 sheets reading, so 1 sheet with raw data, and another, fi you want and exist, with
+            the processed data (corrected and/or calibrated). That will be a big change, so beware when
+            that happens!
         '''
     
     
@@ -189,15 +188,151 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     
     ############## 4) Ouptuts ######################
     
-    debug_df = {'df_cps': df_cps,'df_std': df_std, 'df_rsd': df_rsd,
+    debug_df = {'df_std': df_std,
                 'raw_cps' : Dat_cps, 'raw_rsd' : Dat_rsd }   #Dataframes for debug                
     
-    return df_cpsDf, df_stdDf, D_f, debug_df                #return of values
+    return df_cpsDf, df_stdDf, D_f, df_cps, df_rsd, debug_df                #return of values
     
     
     '''
     Sucessfully debbugged, enjoy bro!
     '''
+
+
+#%%######################################
+########### ICPMS plotter #############
+#####################################
+
+def ICPMS_plotter (df_cps, df_rstd):
+    '''
+    Function that will do bar plots of the raw data from the ICPMS, the cps and the rstd. By raw
+    I mean withoutany corrections/calibrations (neither the dilution factor correction). This is a
+    preliminary plot, to check if everything is allright, with the rstd (rstd should be < 20%).
+    
+    *Inputs:
+        .df_cps, df_rstd: dataframes containing the cps and the relative standard deviation. Those are
+        outputs for the Read_ICPMS_excel function.
+        
+    *Outputs:
+        .Plots (saving them) of the raw data
+    
+    
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    Elem_rel = ['Si28', 'Si29', 'Si30',
+            'Al27',
+            'Mg24', 'Mg25', 'Mg26',
+            'Mn55',
+            'Fe56', 'Fe57',
+            'Ca42', 'Ca43', 'Ca44', 
+            'Na23', 
+            'K', 
+            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+            'P31', 
+            'S32', 'S33', 'S34']      #List of relevant elements
+    
+    fold_name_Bar = 'Bar_plots_raw'
+    path_bar_pl = os.getcwd() + '/' + fold_name_Bar + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + fold_name_Bar + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long (2-3mins!).
+    
+    
+    ##### Mutiple bar plot; number of bars = 2 ############
+
+The relations that must be satisfied are, if the width of the bar is w and the 
+blank space between values (value is x value) is b<1, is:
+
+        centroid = value - w/2
+        centroid (right of value) = value + w/2
+        2w + b = 1 ==> w = (1-b)/2
+        
+Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2,..) are:
+    w = (1-b)/2n
+    value - w/2*n <= centroid <= value + w/2*n, in steps of w (of course)
+    
+    ##############################
+    '''
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    ###Plot
+    #Some parameters for the plot
+    X_axis = np.arange( len(df_cps.axes[1]) -1)                 #To do the 2 bar plot
+            #choosing the number of columns. [0] for rows
+    b = .4                              #[au] blank space between values <1
+    w = (1-b)/2          #bar width
+
+    for i in list( range(4, df_cps.index[-1]) ):     #Loop for the 250 graph plotting
+                    #df_cps.index give the index values, low and high
+                    ########### Bar plot ###########################
+        plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+        plt.title("Concentration of " + df_cps['Isotopes'][i], fontsize=22, wrap=True)           #title
+        a = plt.bar(X_axis - w/2, df_cps.loc[i][1:], width = w, edgecolor="black", 
+            label = "I ", align='center') 
+            #-2 not to plot the blank!! Remove it to plot it!
+        plt.ylabel("I [cps]", fontsize=14)              #ylabel
+        plt.xlabel('Sample', fontsize = 14)
+        plt.tick_params(axis='both', labelsize=14)              #size of axis
+        plt.yscale('log') 
+        plt.grid(True)
+        plt.xticks(X_axis, [ df_cps.columns[1:][j] for j in range(0,len(df_cps.axes[1]) -1 ) ]
+            , rotation = 90)
+        plt.twinx()             #For setting 2 axes
+        aa = plt.bar( X_axis + w/2, df_rstd.loc[i][1:], width = w, edgecolor="black", 
+             label = '$\sigma_{rel}$', align='center', color = 'red') 
+        plt.ylabel("$\sigma_{rel}$ [%]", fontsize=14)              #ylabel
+        #
+        aaa = [a, aa]
+        plt.legend(aaa, [p_.get_label() for p_ in aaa])
+        
+        #Saving in the folder
+        if df_cps['Isotopes'][i][:-4] in Elem_rel:  #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+            plt.savefig(fold_name_Bar + '/' + 'Relevants' + '/' +
+                        'Conc_rsd_' + df_cps['Isotopes'][i] + '.png', format='png', bbox_inches='tight')
+            #
+        else:        #if the element is not relevant
+            plt.savefig(fold_name_Bar +'/' +  
+                        'Conc_rsd_' + df_cps['Isotopes'][i] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+        
+        
+        plt.close()             #to clsoe the plot not to consume too much resources
+    
+    
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
+    
+    
+    
     
 #%% ###############################################
 ################### TGA reader ##################### 

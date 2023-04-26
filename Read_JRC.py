@@ -33,7 +33,9 @@ import time as tr                                #to measure the running time
 ########### ICPMS excel reader #############
 #####################################
 
-def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
+def Read_ICPMS_excel (exc_name, D_f_data, cps_sheet_name = 'To_read', 
+                      rsd_sheet_name = '%rsd_to_read', Df_correction = False,
+                      return_debug = False):
     '''
     Function that will read the excel file from ICPMS and will return df with the relevant
     information, for easier handling /plotting. Note the excel should be a bit preprocessed:
@@ -45,30 +47,46 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
             3) Prepare a similar sheet for the %rsd, called "%rsd_to_read" (same dimension as the 
                                                         other sheet, ofc!)
     
+    You could use this to get the raw data (output from ICPMS) or to correct them for the
+    ICPMS dilution factor.                                                                        
     Maybe that could be automatized? note that requires computing stuff from different sheets,
     and the D_f position could differ from file to file, so maybe more challenging that simply
-    wworking with the excels a bit (Eww)
+    working with the excels a bit (Eww)
     
     *Inputs:
         .exc_name: string with the name of the excel, without the .xlsx
-        .sheet_name: string with the name of the sheet with the data to read (with counts, in the
-            future maybe also concentration values?). Default value: 'Df_cps' (from acid vs no acid test)
         .D_f_data: array with the column number and the row interval in which that data (D_f) is found.
             Note that info is also important for getting the index labels!
             Df_data = [1, 3, 5] means from row 1 to 3 (included) and column 5 (E in letters)
+        .cps_sheet_name: string with the name of the sheet with the data to read 
+            future maybe also concentration values?). Default value: 'To_read' 
+        (from acid vs no acid test)
+        .rsd_sheet_name: string with the name of the sheet with the rsd data to read. 
+            Default value: '%rsd_to_read'
+        .Df_correction: whether you can to correct for the dilution factor in the ICPMS
+            correction or not. This correction is compute cps*Df, %rsd*Df, but if you
+            only want the raw data, you do not need it. I need to do this also for the 
+            return of outputs. Default value = False
+        .return_debug: if you want to get some extra df for debug 
+        (raw data, without cleaning, so like the excel). Default value = False
+
         
     *Outputs:
-        .several df with the Df_cps, %rsd, cps. Note that if I return X outputs, if I want
-        to obtain a variable per output, in the script I should call X variables, like:
-            a, b, .. = Read_ICPMS_excel(name)
+        .several df with the cps, %rsd, std, and cps and std corrected for the 
+            dilution factor in the ICPMS sample preparation. Depending whether you want Df
+            corrections and/or debug you may have 3,2 or 1 output (always the raw returned)
+            
+    Note that if you have N outputs, if you want to obtain a variable per output, 
+    in the script I should call X variables, like:
+            a, b, ..n = Read_ICPMS_excel(name)
+    If you write less, say 1, 2, some variable will contain more data, in a dictionary
             
             
     ######## TO DO ########
         . Try-excepts blocks for error in spotting D_f? Maybe relevant when I implement plotting in
             another function
-        . Include 2 sheets reading, so 1 sheet with raw data, and another, fi you want and exist, with
-            the processed data (corrected and/or calibrated). That will be a big change, so beware when
-            that happens!
+            
+    #######################
         '''
     
     
@@ -80,11 +98,11 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     excel_name = exc_name + '.xlsx'
     
     #Load
-    Dat_cps = pd.read_excel(excel_name, sheet_name, header = [1])
+    Dat_cps = pd.read_excel(excel_name, cps_sheet_name, header = [1])
         #header 1 means take row 1 to give names to the columns
         #That contains the cps and cps*dil factor
         
-    Dat_rsd = pd.read_excel(excel_name, '%rsd_to_read', header = [1])
+    Dat_rsd = pd.read_excel(excel_name, rsd_sheet_name, header = [1])
         #This contains the rsd values (measured 3 times, automatically computed average)
     Dat_sa_prep = pd.read_excel(excel_name, 'Sampl_prep', header = None)
                 #Sample prep sheet. Ensure it has that name!!!!    
@@ -164,40 +182,86 @@ def Read_ICPMS_excel (exc_name,D_f_data, sheet_name = 'Df_cps' ):
     (blanks, IS). i will forget about the 2nd things, more or less minor, and will consider the
     Df correction, which is essentially multiplying by it. So, I should multiply the RSD by the Df,
     and then apply that
-    '''
-    df_std= pd.DataFrame(df_cps.iloc[:,1:] * df_rsd.iloc[:,1:].values / 100, 
-                  columns=df_cps.columns, index=df_cps.index)   #std df
     
     '''
+    df_std= pd.DataFrame(df_cps.iloc[:,1:] * df_rsd.iloc[:,1:].values / 100, 
+                  columns=df_cps.columns, index=df_cps.index)   #std df    
+    
+    '''
+    TO apply the Df corrections or not we set a variable to choose, true or false
+    '''    
+    
+    if Df_correction == True:   #compute the Df corrections
+
+        #
+        '''
     Now, I can apply the Dilution factor to both the std and the cps, should be straightforward, same
     fashion than above. Well, not as simple, since for the multiplication the indexes should be the same
     so, I redefined (above) the Df indexes so they matched the Df ones, and then that calc is straightforward
-    '''
-    
-    df_stdDf = pd.DataFrame(df_std.iloc[:,1:] * D_f, 
+        '''
+        #
+        df_stdDf = pd.DataFrame(df_std.iloc[:,1:] * D_f, 
                   columns=df_std.columns, index=df_std.index)           # std*Df df
-    df_cpsDf = pd.DataFrame(df_cps.iloc[:,1:] * D_f, 
+        df_cpsDf = pd.DataFrame(df_cps.iloc[:,1:] * D_f, 
                   columns=df_cps.columns, index=df_std.index)           # std*Df df    
-    
-    '''
+        #
+        '''
     TO end that, note the isotopes column non is NaN since the multiplications, so lets redefine it again:
-    '''
-    df_stdDf['Isotopes'] = Dat_cps['Isotopes']              #redefining the isotopes column
-    df_cpsDf['Isotopes'] = Dat_cps['Isotopes']
-    
+        '''
+        df_stdDf['Isotopes'] = Dat_cps['Isotopes']              #redefining the isotopes column
+        df_cpsDf['Isotopes'] = Dat_cps['Isotopes']
+        #
+        
+        
     
     ############## 4) Ouptuts ######################
-    
-    debug_df = {'df_std': df_std,
-                'raw_cps' : Dat_cps, 'raw_rsd' : Dat_rsd }   #Dataframes for debug                
-    
-    return df_cpsDf, df_stdDf, D_f, df_cps, df_rsd, debug_df                #return of values
-    
-    
     '''
-    Sucessfully debbugged, enjoy bro!
+    To make it more compact, let´s group the outputs. Depending on whether you want
+    the Df or the debug we return more or less things
     '''
 
+    dfs_raw = {'cps' : df_cps, 'rsd' : df_rsd, 'std' : df_std}
+        #dictionary with the raw data (no Df correction applied)
+    dfs_debug = {'raw_cps' : Dat_cps, 'raw_rsd' : Dat_rsd }   #Dataframes for debug  ,
+        #whihc consist of raw read of excel, without any cleaning         
+        
+    if Df_correction == True:    #Apply the correction
+         Df_dfs = {'cpsDf' : df_cpsDf, 'stdDf' : df_stdDf, 'Df': D_f} #Dictionray containing
+        #the df corrected by the dilution factor of ICPMS sample prep   
+        
+         if return_debug == True:    #return the debug
+        #
+            return dfs_raw, Df_dfs, dfs_debug               #return of values
+    
+         else: #no return debug, but yes corrections
+            return dfs_raw, Df_dfs 
+    else:  #No corrections
+        if return_debug == True: #return debug
+            return dfs_raw, dfs_debug
+        else: #no return debug, neither correectinos
+            return dfs_raw
+    
+    '''
+    Sucessfully debbugged, enjoy bro! Note I return the last the Df corrected because 
+    I may not be interested in that, for ex if I want to plot the raw data.
+    '''
+
+    '''
+    Manu read all the sheet of an excel like that:
+    def readAllSheets(filename):
+    if not os.path.isfile(filename):
+        return None
+    
+    xls = pd.ExcelFile(filename)
+    sheets = xls.sheet_names
+    results = {}
+    for sheet in sheets:
+        results[sheet] = xls.parse(sheet)
+        
+    xls.close()
+    
+    return results, sheets
+    '''
 
 #%%######################################
 ########### ICPMS plotter #############

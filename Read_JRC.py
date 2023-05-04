@@ -264,10 +264,10 @@ def Read_ICPMS_excel (exc_name, D_f_data, cps_sheet_name = 'To_read',
     '''
 
 #%%######################################
-########### ICPMS plotter #############
+########### ICPMS Bar plotter #############
 #####################################
 
-def ICPMS_plotter (df_cps, df_rstd):
+def ICPMS_Barplotter (df_cps, df_rstd):
     '''
     Function that will do bar plots of the raw data from the ICPMS, the cps and the rstd. By raw
     I mean withoutany corrections/calibrations (neither the dilution factor correction). This is a
@@ -301,7 +301,7 @@ def ICPMS_plotter (df_cps, df_rstd):
             'P31', 
             'S32', 'S33', 'S34']      #List of relevant elements
     
-    fold_name_Bar = 'Bar_plots_raw'
+    fold_name_Bar = 'Bar_plots'
     path_bar_pl = os.getcwd() + '/' + fold_name_Bar + '/'
         #Note os.getcwd() give current directory. With that structure we are able
         #to automatize the plotting!!!
@@ -396,6 +396,121 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
     print('###############################################')
     
     
+
+#%%######################################
+########### ICPMS plotter #############
+#####################################
+
+def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots' ):
+    '''
+    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
+    time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other
+    *Inputs:
+        .x: x axis variable in the plot. This should be a df series
+        .df_cps, df_rstd: dataframes containing the cps and the relative standard deviation. Those are
+        outputs for the Read_ICPMS_excel function.
+        .x_label: string that will be the x label for the plot (for math stuff, 
+                                    use $$. eg: '$\Delta t[h]$')
+        .y_label: string that will be the y label for the plot
+        .folder_name: string defining the name of the folder to create to store the plots
+            default value: 'Plots'
+        
+    *Outputs:
+        .Plots (saving them) of the x and df_cps data, cps vs x!
+    
+    ### TO DO: ####
+	.Implement error plotting (in an errorbar pyplot)
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    Elem_rel = ['Si28', 'Si29', 'Si30',
+            'Al27',
+            'Mg24', 'Mg25', 'Mg26',
+            'Mn55',
+            'Fe56', 'Fe57',
+            'Ca42', 'Ca43', 'Ca44', 
+            'Na23', 
+            'K', 
+            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+            'P31', 
+            'S32', 'S33', 'S34']      #List of relevant elements
+    
+    fold_name_Bar = 'Plots'
+    path_bar_pl = os.getcwd() + '/' + fold_name_Bar + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + fold_name_Bar + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long (2-3mins!).
+    
+
+    '''
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    ###Plot
+
+    for i in list( range(4, df_cps.index[-1]) ):     #Loop for the 250 graph plotting
+                    #df_cps.index give the index values, low and high
+		   # 4 because of the way the df is created (and hence the excel tabelle)
+        #
+        plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+        plt.title("Concentration of " + df_cps['Isotopes'][i], fontsize=22, wrap=True)           #title
+        plt.plot(x[:int(len(x)/2)], df_cps.loc[i][1:int(len(x)/2 +1)], 'bo--', MarkerSize = 5, label = 'Repl_1') 
+                #+1 needed since the df contain a row with the column names!
+        plt.plot(x[int(len(x)/2):], df_cps.loc[i][int(len(x)/2 +1):], 'ro--', MarkerSize = 5, label = 'Repl_2') 
+        plt.ylabel(y_label, fontsize=14)              #ylabel
+        plt.xlabel(x_label, fontsize = 14)
+        plt.tick_params(axis='both', labelsize=14)              #size of axis
+        plt.yscale('log') 
+        plt.grid(True)
+        plt.legend()
+        
+        #Saving in the folder
+        if df_cps['Isotopes'][i][:-4] in Elem_rel:  #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+            plt.savefig(fold_name_Bar + '/' + 'Relevants' + '/' +
+                        'Conc_' + df_cps['Isotopes'][i] + '.png', format='png', bbox_inches='tight')
+            #
+        else:        #if the element is not relevant
+            plt.savefig(fold_name_Bar +'/' +  
+                        'Conc_' + df_cps['Isotopes'][i] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+        
+        
+        plt.close()             #to clsoe the plot not to consume too much resources
+    
+    
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
+    
+    
+
+
     
     
 #%% ###############################################

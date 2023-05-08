@@ -221,13 +221,13 @@ def Read_ICPMS_excel (exc_name, D_f_data, cps_sheet_name = 'To_read',
     '''
 
     dfs_raw = {'cps' : df_cps, 'rsd' : df_rsd, 'std' : df_std}
-        #dictionary with the raw data (no Df correction applied)
+                            #dictionary with the raw data (no Df correction applied)
     dfs_debug = {'raw_cps' : Dat_cps, 'raw_rsd' : Dat_rsd }   #Dataframes for debug  ,
-        #whihc consist of raw read of excel, without any cleaning         
+                            #whihc consist of raw read of excel, without any cleaning         
         
     if Df_correction == True:    #Apply the correction
          Df_dfs = {'cpsDf' : df_cpsDf, 'stdDf' : df_stdDf, 'Df': D_f} #Dictionray containing
-        #the df corrected by the dilution factor of ICPMS sample prep   
+                 #the df corrected by the dilution factor of ICPMS sample prep   
         
          if return_debug == True:    #return the debug
         #
@@ -275,7 +275,8 @@ def ICPMS_Barplotter (df_cps, df_rstd):
     
     *Inputs:
         .df_cps, df_rstd: dataframes containing the cps and the relative standard deviation. Those are
-        outputs for the Read_ICPMS_excel function.
+        outputs for the Read_ICPMS_excel function. Note the Isotopes column should be the first (like in
+	the excels)
         
     *Outputs:
         .Plots (saving them) of the raw data
@@ -404,11 +405,14 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots' ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
-    time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other
+    time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
+    Stimated running time around 80s.
+    
     *Inputs:
         .x: x axis variable in the plot. This should be a df series
-        .df_cps, df_rstd: dataframes containing the cps and the relative standard deviation. Those are
-        outputs for the Read_ICPMS_excel function.
+        .df_cps: dataframes containing the cps. Those are
+        outputs for the Read_ICPMS_excel function. Note the 1st column must be the one
+        with the isotopes (like in the excel)
         .x_label: string that will be the x label for the plot (for math stuff, 
                                     use $$. eg: '$\Delta t[h]$')
         .y_label: string that will be the y label for the plot
@@ -417,6 +421,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots' ):
         
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
+    
     
     ### TO DO: ####
 	.Implement error plotting (in an errorbar pyplot)
@@ -440,8 +445,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots' ):
             'P31', 
             'S32', 'S33', 'S34']      #List of relevant elements
     
-    fold_name_Bar = 'Plots'
-    path_bar_pl = os.getcwd() + '/' + fold_name_Bar + '/'
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
         #Note os.getcwd() give current directory. With that structure we are able
         #to automatize the plotting!!!
         
@@ -449,8 +453,9 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots' ):
         os.makedirs(path_bar_pl)
 
     #Subfolder with relevant plots:
-    path_bar_pl_rel = os.getcwd() + '/' + fold_name_Bar + '/' + 'Relevants' + '/' 
+    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
         #folder path for the relevant plots
+    
     if not os.path.exists(path_bar_pl_rel):
         os.makedirs(path_bar_pl_rel)   
     
@@ -485,11 +490,11 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots' ):
         if df_cps['Isotopes'][i][:-4] in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
-            plt.savefig(fold_name_Bar + '/' + 'Relevants' + '/' +
+            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         'Conc_' + df_cps['Isotopes'][i] + '.png', format='png', bbox_inches='tight')
             #
         else:        #if the element is not relevant
-            plt.savefig(fold_name_Bar +'/' +  
+            plt.savefig(folder_name +'/' +  
                         'Conc_' + df_cps['Isotopes'][i] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
         

@@ -34,7 +34,7 @@ import time as tr                                #to measure the running time
 #####################################
 
 def Read_ICPMS_excel (exc_name, D_f_data, cps_sheet_name = 'To_read', 
-                      rsd_sheet_name = '%rsd_to_read', Df_correction = False,
+                      rsd_sheet_name = '%rsd_to_read',
                       return_debug = False):
     '''
     Function that will read the excel file from ICPMS and will return df with the relevant
@@ -63,18 +63,14 @@ def Read_ICPMS_excel (exc_name, D_f_data, cps_sheet_name = 'To_read',
         (from acid vs no acid test)
         .rsd_sheet_name: string with the name of the sheet with the rsd data to read. 
             Default value: '%rsd_to_read'
-        .Df_correction: whether you can to correct for the dilution factor in the ICPMS
-            correction or not. This correction is compute cps*Df, %rsd*Df, but if you
-            only want the raw data, you do not need it. I need to do this also for the 
-            return of outputs. Default value = False
         .return_debug: if you want to get some extra df for debug 
         (raw data, without cleaning, so like the excel). Default value = False
 
         
     *Outputs:
-        .several df with the cps, %rsd, std, and cps and std corrected for the 
-            dilution factor in the ICPMS sample preparation. Depending whether you want Df
-            corrections and/or debug you may have 3,2 or 1 output (always the raw returned)
+        .several df with the cps, %rsd, std, and a df series with the DIlution factor
+            for the ICPMS sample prep. Depending whether you want the debug you may 
+            have 2 or 3 outputs (always the raw and Df returned)
             
     Note that if you have N outputs, if you want to obtain a variable per output, 
     in the script I should call X variables, like:
@@ -190,34 +186,11 @@ def Read_ICPMS_excel (exc_name, D_f_data, cps_sheet_name = 'To_read',
     '''
     TO apply the Df corrections or not we set a variable to choose, true or false
     '''    
-    
-    if Df_correction == True:   #compute the Df corrections
-
-        #
-        '''
-    Now, I can apply the Dilution factor to both the std and the cps, should be straightforward, same
-    fashion than above. Well, not as simple, since for the multiplication the indexes should be the same
-    so, I redefined (above) the Df indexes so they matched the Df ones, and then that calc is straightforward
-        '''
-        #
-        df_stdDf = pd.DataFrame(df_std.iloc[:,1:] * D_f, 
-                  columns=df_std.columns, index=df_std.index)           # std*Df df
-        df_cpsDf = pd.DataFrame(df_cps.iloc[:,1:] * D_f, 
-                  columns=df_cps.columns, index=df_std.index)           # std*Df df    
-        #
-        '''
-    TO end that, note the isotopes column non is NaN since the multiplications, so lets redefine it again:
-        '''
-        df_stdDf['Isotopes'] = Dat_cps['Isotopes']              #redefining the isotopes column
-        df_cpsDf['Isotopes'] = Dat_cps['Isotopes']
-        #
         
-        
-    
     ############## 4) Ouptuts ######################
     '''
     To make it more compact, let´s group the outputs. Depending on whether you want
-    the Df or the debug we return more or less things
+    the debug we return more or less things. Df will be returned as well!
     '''
 
     dfs_raw = {'cps' : df_cps, 'rsd' : df_rsd, 'std' : df_std}
@@ -225,21 +198,14 @@ def Read_ICPMS_excel (exc_name, D_f_data, cps_sheet_name = 'To_read',
     dfs_debug = {'raw_cps' : Dat_cps, 'raw_rsd' : Dat_rsd }   #Dataframes for debug  ,
                             #whihc consist of raw read of excel, without any cleaning         
         
-    if Df_correction == True:    #Apply the correction
-         Df_dfs = {'cpsDf' : df_cpsDf, 'stdDf' : df_stdDf, 'Df': D_f} #Dictionray containing
-                 #the df corrected by the dilution factor of ICPMS sample prep   
         
-         if return_debug == True:    #return the debug
+    if return_debug == True:    #return the debug
         #
-            return dfs_raw, Df_dfs, dfs_debug               #return of values
+        return dfs_raw, D_f, dfs_debug               #return of values
     
-         else: #no return debug, but yes corrections
-            return dfs_raw, Df_dfs 
-    else:  #No corrections
-        if return_debug == True: #return debug
-            return dfs_raw, dfs_debug
-        else: #no return debug, neither correectinos
-            return dfs_raw
+    else: #no return debug, but yes corrections
+            return dfs_raw, D_f 
+
     
     '''
     Sucessfully debbugged, enjoy bro! Note I return the last the Df corrected because 
@@ -514,10 +480,58 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots' ):
     print('###############################################')
     
     
+    
 
+#%%######################################
+########### ICPMS Dilution factor corrector #############
+#####################################
 
+def ICPMS_Df_corrector (df_data, Df):
+    '''
+    Function that will apply the correction for the dilution factor to the ICPMS results.
+    Note There is 2 dilution factors involved:
+            1) Dlution actor for the ICPMS sample preparation (simeq 50). In this case you add 
+                                    .8.8mL HNO3 1M
+                                    .1mL IS (2IS; 0.5mL each)
+                                    .0.2mL sample
+            2) Dilution factor for the sample you use for the ICPMS sample prep (simeq 1). 
+                    In this case you add some HNO3 conc (65% w/w)to the sample, to stabilize it.
+                                                                            
+                                                                            
+    The correction is essentially scalatin for that factor, so the results takes into account
+    that only a portion was measuring. So:
+            df_data * Df (Df >=1)
+    Note this function could be used twice for both corrections
+
+    *Inputs:
+        .df_data: dataframe containing the cleaned data, to which the correction should be applied
+            (having 1st column as Isotopes, typical format)
+        .D_f: pandas series containing the dilution factor to apply. Note the labelling is crutial,
+            both inputs should have same labels (remember that you change the name in the exp sheet to
+                                                 match the names that Stefaan used)
+
+    *Outputs:
+        .df with the correction factor (Df) applied
+        '''
     
     
+    ########### 1) Calcs ###########
+    '''Now, I can apply the Dilution factor to both the std and the cps, should be straightforward, same
+    fashion than above. Well, not as simple, since for the multiplication the indexes should be the same
+    so, I redefined (above) the Df indexes so they matched the Df ones, and then that calc is straightforward
+    '''
+    
+    df_corrected = pd.DataFrame(df_data.iloc[:,1:] * Df,
+                                columns = df_data.columns, 
+                                index = df_data.index)  #computing the correction
+    df_corrected['Isotopes'] = df_data['Isotopes']      #adding the isotopes label
+    
+    
+    ########### 2) Return #############
+    return df_corrected             #return
+
+
+
 #%% ###############################################
 ################### TGA reader ##################### 
 ##################################################

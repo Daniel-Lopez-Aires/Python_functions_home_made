@@ -33,24 +33,134 @@ import time as tr                                #to measure the running time
 ########### 1) ICPMS excel reader #############
 #####################################
 
-def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', 
-                      rsd_sheet_name = '%rsd_to_read', return_debug = False):
+def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = False):
     '''
     Function that will read the excel file from ICPMS and will return df with the relevant
     information, for easier handling /plotting. Note the excel should be a bit preprocessed:
             
         1) Clean sheet where only the relevant data(cps, ppb, whatever) is, to load it. 
-                THe name must be:
-                    "To_read". Remove ICPMS blanks (std 0, etc)
+                .You can remove ICPMS blanks (std 0, etc)
             
-        3) Prepare a similar sheet for the %rsd, with same dimension as the 
-                                                        other sheet, ofc!
     
     You could use this to get the raw data (output from ICPMS) or to correct them for the
-    ICPMS dilution factor.                                                                        
-    Maybe that could be automatized? note that requires computing stuff from different sheets,
-    and the D_f position could differ from file to file, so maybe more challenging that simply
-    working with the excels a bit (Eww)
+    ICPMS dilution factor.     
+
+    Note sometimes some random NaN data from excel can be added. Easy solution, go to the excel sheet,
+    and delete those rows/columns. No clue why this happens, but that solves it (:   
+                                                                                 
+    Recommended to delete the wash, will only bring problems in analyis xD
+
+    
+    *Inputs:
+        .excel_name: string with the name of the excel, with the .xlsx. note if you select the file
+        on the FIle viewer and do copy paste, the name will be there. But dont forget the '', it must
+        be an string! Eg: 'Excel.xlsx'
+        .cps_sheet_name: string with the name of the sheet with the data to read 
+            future maybe also concentration values?). Default value: 'To_read' 
+        (from acid vs no acid test)
+        .return_debug: if you want to get some extra df for debug 
+        (raw data, without cleaning, so like the excel). Default value = False
+
+        
+    *Outputs:
+        .several df with the cps/%rsd or whatver it is reading. Depending whether you want the debug you may 
+            have 1 or 2 outputs.
+            
+    Note that if you have N outputs, if you want to obtain a variable per output, 
+    in the script I should call X variables, like:
+            a, b, ..n = Read_ICPMS_excel(name)
+    If you write less, say 1, 2, some variable will contain more data, in a dictionary
+            
+            
+    ######## TO DO ########
+        . Arbitrary inputs (type *arb_arguments, with other stuff like, variable1, *aribtrary_arg)
+            so you choose if you want rsd or no, to save some time?
+            
+    #######################
+        '''
+    
+    
+    ########### 1) Raw load ###########
+    '''
+    Can be done easily with pandas. Since th excel sheet containing the cps and the excel file only
+    differs in the .xlsx we can define the excel sheet name with the name given as input:
+    '''    
+    #Load
+    Dat = pd.read_excel(excel_name, cps_sheet_name, header = [1])
+        #header 1 means take row 1 to give names to the columns
+        #That contains the cps and cps*dil factor
+    '''
+    Note once I suffered that the dimesions of those were not similar, and in one sheet they
+    were loadingn NaN values. I just erase those empty stuff in excel (selecting and delete)
+    and after it worked!
+    '''
+    
+    ############### 2) Clean df, 1 ############
+    
+    '''
+    Note there, the 1st row, the isotopes row, have no name, since stefaan do the excel in the 
+    way he do it, so we need to change the name manually like:
+    
+    '''
+    Dat.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   #changing column
+                            #name from Unnamed to Isotopes
+
+    '''
+    After the raw load, we can clean that a bit, creating a handful df, not the preovious, which
+    are literally the excel in a df. That is, only collecting the relevant columns and putting them
+    in a df, for further analysis (plotting, etc).
+    
+    Nevertheless, here could be relevant the fact of removing the blank or not, and for that you should
+    say if you have a blank and if you want to delete it.
+    
+    The 1st cleaning is removing the 1st 4 rows, which contain bullshit, so we could do it with the 
+    .drop method. Note the index are no longer used, simply erased.
+    '''
+    df_cps = Dat.drop([0,1,2,3])    #Removing rows 0, 1,2,3 (their index)
+
+                    
+    ############## 3) Ouptuts ######################
+
+        
+    if return_debug == True:    #return the debug
+        #
+        return df_cps, Dat              #return of values
+    
+    else: #no return debug, but yes corrections
+            return df_cps
+
+    '''
+    Sucessfully debbugged, enjoy bro! Note I return the last the Df corrected because 
+    I may not be interested in that, for ex if I want to plot the raw data.
+    '''
+
+    '''
+    Manu read all the sheet of an excel like that:
+    def readAllSheets(filename):
+    if not os.path.isfile(filename):
+        return None
+    
+    xls = pd.ExcelFile(filename)
+    sheets = xls.sheet_names
+    results = {}
+    for sheet in sheets:
+        results[sheet] = xls.parse(sheet)
+        
+    xls.close()
+    
+    return results, sheets
+    '''
+
+
+
+#%%######################################
+########### 2) Future std computer!!!!!!!!!!!!!!!!!!!!!! #############
+#####################################
+
+def ICPMS_std_calculator (df_cps, df_rsd):
+    '''
+    Function that will compute the std from the %rsd data and the cps data. The data
+    have already been read with the reader function.
     
     *Inputs:
         .excel_name: string with the name of the excel, with the .xlsx. note if you select the file
@@ -74,78 +184,18 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read',
     in the script I should call X variables, like:
             a, b, ..n = Read_ICPMS_excel(name)
     If you write less, say 1, 2, some variable will contain more data, in a dictionary
+    
+    ############ To Do ############
+        Not tested, but was copied literally from a function that worked (the reader was bigger), 
+        so it should work, right? not even changed the names xD
+    
+    
+    ##################
             
-            
-    ######## TO DO ########
-        . Try-excepts blocks for error in spotting D_f? Maybe relevant when I implement plotting in
-            another function
-        . Arbitrary inputs (type *arb_arguments, with other stuff like, variable1, *aribtrary_arg)
-            so you choose if you want rsd or no, to save some time?
-            
-    #######################
         '''
     
     
-    ########### 1) Raw load ###########
-    '''
-    Can be done easily with pandas. Since th excel sheet containing the cps and the excel file only
-    differs in the .xlsx we can define the excel sheet name with the name given as input:
-    '''    
-    #Load
-    Dat = pd.read_excel(excel_name, cps_sheet_name, header = [1])
-        #header 1 means take row 1 to give names to the columns
-        #That contains the cps and cps*dil factor
-        
-    Dat_rsd = pd.read_excel(excel_name, rsd_sheet_name, header = [1])
-        #This contains the rsd values (measured 3 times, automatically computed average) 
-    
-    '''
-    Note once I suffered that the dimesions of those were not similar, and in one sheet they
-    were loadingn NaN values. I just erase those empty stuff in excel (selecting and delete)
-    and after it worked!
-    '''
-    
-
-    ############### 2) Clean df, 1 ############
-    
-    '''
-    Note there, the 1st row, the isotopes row, have no name, since stefaan do the excel in the 
-    way he do it, so we need to change the name manually like:
-    
-    '''
-    Dat.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   #changing column
-                            #name from Unnamed to Isotopes
-    Dat_rsd.rename(columns = {'Unnamed: 0' : 'Isotopes'}, inplace = True)   
-
-    '''
-    After the raw load, we can clean that a bit, creating a handful df, not the preovious, which
-    are literally the excel in a df. That is, only collecting the relevant columns and putting them
-    in a df, for further analysis (plotting, etc).
-    
-    Nevertheless, here could be relevant the fact of removing the blank or not, and for that you should
-    say if you have a blank and if you want to delete it.
-    
-    The 1st cleaning is removing the 1st 4 rows, which contain bullshit, so we could do it with the 
-    .drop method. Note the index are no longer used, simply erased.
-    '''
-    df_cps = Dat.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
-    df_rsd = Dat_rsd.drop([0,1,2,3])    #Removing rows 01,2,3 (their index)
-    
-    '''
-    A further step could be the blank removal, a bit trickier, but possibly could be though. 
-    To do it in the future when I need it...
-    '''
-    
-    '''
-    Note the rsd file have the samples, then blank, then std, and then wash. 2 more columns in acid
-    vs no acid than teh cps file. I should delete them in order to operate 
-    (correct for the Df). For that, I could just create a new rsd df with the columns in common,
-    since I know the name
-    
-    '''
-    
-    
-    ################## 3) Derived calcs ###################################
+    ########### 1) Calc ###########
     '''
     Note the sig is RSD = relative standard deviation. I should compute sigma (std dev),
     which could be plotted in the temporal plots for ex as error bar. Thats easy:
@@ -171,53 +221,15 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read',
     TO apply the Df corrections or not we set a variable to choose, true or false
     '''    
         
-    ############## 4) Ouptuts ######################
-    '''
-    To make it more compact, let´s group the outputs. Depending on whether you want
-    the debug we return more or less things. Df will be returned as well!
-    '''
+    ############## 2) Ouptuts ######################
 
-    dfs_raw = {'dat' : df_cps, 'rsd' : df_rsd, 'std' : df_std}
-                            #dictionary with the raw data (no Df correction applied)
-    dfs_debug = {'raw_cps' : Dat, 'raw_rsd' : Dat_rsd }   #Dataframes for debug  ,
-                            #whihc consist of raw read of excel, without any cleaning         
-        
-        
-    if return_debug == True:    #return the debug
-        #
-        return dfs_raw, dfs_debug               #return of values
-    
-    else: #no return debug, but yes corrections
-            return dfs_raw
+    return df_std
 
     
-    '''
-    Sucessfully debbugged, enjoy bro! Note I return the last the Df corrected because 
-    I may not be interested in that, for ex if I want to plot the raw data.
-    '''
-
-    '''
-    Manu read all the sheet of an excel like that:
-    def readAllSheets(filename):
-    if not os.path.isfile(filename):
-        return None
-    
-    xls = pd.ExcelFile(filename)
-    sheets = xls.sheet_names
-    results = {}
-    for sheet in sheets:
-        results[sheet] = xls.parse(sheet)
-        
-    xls.close()
-    
-    return results, sheets
-    '''
-
-
 
 
 #%%######################################
-########### 2) ICPMS Dilution factor finder #############
+########### 3) ICPMS Dilution factor finder #############
 #####################################
 
 def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep'):
@@ -286,7 +298,7 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
 
 
 #%%######################################
-########### 3) ICPMS Dilution factor corrector #############
+########### 4) ICPMS Dilution factor corrector #############
 #####################################
 
 def ICPMS_Df_corrector (df_data, Df):
@@ -337,7 +349,7 @@ def ICPMS_Df_corrector (df_data, Df):
 
 
 #%%######################################
-########### 4) ICPMS Sample blank substraction #############
+########### 5) ICPMS Sample blank substraction #############
 #####################################
 
 def ICPMS_Blk_corrector (df_data):
@@ -425,7 +437,7 @@ def ICPMS_Blk_corrector (df_data):
 
 
 #########################################################################
-#%% ############### 5) Get isotope number from name ########################
+#%% ############### 6) Get isotope number from name ########################
 ########################################################################
 
 def Get_A_Resol(isotope_name):
@@ -476,7 +488,7 @@ def Get_A_Resol(isotope_name):
 
 
 #%%######################################
-########### 6) ICPMS IS sens calculation #############
+########### 7) ICPMS IS sens calculation #############
 #####################################
 
 def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR_plot', 
@@ -553,6 +565,13 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
     df_IS_sens.insert (loc = 0, column = '0', value = ['Co LR', 'In LR', 'Ho LR', 'Th LR', 'Co MR', 'In MR'])
         
     
+    '''
+    As a final stylish, I can put the same column names as the df used to create the IS df:
+    '''
+    df_IS_sens.columns = df_cps_ppb_dat.columns
+    
+    
+    
     ############# IS sens plotter ####################
     
     #####LR öööööööö
@@ -591,9 +610,127 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
 
 
 
+#%%######################################
+########### 7) ICPMS IS sens correction #############
+#####################################
+
+def IS_sens_correction(df_raw, df_IS_sens):
+    '''
+    Function that will apply the IS sens correction to the cps data, from the raw ICPMS data.
+    This is aprt of the ICPMS data analysis. You need to correct for IS sens, then apply ICPMS
+    blanks, and then calibrate with 2+4 and 3+5 IS.
+    
+    Note the plots appear in the plots pannel in Spyder
+
+    
+    * Input
+        .df_raw: df containing the raw cps and ppb data. THe fashion is like Stefaans raw sheet
+        .df_IS_sens df containing the IS sens data (cps/ppb). Ensure the size andindexing are
+        appropiates!
+        
+    #Output
+        .df with the IS corrected data
+        
+        
+    ###### TO Do #############
+        .Switch cases if other corrections needede (avoid one IS because the measuring was wrong?)
+    #########################
+    '''
+    
+    
+    ############### 0) Import neccessary functions#################
+    '''
+    Well, not needed to import anything, since it is also here the function to get the mass number A!
+    '''
+    
+    ############## 1) Calcs #########################
+    '''
+    This is simple. If the 4 IS are fine, I do the correction in the following fashion:
+        .LR (4 IS)
+            .From 59 to 80 apply Co59
+            .From 81 to 138 apply In115
+            .From 139 to 209 Ho165
+            .From 210 to 248 Th232
+        .MR (2 IS, Co and In)
+            .Co from 59 to 80
+            .Rest In
+
+    I shold be able to detech the name of th eisotope (row), get number, and apply those limits.
+    The correction is data / IS sens * <IS sens>, being sens = cps/ppb
+
+    The name format is:
+        .A11(LR)
+        .AB11(LR)
+        .A111(LR)
+        .AB111(MR)
+        .And some random elements, like Ar40Ar40(L/MR), U238O16(L/MR)
+
+    So, avoiding the weird stuff, the chemical name can have 1 or 2 letters, and the number can be 2 or 3 ciphers.
+    I created a function to get the mass number. Note the operations should be
+    line by line. The structure would be loop like, at the beginning I check the mass number, and apply. Lets do a
+    single one
+    
+    Now I can try to do a loop. I could give where the IS sens start from the df inspection (240), and I know the order:
+        .Co LR
+        .In LR
+        .Ho R
+        . Th LR
+        .CO MR
+        . In MR
+        
+    Next step is to create a function to get the mass and apply one or other correction.
+
+    We already have the function, so now we need to create a loop (after a function) that get the mass, and
+    apply one or other correction
+    '''   
+    df_IS_correct = df_raw.copy()       #Thats the proper way to create it, copy so it is not asigned to it!
+
+
+    for i in range(df_raw.index.min(), np.where(df_raw == 'IS conc ppb')[0][0]+3): #from Co59LR to U238O16MR (included both)
+                #Note that that works provided that the first index in the df is 4!! THe np.where gives row and column, with the 
+                #[0]s we get the desired value!
+                
+                #df_raw.loc[229,'Isotopes'] = df_raw.iloc[226,0]#relation iloc, loc
+        
+        mass, resol = Get_A_Resol(df_raw.loc[i,'Isotopes'])
+        #
+        '''
+        We need to 1st see which resolution, since for R we have 4 IS, for MR, only 2
+        '''
+        if resol == 'LR':           #low resolution
+            #Now, which mass?
+            if int(mass) in range(59,81): #mass from 59 to 80 included both
+                df_IS_correct.loc[i,df_IS_correct.columns[1:]] = df_raw.loc[i,df_raw.columns[1:]] / df_IS_sens.loc[0,df_IS_sens.columns[1:] ] * df_IS_sens.loc[0,df_IS_sens.columns[1:]].mean() 
+        
+            elif int(mass) in range (81, 139):
+                df_IS_correct.loc[i,df_IS_correct.columns[1:]] = df_raw.loc[i,df_raw.columns[1:]] / df_IS_sens.loc[1,df_IS_sens.columns[1:] ] * df_IS_sens.loc[1,df_IS_sens.columns[1:]].mean() 
+            
+            elif int(mass) in range (139, 210):
+                df_IS_correct.loc[i,df_IS_correct.columns[1:]] = df_raw.loc[i,df_raw.columns[1:]] / df_IS_sens.loc[2,df_IS_sens.columns[1:] ] * df_IS_sens.loc[2,df_IS_sens.columns[1:]].mean() 
+            
+            else:   #if mass in range(210, 249):    rest of mass range
+                df_IS_correct.loc[i,df_IS_correct.columns[1:]] = df_raw.loc[i,df_raw.columns[1:]] / df_IS_sens.loc[3,df_IS_sens.columns[1:] ] * df_IS_sens.loc[3,df_IS_sens.columns[1:]].mean() 
+
+        else:       #Medium resolution,  MR
+            if int(mass) in range(59,81): #mass from 59 to 80 included both
+                df_IS_correct.loc[i,df_IS_correct.columns[1:]] = df_raw.loc[i,df_raw.columns[1:]] / df_IS_sens.loc[4,df_IS_sens.columns[1:] ] * df_IS_sens.loc[4,df_IS_sens.columns[1:]].mean() 
+            
+            else:       #rest of mass ranges, only 2 IS here xD
+                df_IS_correct.loc[i,df_IS_correct.columns[1:]] = df_raw.loc[i,df_raw.columns[1:]] / df_IS_sens.loc[5,df_IS_sens.columns[1:] ] * df_IS_sens.loc[5,df_IS_sens.columns[1:]].mean() 
+     
+
+
+    ################## Return ###############
+    '''
+    After th eloop ends, we can return it
+    '''
+    return df_IS_correct
+
+
+
 
 #%%######################################
-########### 7) ICPMS Bar plotter #############
+########### 8) ICPMS Bar plotter #############
 #####################################
 
 def ICPMS_Barplotter (df_cps, df_rstd):
@@ -773,11 +910,10 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
             'Na23', 
             'K', 
             'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            'P31', 
-            'S32', 'S33', 'S34',
             'Sr84']      #List of relevant elements. Note T sheet made of Si and Al,
                         #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                        #commoninterlaminars are Ca, Na, K, Ti, li, Sr
+                        #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                #Previous elements that were deleted: S32,33,34, P31 (impurities)
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
         #Note os.getcwd() give current directory. With that structure we are able
@@ -796,7 +932,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
     
     ######### 2) plotting ###############
     '''
-    This is a loop plot, so beware, will take long (2-3mins!).
+    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
     
 
     '''
@@ -823,7 +959,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
             plt.ylabel(y_label, fontsize=14)              #ylabel
             plt.xlabel(x_label, fontsize = 14)
             plt.tick_params(axis='both', labelsize=14)              #size of axis
-            plt.yscale('log') 
+            #plt.yscale('log') 
             plt.grid(True)
             plt.legend()
             plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -842,7 +978,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
                 plt.ylabel(y_label, fontsize=14)              #ylabel
                 plt.xlabel(x_label, fontsize = 14)
                 plt.tick_params(axis='both', labelsize=14)              #size of axis
-                plt.yscale('log') 
+                #plt.yscale('log') 
                 plt.grid(True)
                 plt.legend()            
                 plt.savefig(folder_name +'/' +  
@@ -863,6 +999,163 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
     print('###############################################')
     print('Plotting running time: ' + str(t_run) + 's')
     print('###############################################')
+    
+    
+    
+#%%######################################
+########### 7) ICPMS plotter blank appart #############
+#####################################
+
+def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
+    '''
+    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
+    time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
+    Blank is plotted sepparately, so the data must include a blank, which should be 1st, the number 1
+    
+    *Inputs:
+        .x: x axis variable in the plot. This should be a df series
+        .df_cps: dataframes containing the cps. Those are
+        outputs for the Read_ICPMS_excel function. Note the 1st column must be the one
+        with the isotopes (like in the excel)
+        .x_label: string that will be the x label for the plot (for math stuff, 
+                                    use $$. eg: '$\Delta t[h]$')
+        .y_label: string that will be the y label for the plot
+        .folder_name: string defining the name of the folder to create to store the plots
+            default value: 'Plots'
+        . plot_everything: string defining if you want to plot all the elements or only the
+            relevant ones. Default value: False (only plot relevants)
+        
+    *Outputs:
+        .Plots (saving them) of the x and df_cps data, cps vs x!
+    
+    
+    ### TO DO: ####
+	.Implement error plotting (in an errorbar pyplot)
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    Elem_rel = ['Si28', 'Si29', 'Si30',
+            'Al27',
+            'Mg24', 'Mg25', 'Mg26',
+            'Mn55',
+            'Fe56', 'Fe57',
+            'Ca42', 'Ca43', 'Ca44', 
+            'Na23', 
+            'K', 
+            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+            'Sr84']      #List of relevant elements. Note T sheet made of Si and Al,
+                        #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
+                        #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                #Previous elements that were deleted: S32,33,34, P31 (impurities)
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
+    
+
+    '''
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    ###Plot
+
+    for i in list( range(4, df_cps.index[-1]) ):     #Loop for the 250 graph plotting
+                    #df_cps.index give the index values, low and high
+		   # 4 because of the way the df is created (and hence the excel tabelle)
+        #
+        
+        #Saving in the folder
+        if df_cps['Isotopes'][i][:-4] in Elem_rel:  #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+            plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+            plt.plot(x[1:int(len(x)/2) ], df_cps.loc[i][2:int(len(x)/2 +1)], 'bo--', 
+                     MarkerSize = 5, label = 'Repl_1') 
+              #+1 needed since the df contain a row with the column names! 
+              #blank excluded!
+            plt.hlines(df_cps.loc[i][1], min(x[1:int(len(x)/2)]), max(x[1:int(len(x)/2)] ), label = 'Blk_1' )
+            
+            #Now replicate 2
+            plt.plot(x[14-1:], df_cps.loc[i][14:], 'ro--', 
+                     MarkerSize = 5, label = 'Repl_2') 
+              #+1 needed since the df contain a row with the column names! 
+              #blank excluded!
+              #x -1 because x do not have isotopes column!!
+            plt.hlines(df_cps.loc[i][13], min(x[14:] ), max(x[14:] ), label = 'Blk_2', colors = 'r' )
+            plt.ylabel(y_label, fontsize=14)              #ylabel
+            plt.xlabel(x_label, fontsize = 14)
+            plt.tick_params(axis='both', labelsize=14)              #size of axis
+            #plt.yscale('log') 
+            plt.grid(True)
+            plt.legend()
+            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        'Conc_' + df_cps['Isotopes'][i] + '.png', format='png', bbox_inches='tight')
+            #
+        else:        #if the element is not relevant
+            if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+                plt.title("Concentration of " + df_cps['Isotopes'][i], fontsize=22, wrap=True)     #title
+                plt.plot(x[:int(len(x)/2)], df_cps.loc[i][1:int(len(x)/2 +1)], 'bo--', 
+                         MarkerSize = 5, label = 'Repl_1') 
+                    #+1 needed since the df contain a row with the column names!
+                plt.plot(x[int(len(x)/2):], df_cps.loc[i][int(len(x)/2 +1):], 'ro--', 
+                         MarkerSize = 5, label = 'Repl_2') 
+                plt.ylabel(y_label, fontsize=14)              #ylabel
+                plt.xlabel(x_label, fontsize = 14)
+                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                plt.grid(True)
+                plt.legend()            
+                plt.savefig(folder_name +'/' +  
+                        'Conc_' + df_cps['Isotopes'][i] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+        
+        
+        plt.close()             #to clsoe the plot not to consume too much resources
+    
+    
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
+    
+    
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     

@@ -30,7 +30,7 @@ import time as tr                                #to measure the running time
 
 
 #%%######################################
-########### 1) ICPMS excel reader #############
+########### 1.1) ICPMS excel reader #############
 #####################################
 
 def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = False):
@@ -39,7 +39,8 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
     information, for easier handling /plotting. Note the excel should be a bit preprocessed:
             
         1) Clean sheet where only the relevant data(cps, ppb, whatever) is, to load it. 
-                .You can remove ICPMS blanks (std 0, etc)
+                .You can remove ICPMS blanks (std 0, etc). THe Isotopes column in COlumn A in excel
+                THe 1st isotope, Co59(LR) in row 7 in excel). Sample names in column 2
             
     
     You could use this to get the raw data (output from ICPMS) or to correct them for the
@@ -154,7 +155,7 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
 
 
 #%%######################################
-########### 2) Future std computer!!!!!!!!!!!!!!!!!!!!!! #############
+########### 1.2) Future std computer!!!!!!!!!!!!!!!!!!!!!! #############
 #####################################
 
 def ICPMS_std_calculator (df_cps, df_rsd):
@@ -229,7 +230,7 @@ def ICPMS_std_calculator (df_cps, df_rsd):
 
 
 #%%######################################
-########### 3) ICPMS Dilution factor finder #############
+########### 1.3) ICPMS Dilution factor finder #############
 #####################################
 
 def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep'):
@@ -298,7 +299,7 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
 
 
 #%%######################################
-########### 4) ICPMS Dilution factor corrector #############
+########### 1.4) ICPMS Dilution factor corrector #############
 #####################################
 
 def ICPMS_Df_corrector (df_data, Df):
@@ -349,7 +350,7 @@ def ICPMS_Df_corrector (df_data, Df):
 
 
 #%%######################################
-########### 5) ICPMS Sample blank substraction #############
+########### 1.5) ICPMS Sample blank substraction #############
 #####################################
 
 def ICPMS_Blk_corrector (df_data):
@@ -437,7 +438,7 @@ def ICPMS_Blk_corrector (df_data):
 
 
 #########################################################################
-#%% ############### 6) Get isotope number from name ########################
+#%% ############### 1.6) Get isotope number from name ########################
 ########################################################################
 
 def Get_A_Resol(isotope_name):
@@ -488,7 +489,7 @@ def Get_A_Resol(isotope_name):
 
 
 #%%######################################
-########### 7) ICPMS IS sens calculation #############
+########### 1.7) ICPMS IS sens calculation #############
 #####################################
 
 def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR_plot', 
@@ -529,7 +530,7 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
 
     '''
     Note they are associated, you take i element of both arrays, they go in pairs. I ahve seen a way, is to create in the loop
-    the lines, and add them separately. 
+    the lines, and add them separately. The loop find the elements and perform the division cps/ppb
     '''
 
     df_IS_sens = pd.DataFrame()         #Empty df to store the values
@@ -611,7 +612,7 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
 
 
 #%%######################################
-########### 7) ICPMS IS sens correction #############
+########### 1.8) ICPMS IS sens correction #############
 #####################################
 
 def IS_sens_correction(df_raw, df_IS_sens):
@@ -629,7 +630,7 @@ def IS_sens_correction(df_raw, df_IS_sens):
         appropiates!
         
     #Output
-        .df with the IS corrected data
+        .df with the IS corrected data, containing the cps and ppb data
         
         
     ###### TO Do #############
@@ -728,9 +729,105 @@ def IS_sens_correction(df_raw, df_IS_sens):
 
 
 
+#%%######################################
+########### 1.9) ICPMS Blank correction #############
+#####################################
+def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
+    '''
+    Function to be run after the IS sensitivity correction, to apply the next step in the ICPMS data
+    analysis process, the ICPMS blanks correction. 
+    
+    Note that in the excel, int he part of the ppb table, you should delete the names, that stefaan write twice,
+    for this to work!!!! 
+    
+
+    
+    
+    *Inputs:
+        .columns_blks: np.array([]) indicating the number of the columns contaning blanks (std 0ppt and blank std).
+            Ex: columns_blanks = np.array([1, 2])
+        .df_IS_co: df containing the cps (also ppb, not needed but there it is), output from the IS sens correction funciton.
+            The formatting is like the excel. 
+    *Outputs:
+        .df containinng the cps data corrected for the ICPMS blanks. Note it also contains the ppd data, but now modified so they
+            are random numbers. 
+            
+    ##### To DO ###########
+        *Improve style and remove ppb data (would need modifications for the IS sens function)
+    '''
+    
+    ###################################################################
+    '''
+    So, for the Blank correction, I need:
+        1) To put ina  df all of the blanks. I could indicate column numbers, KISS
+        2) Compute average from the cps of the blank
+        3) Substract either the average, or the minimum cps value (from cps IS corrected), to
+            ensure no negative values. Well, since the values are always positive, the mean will
+            always be superior thatn the average value! So, we substract the minimum value!
+
+    I would really need the IS corrected data without the sens also bro, but I could get it easily I think
+    '''
+    #1) is trivial:
+    df_blanks = df_IS_co.iloc[:, columns_blks ]          #df with blanks
+                    #no isotope label contained!!
+
+    #2) could be done with df
+    blk_means = df_blanks.mean(axis = 1)
+
+    #3) The substraction
+    '''
+    THe first step is getting the minimun values. Those values are for the columns of the samples except the blanks!
+    '''
+    df_Is_co_no_blk = df_IS_co.drop(df_IS_co.columns[columns_blks ], axis = 1)
+                        #df initial without the blanks!! no isotope also!
+
+    #I could do the min to that, but since also contain the cps data there are some NaN, which make things not work. If I do
+    #fill nan with the mean values, that could fix it. Lets try bro! 
+
+    df_Is_co_no_blk.fillna(99999, inplace = True)           #filling NaN values with 99999 (easily recognizable)
+
+    #Now the min values are_
+
+    min_values = df_Is_co_no_blk.min(axis = 1) 
+                #axis = 1 for columns!
+    '''
+    For this I would need a loop to check for each row which value to substract. I would say we always substract
+    the mean, and Stefaan also think that. adn I probe that matematically, so it is like that xD
+
+    So, now the problem is perform that operation here on python, since the df are different.
+
+    I needed to delete some column nsames in teh ppb data!!!!!!!!!!
+    
+    The loop is in the same fashion as the one for IS sens correction :D
+    '''
+
+    df_IS_blk_co = df_IS_co.copy(  )        #initilization df for the loop
+
+    for i in range(df_IS_blk_co.index.min(), np.where(df_IS_blk_co == 'IS conc ppb')[0][0]+3): #from Co59LR to U238O16MR (included both)
+                    #Note that that works provided that the first index in the df is 4!! THe np.where gives row and column, with the 
+                    #[0]s we get the desired value!
+        if min_values[i] <= blk_means[i]:     #min low, so substracting min
+            
+            df_IS_blk_co.loc[i,df_IS_blk_co.columns[1:]]= df_IS_co.loc[i,df_IS_co.columns[1:]] - min_values[i]
+                            #substraction of the min value        
+            
+        else:           #mean lower, so substracting the mean
+            df_IS_blk_co.loc[i,df_IS_blk_co.columns[1:]]= df_IS_co.loc[i,df_IS_co.columns[1:]] - blk_means[i]
+
+    
+    #FInally we delete the blanks before returning the data: 
+        
+    df_IS_blk_co_final = df_IS_blk_co.drop(df_IS_blk_co.columns[columns_blks], axis = 1)
+                #for some reason I can not do the drop and inplace = True, dont work
+
+
+    ########### Return ###########
+    return df_IS_blk_co_final           #return of the data
+
+
 
 #%%######################################
-########### 8) ICPMS Bar plotter #############
+########### 1.10) ICPMS Bar plotter #############
 #####################################
 
 def ICPMS_Barplotter (df_cps, df_rstd):
@@ -865,7 +962,7 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
     
 
 #%%######################################
-########### 6) ICPMS plotter #############
+########### 1.11) ICPMS plotter #############
 #####################################
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
@@ -1000,10 +1097,174 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
     print('Plotting running time: ' + str(t_run) + 's')
     print('###############################################')
     
+
+#%%######################################
+########### 1.11) ICPMS plotter #############
+#####################################
+
+def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
+    '''
+    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
+    time, for the 3 bentonites. This assume we have 2 replicates, 1 series after the other.
+    Stimated running time around 80s.
+    
+    *Inputs:
+        .x: x axis variable in the plot. np.array, contaning the 3 df series in the order: Sard, Tur, BK
+        .df_cps: dataframes containing the cps. np array containing the 3 df series, same order as x. Those are
+        outputs for the Read_ICPMS_excel function. Note the 1st column must be the one
+        with the isotopes (like in the excel)
+        .x_label: string that will be the x label for the plot (for math stuff, 
+                                    use $$. eg: '$\Delta t[h]$')
+        .y_label: string that will be the y label for the plot
+        .folder_name: string defining the name of the folder to create to store the plots
+            default value: 'Plots'
+        . plot_everything: string defining if you want to plot all the elements or only the
+            relevant ones. Default value: False (only plot relevants)
+        
+    *Outputs:
+        .Plots (saving them) of the x and df_cps data, cps vs x!
+    
+    
+    ### TO DO: ####
+	.Implement error plotting (in an errorbar pyplot)
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    Elem_rel = ['Si28', 'Si29', 'Si30',
+            'Al27',
+            'Mg24', 'Mg25', 'Mg26',
+            'Mn55',
+            'Fe56', 'Fe57',
+            'Ca42', 'Ca43', 'Ca44', 
+            'Na23', 
+            'K', 
+            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+            'Sr84']      #List of relevant elements. Note T sheet made of Si and Al,
+                        #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
+                        #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                #Previous elements that were deleted: S32,33,34, P31 (impurities)
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
+    
+    '''
+    Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#EEE8AA', 'BK' : 'grey'} 
+                #Color for the ploting, color amtch the actual bentonite color
+                
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    ###Plot
+
+    for i in list( range(4, df_cps['Sard'].index[-1]) ):     #Loop for the 250 graph plotting
+                    #df_cps.index give the index values, low and high
+		   # 4 because of the way the df is created (and hence the excel tabelle)
+        #
+        
+        #Saving in the folder
+        if df_cps['Sard']['Isotopes'][i][:-4] in Elem_rel:  #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+            plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+            plt.title("Concentration of " + df_cps['Sard']['Isotopes'][i], fontsize=22, wrap=True)           #title
+            #PLot bentonite 1, Sard
+            plt.plot(x['Sard'][:int(len(x['Sard'])/2)], df_cps['Sard'].loc[i][1:int(len(x['Sard'])/2 +1)], 'o--', color = Bent_color['Sard'],
+                     MarkerSize = 5, label = 'Repl_1 S') 
+                    #+1 needed since the df contain a row with the column names!
+            plt.plot(x['Tur'][int(len(x['Sard'])/2):], df_cps['Sard'].loc[i][int(len(x['Sard'])/2 +1):], 'o--', color = Bent_color['Sard'],
+                     MarkerSize = 5, label = 'Repl_2 S') 
+            #PLot bentonite 2, T
+            plt.plot(x['Tur'][:int(len(x['Tur'])/2)], df_cps['Tur'].loc[i][1:int(len(x['Tur'])/2 +1)], 'o--', color = Bent_color['Tur'],
+                     MarkerSize = 5, label = 'Repl_1 T') 
+                    #+1 needed since the df contain a row with the column names!
+            plt.plot(x['Tur'][int(len(x['Tur'])/2):], df_cps['Tur'].loc[i][int(len(x['Tur'])/2 +1):], 'o--', color = Bent_color['Tur'],
+                     MarkerSize = 5, label = 'Repl_2 T') 
+            #PLot bentonite 3, BK
+            plt.plot(x['BK'][:int(len(x['BK'])/2)], df_cps['BK'].loc[i][1:int(len(x['BK'])/2 +1)], 'o--', color = Bent_color['BK'],
+                     MarkerSize = 5, label = 'Repl_1 BK') 
+                    #+1 needed since the df contain a row with the column names!
+            plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[i][int(len(x['BK'])/2 +1):], 'o--', color = Bent_color['BK'],
+                     MarkerSize = 5, label = 'Repl_2 BK') 
+            plt.ylabel(y_label, fontsize=14)              #ylabel
+            plt.xlabel(x_label, fontsize = 14)
+            plt.tick_params(axis='both', labelsize=14)              #size of axis
+            #plt.yscale('log') 
+            plt.grid(True)
+            plt.legend()
+            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        'Conc_' + df_cps['Sard']['Isotopes'][i] + '.png', format='png', bbox_inches='tight')
+            #
+        else:        #if the element is not relevant
+            if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+                plt.title("Concentration of " + df_cps['Sard']['Isotopes'][i], fontsize=22, wrap=True)           #title
+                #PLot bentonite 1, Sard
+                plt.plot(x[0][:int(len(x[0])/2)], df_cps[0].loc[i][1:int(len(x[0])/2 +1)], 'o--', color = Bent_color['Sard'],
+                         MarkerSize = 5, label = 'Repl_1 S') 
+                        #+1 needed since the df contain a row with the column names!
+                plt.plot(x[int(len(x[0])/2):], df_cps[0].loc[i][int(len(x[0])/2 +1):], 'o--', color = Bent_color['Sard'],
+                         MarkerSize = 5, label = 'Repl_2 S') 
+                #PLot bentonite 2, T
+                plt.plot(x[:int(len(x[1])/2)], df_cps[1].loc[i][1:int(len(x[1])/2 +1)], 'o--', color = Bent_color['Tur'],
+                         MarkerSize = 5, label = 'Repl_1 T') 
+                        #+1 needed since the df contain a row with the column names!
+                plt.plot(x[int(len(x[1])/2):], df_cps[1].loc[i][int(len(x[1])/2 +1):], 'o--', color = Bent_color['Tur'],
+                         MarkerSize = 5, label = 'Repl_2 T') 
+                #PLot bentonite 3, BK
+                plt.plot(x[:int(len(x[2])/2)], df_cps[2].loc[i][1:int(len(x[2])/2 +1)], 'o--', color = Bent_color['BK'],
+                         MarkerSize = 5, label = 'Repl_1 BK') 
+                        #+1 needed since the df contain a row with the column names!
+                plt.plot(x[2][int(len(x[2])/2):], df_cps[2].loc[i][int(len(x[2])/2 +1):], 'o--', color = Bent_color['BK'],
+                         MarkerSize = 5, label = 'Repl_2 BK') 
+                plt.ylabel(y_label, fontsize=14)              #ylabel
+                plt.xlabel(x_label, fontsize = 14)
+                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                plt.grid(True)
+                plt.legend()
+                plt.savefig(folder_name +'/' +  
+                        'Conc_' + df_cps['Sard']['Isotopes'][i] +'.png', format='png', bbox_inches='tight')   #To save plot in folder
+        
+        
+        plt.close()             #to clsoe the plot not to consume too much resources
+    
+    
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
+
     
     
 #%%######################################
-########### 7) ICPMS plotter blank appart #############
+########### 1.12) ICPMS plotter blank appart #############
 #####################################
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
@@ -1157,12 +1418,8 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     
     
     
-    
-    
-
-
 #%% ###############################################
-################### 7) TGA reader ##################### 
+################### 2) TGA reader ##################### 
 ##################################################
 
 

@@ -1097,9 +1097,12 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
     print('Plotting running time: ' + str(t_run) + 's')
     print('###############################################')
     
+    
+    
+ 
 
 #%%######################################
-########### 1.11) ICPMS plotter #############
+########### 1.11) ICPMS plotter 3 bentonites #############
 #####################################
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
@@ -1109,8 +1112,8 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
     Stimated running time around 80s.
     
     *Inputs:
-        .x: x axis variable in the plot. np.array, contaning the 3 df series in the order: Sard, Tur, BK
-        .df_cps: dataframes containing the cps. np array containing the 3 df series, same order as x. Those are
+        .x: x axis variable in the plot. dictionary, contaning the 3 df series with the keys: Sard, Tur, BK
+        .df_cps: dataframes containing the cps. dictionary containing the 3 df series, same order as x. Those are
         outputs for the Read_ICPMS_excel function. Note the 1st column must be the one
         with the isotopes (like in the excel)
         .x_label: string that will be the x label for the plot (for math stuff, 

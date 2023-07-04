@@ -1320,8 +1320,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     *Inputs:
         .x: x axis variable in the plot. This should be a df series
         .df_cps: dataframes containing the cps. Those are
-        outputs for the Read_ICPMS_excel function. Note the 1st column must be the one
-        with the isotopes (like in the excel)
+        outputs for the Read_ICPMS_excel function. Note the isotopes are the index, so 1st column is 1_1!
         .x_label: string that will be the x label for the plot (for math stuff, 
                                     use $$. eg: '$\Delta t[h]$')
         .y_label: string that will be the y label for the plot
@@ -1336,6 +1335,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     
     ### TO DO: ####
 	.Implement error plotting (in an errorbar pyplot)
+    .Implement variable for modifying tittle (eg adding bentonite name, as a input)
     '''
     
     
@@ -1393,12 +1393,13 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-            plt.plot(x[1:int(len(x)/2) ], row[1:int(len(x)/2)], 'bo--', 
+            plt.title("Concentration of " + index[:-4], fontsize=22, wrap=True)     #title
+            plt.plot(x[:int(len(x)/2) ], row[:int(len(x)/2)], 'bo--', 
                      MarkerSize = 5, label = 'Repl_1') 
               #+1 needed since the df contain a row with the column names! 
               #blank excluded!
-            plt.hlines(row[1], min(x[1:int(len(x)/2)]), max(x[1:int(len(x)/2)] ), label = 'Blk_1' )
-            
+            plt.hlines(row[0], min(x[:int(len(x)/2)]), max(x[:int(len(x)/2)] ), label = 'Blk_1' )
+                    #row[0] is 1_1, 1st sample of 1st replicate!
             #Now replicate 2
             plt.plot(x[int(len(x)/2):], row[int(len(x)/2 ):], 'ro--', 
                      MarkerSize = 5, label = 'Repl_2') 
@@ -1406,7 +1407,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
               #+1 needed since the df contain a row with the column names! 
               #blank excluded!
               #x -1 because x do not have isotopes column!!
-            plt.hlines(row[13], min(x[14:] ), max(x[14:] ), label = 'Blk_2', colors = 'r' )
+            plt.hlines(row[int(len(x)/2)], min(x[int(len(x)/2):] ), max(x[int(len(x)/2):] ), label = 'Blk_2', colors = 'r' )
             plt.ylabel(y_label, fontsize=14)              #ylabel
             plt.xlabel(x_label, fontsize = 14)
             plt.tick_params(axis='both', labelsize=14)              #size of axis
@@ -1421,7 +1422,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                 #    
                 plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
                 plt.title("Concentration of " + index[:-4], fontsize=22, wrap=True)     #title
-                plt.plot(x[:int(len(x)/2)], row[1:int(len(x)/2)], 'bo--', 
+                plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
                          MarkerSize = 5, label = 'Repl_1') 
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 

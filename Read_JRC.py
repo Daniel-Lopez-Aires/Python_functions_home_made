@@ -872,7 +872,7 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 ########### 1.11) ICPMS Sample blank substraction #############
 #####################################
 
-def ICPMS_Kd_calc (df_data):
+def ICPMS_Kd_calc (df_data, V_disol, m_bent):
     '''
     Function that will compute the distribution constant Kd from the ppb data (should be corrected
     for the dilutions factors) obtained with ICPMS. 
@@ -896,9 +896,11 @@ def ICPMS_Kd_calc (df_data):
         .df_data: dataframe containing the data, the full data, with the 2 replicates. Should be Dfs corrected
             Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
             this function!!!!
-
+        .V_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, or whatever. normally 50ml
+        .m_bent: pd series contaning the mass of bentonite [mg] in the bottle (normally 250mg)
+    
     *Outputs:
-        .df with the correction factor (Df) applied
+        .df with the Kd data
         '''
     
     
@@ -945,23 +947,28 @@ def ICPMS_Kd_calc (df_data):
 
     #2) Apply the 1/C_eq
     df_C0_Ceq_Ceq_1 = dfC0_Ceq_1.div(df_1.iloc[:,1:])
-        #Not df_1 contains blk (1st column), so I remove it for the operation!    
+            #Not df_1 contains blk (1st column), so I remove it for the operation!    
     df_C0_Ceq_Ceq_2 = dfC0_Ceq_2.div(df_2.iloc[:,1:])    
     
     #3) Apply the V/m (from Df_exp))
+    df_Kd_1 =df_C0_Ceq_Ceq_1 * V_disol / m_bent
+    df_Kd_2 =df_C0_Ceq_Ceq_2 * V_disol / m_bent
     
-
     '''
     Now that the calcs are done, we just need to add them into a single df
     '''
 
-    df_blk = pd.concat( [df_C0_Ceq_Ceq_1, df_C0_Ceq_Ceq_2], axis = 1)         #mergind the 2 little df ina  huge one
+    df_Kd = pd.concat( [df_Kd_1, df_Kd_2], axis = 1)         #mergind the 2 little df ina  huge one
 
 
+
+    '''
+    THAT NEEDS TO BE CHECKED!!!! Essentially if the numbers are okay, but the calcs works!
+    '''
+    
+    
     ########### 2) Return #############
-    return df_blk             #return
-
-
+    return df_Kd             #return
 
 
 

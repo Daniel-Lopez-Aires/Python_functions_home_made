@@ -98,7 +98,7 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
     and after it worked!
     '''
     
-    ############### 2) Clean df, 1 ############
+    ############### 2) Clean df ############
     
     '''
     After the raw load, we can clean that a bit, creating a handful df, not the preovious, which
@@ -114,7 +114,12 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
     df_cps = Dat.drop(index = [Dat.index[0], Dat.index[1], Dat.index[2],Dat.index[3] ], axis = 0)   
                                                     #Removing rows 0, 1,2,3 (their index)
                 
-                    
+    #Another cleaning will be putting the df in numeric format. It is in object format, which gives problems
+    #(YeroDivisionerror) with divisions, while for numbers there is no problem.
+
+    df_cps = df_cps.apply(pd.to_numeric)    
+                
+    
     ############## 3) Ouptuts ######################
         
     if return_debug == True:    #return the debug
@@ -272,7 +277,14 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     #I need to put the correct index names for the operations, that can be done like:
     D_f.index = Dat_sa_prep.iloc[D_f_data[0]-1, 1: len(Dat_sa_prep)]     #proper index name (to operate)
     
-    ########### 2) Return #############
+    
+    ######## 3) cleaning ###############
+    '''
+    Since its object type, I will make it numeric, since everything will be easier with it (and strictly its true)
+    '''
+    D_f = D_f.apply(pd.to_numeric)                    #conversion to numeric data type
+    
+    ########### 4) Return #############
     '''
     Finally we return Df, which is a pandas serie
     '''
@@ -370,7 +382,7 @@ def ICPMS_Blk_corrector (df_data):
     I could) split it easily :D
             df.shape gives the shape of the df, n_rows, n_columns
     
-    Note the df have 1 (isotope column) + number of samples * 2 replicates columns.
+    Note the df have number of samples * 2 replicates columns.
     
     Then, I will create a new dataframe substracting that data. To do so, I need to get rid
     of the isotopes column, since is text, and then add it again. Watch, the substraction is 
@@ -856,9 +868,107 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 
 
 
+#%%######################################
+########### 1.11) ICPMS Sample blank substraction #############
+#####################################
+
+def ICPMS_Kd_calc (df_data):
+    '''
+    Function that will compute the distribution constant Kd from the ppb data (should be corrected
+    for the dilutions factors) obtained with ICPMS. 
+    Based on the blk corrector function.
+    
+    THe distribution constant Kd is:
+        K_d = (C_0 - C_eq)/C_eq * V/m;
+    being            
+        C_0= = initial concentration
+        C_eq = concentration at equilibrium
+        m = mass of dry bentonite
+        V = volume of the solution
+
+    The correction is essentially substracting the blank (number 1) to the rest of the samples, but
+    involved some operations since we have dataframes. So those will be here. Necessary that the data
+    contain no Div0, ensure in the excel by deleting those! Only for 2 replicates, 
+    but could be generalized for N replicates easily.
+
+
+    *Inputs:
+        .df_data: dataframe containing the data, the full data, with the 2 replicates. Should be Dfs corrected
+            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
+            this function!!!!
+
+    *Outputs:
+        .df with the correction factor (Df) applied
+        '''
+    
+    
+    ########### 1) Calcs ###########
+    '''
+    The operations to perform are:
+        1) C_0 - C_eq (>0)
+        2) 1) * 1/C_eq
+        3) 2) * V/m
+    
+    I must treat the 2 experiments are different, I should substract the blank 1 to the 1st emasurements
+    and the 2 to the others. Since I ordered it in the right way (1st replicacte 1, then replicate 2, 
+    I could) split it easily :D
+            df.shape gives the shape of the df, n_rows, n_columns
+    
+    Note the df have number of samples * 2 replicates columns.
+    
+    Then, I will create a new dataframe substracting that data. To do so, I need to get rid
+    of the isotopes column, since is text, and then add it again. Watch, the substraction is 
+    easy with a pandas mehotd.
+
+    I shuold then remove those columns
+    from there, and replace negatives values for 0, for a good plot
+    '''
+    
+    df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] - 1 ) / 2 + 1) ]      #1st replicate
+    df_2 = df_data.iloc[ :, round( ( df_data.shape[1] - 1 ) / 2 + 1) :  ]       #replicate 2
+    
+    
+    #1) C_0 - C_eq = - (C_eq - C0)
+    '''
+    I will do C_eq - C0, and then invert that, since its easier. C0 is the blank data, thats why is easier, so I can 
+    copy paste the blank substraction
+    '''
+    dfCeq_C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
+    dfCeq_C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+    #
+    dfCeq_C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )               #Replicate 2
+    dfCeq_C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
+    
+    #Now lets invert the sign:
+    dfC0_Ceq_1 = - dfCeq_C0_1
+    dfC0_Ceq_2 = - dfCeq_C0_2
+
+    #2) Apply the 1/C_eq
+    df_C0_Ceq_Ceq_1 = dfC0_Ceq_1.div(df_1.iloc[:,1:])
+        #Not df_1 contains blk (1st column), so I remove it for the operation!    
+    df_C0_Ceq_Ceq_2 = dfC0_Ceq_2.div(df_2.iloc[:,1:])    
+    
+    #3) Apply the V/m (from Df_exp))
+    
+
+    '''
+    Now that the calcs are done, we just need to add them into a single df
+    '''
+
+    df_blk = pd.concat( [df_C0_Ceq_Ceq_1, df_C0_Ceq_Ceq_2], axis = 1)         #mergind the 2 little df ina  huge one
+
+
+    ########### 2) Return #############
+    return df_blk             #return
+
+
+
+
+
+
 
 #%%######################################
-########### 1.10) ICPMS Bar plotter #############
+########### 1.12) ICPMS Bar plotter #############
 #####################################
 
 def ICPMS_Barplotter (df_cps, df_rstd, folder_name = 'Bar_plots'):
@@ -995,7 +1105,7 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
     
 
 #%%######################################
-########### 1.11) ICPMS plotter #############
+########### 1.12) ICPMS plotter #############
 #####################################
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
@@ -1140,7 +1250,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
  
 
 #%%######################################
-########### 1.11) ICPMS plotter 3 bentonites #############
+########### 1.13) ICPMS plotter 3 bentonites #############
 #####################################
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
@@ -1308,7 +1418,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
     
     
 #%%######################################
-########### 1.12) ICPMS plotter blank appart #############
+########### 1.14) ICPMS plotter blank appart #############
 #####################################
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):

@@ -482,7 +482,9 @@ def Get_A_Resol(isotope_name):
 ########### 1.7) ICPMS IS sens calculation #############
 #####################################
 
-def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR_plot', 
+def IS_sens_calculator_plotter(df_cps_ppb_dat, 
+                               loop_IS = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
+                               name_IS_sens_LR_plot = 'IS_sensLR_plot', 
                                name_IS_sens_MR_plot = 'IS_sensMR_plot'):
     '''
     Function th<t will compute the IS sens (cps/ppb) for a df containing the cps and ppb. The format is like
@@ -496,6 +498,9 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
         .df_cps_ppb_dat: df containing the cps and ppb data. THe fashion is like Stefaans raw sheet. Isotopes are index.
             Take care of the names of the columns (like in IS conc table or so, the values you find), if they dont exist will
             give error!
+        .loop_IS: array containing in a list the IS and its resolution, like how they appear in the isotopes column. Default value:
+                ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
+            That mean those isotopes were measured. If Ho165(MR) also measured, just included it, and fine ;)
         .name_IS_sens_LR_plot: name for the plot of the IS sens for LR case. Similar for MR. Default values:
             'IS_sensLR_plot' and 'IS_sensMR_plot'. To that is added the .png to create the file.
             
@@ -512,15 +517,9 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
     ############ Data finder ################
     '''
     1st thing to find the ppb data. Should be somehow below the cps data, which has Stefaans format.
-    To do the find in a loop way I define arrays which the elements to find.
-    '''
-    
-    loop_IS = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
-            #IS rows to loop, from excel, names
-    loop_ppb = ['Co-59', 'In-115', 'Ho-165', 'Th-232', 'Co-59', 'In-115']         #ppb values to loop (from excel, names)
+    To do the find in a loop way I define arrays which the elements to find. 
+    Given as an input now, easier, KISS!
 
-
-    '''
     Note they are associated, you take i element of both arrays, they go in pairs. I ahve seen a way, is to create in the loop
     the lines, and add them separately. The loop find the elements and perform the division cps/ppb
     '''
@@ -530,7 +529,24 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
 
     for i in range(0, len(loop_IS)):
         value_to_find = loop_IS[i]
-        value_to_find_ppb = loop_ppb[i]
+        
+        #####ppb value #########
+        '''
+        This will be made from the loop_IS variable. Since each element has a different letter, I can just read the 1st letter and
+        say:
+            C ==> Co-59 in ppb
+            I ==> In115 in ppb
+            etc
+        '''
+        if value_to_find[0] == 'C':  #Co59 case
+            value_to_find_ppb = 'Co-59'
+        elif value_to_find[0] == 'I':  #In115 case
+            value_to_find_ppb = 'In-115'
+        elif value_to_find[0] == 'H':  #Ho165 case
+            value_to_find_ppb = 'Ho-165'
+        elif value_to_find[0] == 'T':  #Th232 case
+            value_to_find_ppb = 'Th-232'
+            
         matching_rows = df_cps_ppb_dat.loc[df_cps_ppb_dat.index == value_to_find]  #give the full row!
         matching_rows_ppb = df_cps_ppb_dat.loc[df_cps_ppb_dat.index == value_to_find_ppb]  #give the full row!
 
@@ -549,7 +565,9 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
     Now, to add the isotopes as index, we first add them as a column, and then we set
     the column to index:we need to insert the isotopes column, giving as values the isotopes names or so:
     '''
-    df_IS_sens['Isotopes'] = ['Co LR', 'In LR', 'Ho LR', 'Th LR', 'Co MR', 'In MR']
+    #df_IS_sens['Isotopes'] = ['Co LR', 'In LR', 'Ho LR', 'Th LR', 'Co MR', 'In MR']
+    df_IS_sens['Isotopes'] = loop_IS        #setting isotopes name from the loop variable, better
+    
     df_IS_sens.set_index('Isotopes', inplace = True)
         
     
@@ -559,40 +577,43 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
     df_IS_sens.columns = df_cps_ppb_dat.columns
     
     
-    
+    #################################################
     ############# IS sens plotter ####################
+    '''
+    I need to do 2 plots, 1 for the LR and other for the MR. I should sort them somehow. I found how xD, explicit plotting,
+    recommended by python, better than implicit(what you normally do xD)
+    '''
     
-    #####LR öööööööö
-    plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-    plt.title("IS sens LR along measuring sequence", fontsize=22, wrap=True)           #title
-    plt.plot(list(range(1, df_IS_sens.shape[1])), df_IS_sens.iloc[0,1:], label = 'Co LR') 
-    plt.plot(list(range(1, df_IS_sens.shape[1])), df_IS_sens.iloc[1,1:], label = 'In LR') 
-    plt.plot(list(range(1, df_IS_sens.shape[1])), df_IS_sens.iloc[2,1:], label = 'Ho LR') 
-    plt.plot(list(range(1, df_IS_sens.shape[1])), df_IS_sens.iloc[3,1:], label = 'Th LR') 
-    plt.ylabel("cps/ppb", fontsize=14)              #ylabel
-    plt.xlabel('Sample number', fontsize = 14)
-    plt.tick_params(axis='both', labelsize=14)              #size of axis
-    #plt.yscale('log') 
-    plt.grid(True)
-    plt.legend()
-    plt.savefig(name_IS_sens_LR_plot + '.png', format='png', bbox_inches='tight')
-
-
-    ########### MR
-    plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-    plt.title("IS sens MR along measuring sequence", fontsize=22, wrap=True)           #title
-    plt.plot(list(range(1, df_IS_sens.shape[1])), df_IS_sens.iloc[4,1:], label = 'Co MR') 
-    plt.plot(list(range(1, df_IS_sens.shape[1])), df_IS_sens.iloc[5,1:], label = 'In MR') 
-    plt.ylabel("cps/ppb", fontsize=14)              #ylabel
-    plt.xlabel('Sample number', fontsize = 14)
-    plt.tick_params(axis='both', labelsize=14)              #size of axis
-    #plt.yscale('log') 
-    plt.grid(True)
-    plt.legend()
-    plt.savefig(name_IS_sens_MR_plot + '.png', format='png', bbox_inches='tight')
+    pltL = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default  LR plot!
+    axL = pltL.subplots()
+    axL.set_title("IS sens LR along measuring sequence", fontsize=22, wrap=True)           #title
+   
+    pltM = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default   MR plot!
+    axM = pltM.subplots()
+    axM.set_title("IS sens MR along measuring sequence", fontsize=22, wrap=True)           #title    
     
+    for i in range(0, df_IS_sens.shape[0]):   #looping through rows of the df
+        if df_IS_sens.index[i][-4:] == '(LR)':      #low resolution
+            axL.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:], label = df_IS_sens.index[i]) 
+            
+        else:   #MR
+            axM.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:], label = df_IS_sens.index[i])  
     
-        
+    #Final styling of the plot
+    axL.legend()
+    axM.legend()
+    axL.grid(True)
+    axM.grid(True)
+    axL.set_xlabel('Sample number', size = 14)
+    axM.set_xlabel('Sample number', size = 14)
+    axL.set_ylabel("cps/ppb", size = 14)
+    axM.set_ylabel("cps/ppb", size = 14)   
+    axL.tick_params(axis='both', labelsize=14)              #size of axis
+    axM.tick_params(axis='both', labelsize=14)              #size of axis
+    pltL.savefig(name_IS_sens_LR_plot + '.png', format='png', bbox_inches='tight')    #note I call plt, not ax!
+    pltM.savefig(name_IS_sens_MR_plot + '.png', format='png', bbox_inches='tight')
+    
+         
     ############## Return of values ##########################
     return df_IS_sens            #mass is an string!
 
@@ -823,7 +844,9 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
 ########### 1.10) ICPMS data processing automatized #############
 #####################################
 
-def ICPMS_data_process(df_cps, ICPblk_columns, excel_name = 'df_IS_Blks_corr.xlsx'):
+def ICPMS_data_process(df_cps, ICPblk_columns, 
+                       loop_IS = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
+                       excel_name = 'df_IS_Blks_corr.xlsx'):
     '''
     Function that will apply all the steps for the automatization of the ICPMS data processing:
         1) Read cps amd ppb data
@@ -837,6 +860,9 @@ def ICPMS_data_process(df_cps, ICPblk_columns, excel_name = 'df_IS_Blks_corr.xls
         .df_cps: df containing the cps data and also the ppb data, in the classic format. Must not contain the wash, will give 
             errors (divide by zero). Take care of the names (like for the cps table), they are crutial for the sens calc and 
                 correction! Also about the format, not rows with 0s etc. Take a lot of care!!!
+        .loop_IS: array containing in a list the IS and its resolution, like how they appear in the isotopes column. Default value:
+                ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
+            That mean those isotopes were measured. If Ho165(MR) also measured, just included it, and fine ;)
         .ICPblk_columns: np array containing the columns numbers where the ICPMS blanks are. Numbers from
             the excel (A = 0, B = 1, etc)
         .excel_name: string that will be the name of the file containing the output. Default: 'df_IS_Blks_corr.xlsx'
@@ -851,7 +877,7 @@ def ICPMS_data_process(df_cps, ICPblk_columns, excel_name = 'df_IS_Blks_corr.xls
     '''
     
     ###### 1) IS sens calc ######
-    df_IS_sens = IS_sens_calculator_plotter(df_cps)         #calculation the IS correction
+    df_IS_sens = IS_sens_calculator_plotter(df_cps, loop_IS)         #calculation the IS correction
     
     
     ###### 2) IS sens correction and new sens calc ##########

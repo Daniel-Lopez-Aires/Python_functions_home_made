@@ -489,11 +489,13 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
     Stefaans excel, his first sheet. It IS needed the ppb table below the cps data. How below? Do not care, I
     find the data using locate functions ;)
     
-    Note the plots appear in the plots pannel in Spyder
+    Note the plots appear in the plots pannel in Spyder, but are also saved ;)
 
     
     * Input
-        .df_cps_ppb_dat: df containing the cps and ppb data. THe fashion is like Stefaans raw sheet. Isotopes are index
+        .df_cps_ppb_dat: df containing the cps and ppb data. THe fashion is like Stefaans raw sheet. Isotopes are index.
+            Take care of the names of the columns (like in IS conc table or so, the values you find), if they dont exist will
+            give error!
         .name_IS_sens_LR_plot: name for the plot of the IS sens for LR case. Similar for MR. Default values:
             'IS_sensLR_plot' and 'IS_sensMR_plot'. To that is added the .png to create the file.
             
@@ -515,7 +517,7 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat, name_IS_sens_LR_plot = 'IS_sensLR
     
     loop_IS = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
             #IS rows to loop, from excel, names
-    loop_ppb = ['Co', 'In-115', 'Ho', 'Th', 'Co', 'In-115']         #ppb values to loop (from excel, names)
+    loop_ppb = ['Co-59', 'In-115', 'Ho-165', 'Th-232', 'Co-59', 'In-115']         #ppb values to loop (from excel, names)
 
 
     '''
@@ -720,6 +722,7 @@ def IS_sens_correction(df_raw, df_IS_sens):
 #%%######################################
 ########### 1.9) ICPMS Blank correction #############
 #####################################
+
 def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     '''
     Function to be run after the IS sensitivity correction, to apply the next step in the ICPMS data
@@ -817,6 +820,60 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
 
 
 #%%######################################
+########### 1.10) ICPMS data processing automatized #############
+#####################################
+
+def ICPMS_data_process(df_cps, ICPblk_columns, excel_name = 'df_IS_Blks_corr.xlsx'):
+    '''
+    Function that will apply all the steps for the automatization of the ICPMS data processing:
+        1) Read cps amd ppb data
+        2) Compute sens = cps/ppb and plot it
+        3) Apply the sensitivity correction
+        4) plot the new sensitivtiy plots (should be straight lines)
+        5) Substract ICPMS blanks
+        6) Save that data (to calibrate after, by hand, for the moment..)
+    
+    *Inputs:
+        .df_cps: df containing the cps data and also the ppb data, in the classic format. Must not contain the wash, will give 
+            errors (divide by zero). Take care of the names (like for the cps table), they are crutial for the sens calc and 
+                correction! Also about the format, not rows with 0s etc. Take a lot of care!!!
+        .ICPblk_columns: np array containing the columns numbers where the ICPMS blanks are. Numbers from
+            the excel (A = 0, B = 1, etc)
+        .excel_name: string that will be the name of the file containing the output. Default: 'df_IS_Blks_corr.xlsx'
+        
+    *Output:
+        .df containing the data applying the ICPMS blanks and sensitivity corrections :)
+    
+    
+    To Do:
+            .Automatize more stuff? 
+            .Cope with strange cases as they appear, like not all the IS used, etc In T-BIC-CL-KIN appears Th232MR, not taken care!
+    '''
+    
+    ###### 1) IS sens calc ######
+    df_IS_sens = IS_sens_calculator_plotter(df_cps)         #calculation the IS correction
+    
+    
+    ###### 2) IS sens correction and new sens calc ##########
+    df_IS_corrected = IS_sens_correction(df_cps, df_IS_sens)       #applying the IS correction
+
+    df_IS_sens_co = IS_sens_calculator_plotter(df_IS_corrected)    #getting and plotting new IS sens
+    
+    
+    ##### 3)ICPMS Blk correction #########
+    df_IS_Blks_co = ICPMS_ICPMSBlanks_corrector(df_IS_corrected, ICPblk_columns)
+
+
+    ##### 4) Saving and Output #########
+    
+    df_IS_Blks_co.to_excel(excel_name)            #saving to excel
+
+    return df_IS_Blks_co
+
+
+
+
+#%%######################################
 ########### 1.10) ICPMS Isotope selector #############
 #####################################
 def ICPMS_Isotope_selector(df_cps, Isotopes):
@@ -868,8 +925,10 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 
 
 
+
+
 #%%######################################
-########### 1.11) ICPMS Sample blank substraction #############
+########### 1.11) Kd calculaor #############
 #####################################
 
 def ICPMS_Kd_calc (df_data, V_disol, m_bent):

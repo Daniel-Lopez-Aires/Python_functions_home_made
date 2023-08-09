@@ -483,7 +483,7 @@ def Get_A_Resol(isotope_name):
 #####################################
 
 def IS_sens_calculator_plotter(df_cps_ppb_dat, 
-                               loop_IS = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
+                               IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
                                name_IS_sens_LR_plot = 'IS_sensLR_plot', 
                                name_IS_sens_MR_plot = 'IS_sensMR_plot'):
     '''
@@ -498,7 +498,8 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
         .df_cps_ppb_dat: df containing the cps and ppb data. THe fashion is like Stefaans raw sheet. Isotopes are index.
             Take care of the names of the columns (like in IS conc table or so, the values you find), if they dont exist will
             give error!
-        .loop_IS: array containing in a list the IS and its resolution, like how they appear in the isotopes column. Default value:
+        .IS_meas: array containing in a list the measured Internal Standards, containing its resolution, like 
+            how they appear in the isotopes column. Default value:
                 ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
             That mean those isotopes were measured. If Ho165(MR) also measured, just included it, and fine ;)
         .name_IS_sens_LR_plot: name for the plot of the IS sens for LR case. Similar for MR. Default values:
@@ -527,12 +528,12 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
     df_IS_sens = pd.DataFrame()         #Empty df to store the values
 
 
-    for i in range(0, len(loop_IS)):
-        value_to_find = loop_IS[i]
+    for i in range(0, len(IS_meas)):
+        value_to_find = IS_meas[i]
         
         #####ppb value #########
         '''
-        This will be made from the loop_IS variable. Since each element has a different letter, I can just read the 1st letter and
+        This will be made from the IS_meas variable. Since each element has a different letter, I can just read the 1st letter and
         say:
             C ==> Co-59 in ppb
             I ==> In115 in ppb
@@ -566,7 +567,7 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
     the column to index:we need to insert the isotopes column, giving as values the isotopes names or so:
     '''
     #df_IS_sens['Isotopes'] = ['Co LR', 'In LR', 'Ho LR', 'Th LR', 'Co MR', 'In MR']
-    df_IS_sens['Isotopes'] = loop_IS        #setting isotopes name from the loop variable, better
+    df_IS_sens['Isotopes'] = IS_meas        #setting isotopes name from the loop variable, better
     
     df_IS_sens.set_index('Isotopes', inplace = True)
         
@@ -623,7 +624,8 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
 ########### 1.8) ICPMS IS sens correction #############
 #####################################
 
-def IS_sens_correction(df_raw, df_IS_sens):
+def IS_sens_correction(df_raw, df_IS_sens, 
+                       IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']):
     '''
     Function that will apply the IS sens correction to the cps data, from the raw ICPMS data.
     This is aprt of the ICPMS data analysis. You need to correct for IS sens, then apply ICPMS
@@ -639,6 +641,9 @@ def IS_sens_correction(df_raw, df_IS_sens):
         .df_raw: df containing the raw cps and ppb data. THe fashion is like Stefaans raw sheet
         .df_IS_sens df containing the IS sens data (cps/ppb). Ensure the size andindexing are
         appropiates!
+        .IS_meas: array containing in a list the measured Internal Standards, containing its resolution, like 
+            how they appear in the isotopes column. Default value:
+                ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
         
     #Output
         .df with the IS corrected data, containing the cps and ppb data
@@ -658,15 +663,15 @@ def IS_sens_correction(df_raw, df_IS_sens):
     ############## 1) Calcs #########################
     '''
     This is simple. If the 4 IS are fine, I do the correction in the following fashion:
-        .LR (4 IS)
             .From 59 to 80 apply Co59
             .From 81 to 138 apply In115
             .From 139 to 209 Ho165
             .From 210 to 248 Th232
-        .MR (2 IS, Co and In)
-            .Co from 59 to 80
-            .Rest In
 
+    If there are less IS, then I will make less divisions. Ex, if for MR there is only Co and In,
+            .Co from 59 to 80
+            .Rest In115
+            
     I shold be able to detech the name of th eisotope (row), get number, and apply those limits.
     The correction is data / IS sens * <IS sens>, being sens = cps/ppb
 
@@ -695,41 +700,79 @@ def IS_sens_correction(df_raw, df_IS_sens):
     We already have the function, so now we need to create a loop (after a function) that get the mass, and
     apply one or other correction
     '''   
-    df_IS_correct = df_raw.copy()       #Thats the proper way to create it, copy so it is not asigned to it!
     
+    df_IS_correct = df_raw.copy()       #Thats the proper way to create it, copy so it is not asigned to it!
     
     	#The loop should go until the alst isotope, which I can find by finding IS conc ppb, the first thing for the ppb chart!
         #so, THIS data is mandatory that exist like that!!
-        
-    for i in range(np.where(df_raw.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
+    '''
+    To generalize, I will do if statement for the different IS measured cases. By far only 2, the sequence done in the past, the
+    4 in LR and 2 in MR; and now (8/23) 4 in MR also, the most detailed case.
+    '''
+    
+    if IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']:   
+                                                                    ########case 1, the old scenario (exp bef 8/23)
+     
+        for i in range(np.where(df_raw.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
                 #df_raw.loc[229,'Isotopes'] = df_raw.iloc[226,0]#relation iloc, loc
         
-        mass, resol = Get_A_Resol(df_raw.index[i])
-        #
-        '''
-        We need to 1st see which resolution, since for R we have 4 IS, for MR, only 2
-        '''
-        if resol == 'LR':           #low resolution
+            mass, resol = Get_A_Resol(df_raw.index[i])
+        #No we neeed to see the resolution, since for LR we have 4, and for MR only 2
+            if resol == 'LR':           #low resolution
             #Now, which mass?
-            if int(mass) in range(59,81): #mass from 59 to 80 included both
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
+                if int(mass) in range(59,81): #mass from 59 to 80 included both
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
         
-            elif int(mass) in range (81, 139):
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
+                elif int(mass) in range (81, 139):
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
             
-            elif int(mass) in range (139, 210):
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
+                elif int(mass) in range (139, 210):
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
             
-            else:   #if mass in range(210, 249):    rest of mass range
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
+                else:   #if mass in range(210, 249):    rest of mass range
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
 
-        else:       #Medium resolution,  MR
-            if int(mass) in range(59,81): #mass from 59 to 80 included both
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:]].mean() 
+            else:       #Medium resolution,  MR
+                if int(mass) in range(59,81): #mass from 59 to 80 included both
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:]].mean() 
             
-            else:       #rest of mass ranges, only 2 IS here xD
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:]].mean() 
+                else:       #rest of mass ranges, only 2 IS here xD
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:]].mean() 
      
+    elif  IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 
+               'Co59(MR)', 'In115(MR)', 'Ho165(MR)', 'Th232(MR)']:   #######case 2, all IS measured in LR and MR! 
+
+        for i in range(np.where(df_raw.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
+                #df_raw.loc[229,'Isotopes'] = df_raw.iloc[226,0]#relation iloc, loc
+        
+            mass, resol = Get_A_Resol(df_raw.index[i])
+        #No we neeed to see the resolution, since for LR we have 4, and for MR only 2
+            if resol == 'LR':           #low resolution
+            #Now, which mass?
+                if int(mass) in range(59,81): #mass from 59 to 80 included both
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
+        
+                elif int(mass) in range (81, 139):
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
+            
+                elif int(mass) in range (139, 210):
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
+            
+                else:   #if mass in range(210, 249):    rest of mass range
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
+
+            else:       #Medium resolution,  MR
+                if int(mass) in range(59,81): #mass from 59 to 80 included both
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:]].mean() 
+            
+                elif int(mass) in range (81, 139):
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:]].mean() 
+            
+                elif int(mass) in range (139, 210):
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[6],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[6],df_IS_sens.columns[:]].mean() 
+            
+                else:   #if mass in range(210, 249):    rest of mass range
+                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[7],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[7],df_IS_sens.columns[:]].mean() 
 
 
     ################## Return ###############
@@ -845,7 +888,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
 #####################################
 
 def ICPMS_data_process(df_cps, ICPblk_columns, 
-                       loop_IS = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
+                       IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
                        excel_name = 'df_IS_Blks_corr.xlsx'):
     '''
     Function that will apply all the steps for the automatization of the ICPMS data processing:
@@ -860,7 +903,7 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
         .df_cps: df containing the cps data and also the ppb data, in the classic format. Must not contain the wash, will give 
             errors (divide by zero). Take care of the names (like for the cps table), they are crutial for the sens calc and 
                 correction! Also about the format, not rows with 0s etc. Take a lot of care!!!
-        .loop_IS: array containing in a list the IS and its resolution, like how they appear in the isotopes column. Default value:
+        .IS_meas: array containing in a list the IS and its resolution, like how they appear in the isotopes column. Default value:
                 ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
             That mean those isotopes were measured. If Ho165(MR) also measured, just included it, and fine ;)
         .ICPblk_columns: np array containing the columns numbers where the ICPMS blanks are. Numbers from
@@ -874,25 +917,41 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     To Do:
             .Automatize more stuff? 
             .Cope with strange cases as they appear, like not all the IS used, etc In T-BIC-CL-KIN appears Th232MR, not taken care!
+            .Optimize excel saving!
     '''
     
     ###### 1) IS sens calc ######
-    df_IS_sens = IS_sens_calculator_plotter(df_cps, loop_IS)         #calculation the IS correction
+    df_IS_sens = IS_sens_calculator_plotter(df_cps, IS_meas, name_IS_sens_LR_plot = 'IS_sensLR_plotBEF', 
+    name_IS_sens_MR_plot = 'IS_sensMR_plotBEF')         #calculation the IS correction
+                #I define names of the plot, so the other ones have the default name
     
     
     ###### 2) IS sens correction and new sens calc ##########
-    df_IS_corrected = IS_sens_correction(df_cps, df_IS_sens)       #applying the IS correction
+    df_IS_corrected = IS_sens_correction(df_cps, df_IS_sens, IS_meas)       #applying the IS correction
 
-    df_IS_sens_co = IS_sens_calculator_plotter(df_IS_corrected)    #getting and plotting new IS sens
+    df_IS_sens_co = IS_sens_calculator_plotter(df_IS_corrected, IS_meas)    #getting and plotting new IS sens
     
     
     ##### 3)ICPMS Blk correction #########
-    df_IS_Blks_co = ICPMS_ICPMSBlanks_corrector(df_IS_corrected, ICPblk_columns)
+    df_IS_Blks_co = ICPMS_ICPMSBlanks_corrector(df_IS_corrected, ICPblk_columns)    #correcting for ICPMS blanks
 
 
     ##### 4) Saving and Output #########
+    '''
+    Here I want to save the df after IS correction, and after the Blk correction. Both steps would be nice, for debugging!
     
-    df_IS_Blks_co.to_excel(excel_name)            #saving to excel
+    '''
+    writer = pd.ExcelWriter(excel_name, engine = 'xlsxwriter')      #excel writer
+
+    df_IS_Blks_co.to_excel(writer, sheet_name = 'Blk_correction', startrow = 5)            #saving to excel    
+    df_IS_corrected.to_excel(writer, sheet_name = 'IS_correction', startrow = 5)        #saving to excel in another sheet
+            #Note it does not have perfect format, to optimize it!!!
+            #THe start trow make that Co59 is on row 7, as it should be!
+    df_IS_sens_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 5 + df_IS_corrected.shape[0] + 2)
+                        #putting the new IS sensitivity below the IS corrected data!!
+    
+    writer.save()                                           #critical step, save the excel xD 
+
 
     return df_IS_Blks_co
 
@@ -926,9 +985,9 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
     '''
     TO get the columns, given the relevant elements, I could do what I do
     in the cps/ppb function:
-        I have a np aray with the elemnts to find (loop_IS), and I find them like that:
+        I have a np aray with the elemnts to find (IS_meas), and I find them like that:
             
-    value_to_find = loop_IS[i]
+    value_to_find = IS_meas[i]
     matching_rows = df_cps_ppb_dat.loc[df_cps_ppb_dat.iloc[:,0] == value_to_find]  #give the full row!
     '''
     

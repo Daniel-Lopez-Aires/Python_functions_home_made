@@ -40,16 +40,16 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
             
         1) Clean sheet where only the relevant data(cps, ppb, whatever) is, to load it. 
                 .You can remove ICPMS blanks (std 0, etc). THe Isotopes column in COlumn A in excel
-                THe 1st isotope, Co59(LR) in row 7 in excel). Sample names in column 2
+                THe 1st isotope, Co59(LR) in row 7 in excel). Sample names in row 2 in excel
             
     
-    You could use this to get the raw data (output from ICPMS) or to correct them for the
-    ICPMS dilution factor.     
+    You could use this function to get the raw data (output from ICPMS) or to correct 
+    them for the ICPMS dilution factor.     
 
     Note sometimes some random NaN data from excel can be added. Easy solution, go to the excel sheet,
     and delete those rows/columns. No clue why this happens, but that solves it (:   
                                                                                  
-    Recommended to delete the wash, will only bring problems in analyis xD
+    Recommended to delete the "wash" sample, will only bring problems in analyis xD
 
     
     *Inputs:
@@ -67,6 +67,7 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
         .several df with the cps/%rsd or whatver it is reading. Depending whether you want the debug you may 
             have 1 or 2 outputs. THe isotopes are the index of the df, so the columns are the sample data!
             the column names are the sample names
+            
             
     Note that if you have N outputs, if you want to obtain a variable per output, 
     in the script I should call X variables, like:
@@ -314,7 +315,9 @@ def ICPMS_Df_corrector (df_data, Df):
     that only a portion was measuring. So:
             df_data * Df (Df >=1)
     
-    Its fundamental the labelling is appropiate! Dilutionf actor and df data should have same labels!
+    Its fundamental the labelling is appropiate! The data_exp sheet AND Sample_prep sheet must have
+    same labels as the ICPMS output!!!!! Once the ICPMS resutls are there, change name to both, otherwise
+    will return NaN!!!!
 
     *Inputs:
         .df_data: dataframe containing the cleaned data, to which the correction should be applied. 
@@ -943,8 +946,10 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     '''
     writer = pd.ExcelWriter(excel_name, engine = 'xlsxwriter')      #excel writer
 
-    df_IS_Blks_co.to_excel(writer, sheet_name = 'Blk_correction', startrow = 5)            #saving to excel    
-    df_IS_corrected.to_excel(writer, sheet_name = 'IS_correction', startrow = 5)        #saving to excel in another sheet
+    df_IS_Blks_co.to_excel(writer, sheet_name = 'Blk_correction', startrow = 5, freeze_panes = (6, 1))            
+                #saving to excel. i freeze row 6 and column 1, so I can see all the data in a good way :)
+                
+    df_IS_corrected.to_excel(writer, sheet_name = 'IS_correction', startrow = 5, freeze_panes = (6, 1))        #saving to excel in another sheet
             #Note it does not have perfect format, to optimize it!!!
             #THe start trow make that Co59 is on row 7, as it should be!
     df_IS_sens_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 5 + df_IS_corrected.shape[0] + 2)
@@ -1016,14 +1021,16 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 ########### 1.11) Kd calculaor #############
 #####################################
 
-def ICPMS_Kd_calc (df_data, V_disol, m_bent):
+def ICPMS_KdQe_calc (df_data, df_V_disol, df_m_be):
     '''
-    Function that will compute the distribution constant Kd from the ppb data (should be corrected
-    for the dilutions factors) obtained with ICPMS. 
+    Function that will compute the distribution constant Kd and the adsorption quantity
+    q_e from the ppb data obtained with ICPMS. Note that data must be corrected
+    for the dilutions factors. 
+    
     Based on the blk corrector function.
     
     THe distribution constant Kd is:
-        K_d = (C_0 - C_eq)/C_eq * V/m;
+        K_d = (C_0 - C_eq)/C_eq * V/m = q_e / C_eq;
     being            
         C_0= = initial concentration
         C_eq = concentration at equilibrium
@@ -1032,28 +1039,43 @@ def ICPMS_Kd_calc (df_data, V_disol, m_bent):
 
     The correction is essentially substracting the blank (number 1) to the rest of the samples, but
     involved some operations since we have dataframes. So those will be here. Necessary that the data
-    contain no Div0, ensure in the excel by deleting those! Only for 2 replicates, 
-    but could be generalized for N replicates easily.
+    contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
+    Only for 2 replicates, but could be generalized for N replicates easily.
+    
+    Note this requires a df series with the volume, that you were not measuring in the first exp
+    (up to 8/23)
 
 
     *Inputs:
         .df_data: dataframe containing the data, the full data, with the 2 replicates. Should be Dfs corrected
             Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
             this function!!!!
-        .V_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, or whatever. normally 50ml
-        .m_bent: pd series contaning the mass of bentonite [mg] in the bottle (normally 250mg)
+        .df_V_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, 
+        or whatever. normally 50ml
+        .df_m_bent: pd series contaning the mass of bentonite [mg] in the bottle (normally 250mg)
     
-    *Outputs:
+    *Outputs (in that order):
         .df with the Kd data
+        .df with q_e data
+        
         '''
+    
+    
+    ########## 0) Precalcs ##########
+    '''
+    To avoid the div0 error, which occurs when I have 0 as a values in the df, which I have for all the elements
+    that were not found by ICPMS, I can just put NaN instead, since that will not give the Div0 error when computing Kd
+    '''
+    
+    df_data.replace(0, np.nan, inplace=True)
     
     
     ########### 1) Calcs ###########
     '''
     The operations to perform are:
         1) C_0 - C_eq (>0)
-        2) 1) * 1/C_eq
-        3) 2) * V/m
+        2) 1) * V/m = q_e
+        3) 2)	1/C_eq = Kd
     
     I must treat the 2 experiments are different, I should substract the blank 1 to the 1st emasurements
     and the 2 to the others. Since I ordered it in the right way (1st replicacte 1, then replicate 2, 
@@ -1070,14 +1092,32 @@ def ICPMS_Kd_calc (df_data, V_disol, m_bent):
     from there, and replace negatives values for 0, for a good plot
     '''
     
-    df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] - 1 ) / 2 + 1) ]      #1st replicate
-    df_2 = df_data.iloc[ :, round( ( df_data.shape[1] - 1 ) / 2 + 1) :  ]       #replicate 2
-    
-    
-    #1) C_0 - C_eq = - (C_eq - C0)
+    #So, lets split into the 2 replicates!
     '''
-    I will do C_eq - C0, and then invert that, since its easier. C0 is the blank data, thats why is easier, so I can 
-    copy paste the blank substraction
+    For 2 replicates its easy, for 3 it could be more tricky. Beware! TO create a function you should say
+    the number of replicates and so!
+    '''
+    
+    
+    df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
+    df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
+    
+    df_V_1 = df_V_disol.iloc[ 0: round( ( df_V_disol.shape[0] ) / 2 ) ]      #1st replicate
+    df_V_2 = df_V_disol.iloc[ round( ( df_V_disol.shape[0] ) / 2 ) :  ]       #replicate 2
+            #Achtung! In shape I put 0, because they are series, so 1D!!!!
+    df_m_1 = df_m_be.iloc[ 0: round( ( df_m_be.shape[0] ) / 2 ) ]      #1st replicate
+    df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 2 ) :  ]       #replicate 2    
+    
+    
+    #######Future note: here you see the automatization to N-replicates, doing this with a function.
+        #Then the operations you can done them, grouping the df in an array, and for element in array, perform
+        #them!
+    
+
+    ###### 1) C_0 - C_eq = - (C_eq - C0)
+    '''
+    I will do C_eq - C0, and then invert that, since its easier. C0 is the blank data, 
+    thats why is easier, so I can copy paste the blank substraction
     '''
     dfCeq_C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
     dfCeq_C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
@@ -1089,21 +1129,34 @@ def ICPMS_Kd_calc (df_data, V_disol, m_bent):
     dfC0_Ceq_1 = - dfCeq_C0_1
     dfC0_Ceq_2 = - dfCeq_C0_2
 
-    #2) Apply the 1/C_eq
-    df_C0_Ceq_Ceq_1 = dfC0_Ceq_1.div(df_1.iloc[:,1:])
-            #Not df_1 contains blk (1st column), so I remove it for the operation!    
-    df_C0_Ceq_Ceq_2 = dfC0_Ceq_2.div(df_2.iloc[:,1:])    
+    ######## 2) Apply the V/ m giving q_e (from Df_exp)
+    '''
+    For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
+    '''
+    df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
+                        #new_series = data.drop(data.index[0]) also work, from Chatgpt
+    df_m_2 = df_m_2[1:]
+    df_V_1 = df_V_1[1:]
+    df_V_2 = df_V_2[1:]
     
-    #3) Apply the V/m (from Df_exp))
-    df_Kd_1 =df_C0_Ceq_Ceq_1 * V_disol / m_bent
-    df_Kd_2 =df_C0_Ceq_Ceq_2 * V_disol / m_bent
+    #And now I can operate:
+        
+    df_Qe_1 = dfC0_Ceq_1 * df_V_1 / df_m_1
+    df_Qe_2 = dfC0_Ceq_2 * df_V_2 / df_m_2 
+    
+    ######## 3) Apply 1/C_eq = Kd
+    df_Kd_1 = df_Qe_1.div(df_1.drop( [df_1.iloc[:,0].name], axis = 1) )
+            #Not df_1 contains blk (1st column), so I remove it for the operation!    
+    df_Kd_2 = df_Qe_2.div(df_2.drop( [df_2.iloc[:,0].name], axis = 1) ) 
+
+
     
     '''
     Now that the calcs are done, we just need to add them into a single df
     '''
 
     df_Kd = pd.concat( [df_Kd_1, df_Kd_2], axis = 1)         #mergind the 2 little df ina  huge one
-
+    df_Qe = pd.concat( [df_Qe_1, df_Qe_2 ] , axis = 1)
 
 
     '''
@@ -1112,7 +1165,7 @@ def ICPMS_Kd_calc (df_data, V_disol, m_bent):
     
     
     ########### 2) Return #############
-    return df_Kd             #return
+    return df_Kd, df_Qe             #return
 
 
 
@@ -1301,10 +1354,13 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
             'Na23', 
             'K', 
             'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            'Sr84']      #List of relevant elements. Note T sheet made of Si and Al,
+            'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La133']     
+    
+    #List of relevant elements. Note T sheet made of Si and Al,
                         #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
                         #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                #Previous elements that were deleted: S32,33,34, P31 (impurities)
+                #Previous elements that were deleted: S32,33,34, P31 (impurities). Last elements of that list
+                #are the CL elements!
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
         #Note os.getcwd() give current directory. With that structure we are able
@@ -1614,7 +1670,8 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
             'Na23', 
             'K', 
             'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            'Sr84']      #List of relevant elements. Note T sheet made of Si and Al,
+            'Sr84', 'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']
+                  #List of relevant elements. Note T sheet made of Si and Al,
                         #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
                         #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
                 #Previous elements that were deleted: S32,33,34, P31 (impurities)

@@ -1021,7 +1021,7 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 ########### 1.11) Kd calculaor #############
 #####################################
 
-def ICPMS_KdQe_calc (df_data, df_V_disol, df_m_be):
+def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be):
     '''
     Function that will compute the distribution constant Kd and the adsorption quantity
     q_e from the ppb data obtained with ICPMS. Note that data must be corrected
@@ -1030,29 +1030,33 @@ def ICPMS_KdQe_calc (df_data, df_V_disol, df_m_be):
     Based on the blk corrector function.
     
     THe distribution constant Kd is:
-        K_d = (C_0 - C_eq)/C_eq * V/m = q_e / C_eq;
+        K_d = (C_0 - C_eq)/C_eq * V/m = Q_e / C_eq;
     being            
-        C_0= = initial concentration
-        C_eq = concentration at equilibrium
-        m = mass of dry bentonite
-        V = volume of the solution
+        C_0 = initial concentration [M]
+        C_eq = concentration at equilibrium [M]
+        m = mass of dry bentonite [g]
+        V = volume of the solution [L]
+        Q_e = absorbed quantity in equil [g soluto / g bent]
+        
+    In our case, that we measure C in ppb = ng soluto /g disol, we need to mutiply by g tot / m bent, to
+    achieve the same units in Q_e!!
 
-    The correction is essentially substracting the blank (number 1) to the rest of the samples, but
-    involved some operations since we have dataframes. So those will be here. Necessary that the data
+    Necessary that the data
     contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
     Only for 2 replicates, but could be generalized for N replicates easily.
     
     Note this requires a df series with the volume, that you were not measuring in the first exp
-    (up to 8/23)
+    (up to 8/23). Note ten that units are involved!. If measuring mass ing and volumes in L, Q
 
 
     *Inputs:
         .df_data: dataframe containing the data, the full data, with the 2 replicates. Should be Dfs corrected
             Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
             this function!!!!
-        .df_V_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, 
-        or whatever. normally 50ml
-        .df_m_bent: pd series contaning the mass of bentonite [mg] in the bottle (normally 250mg)
+        .df_VoM_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, 
+        or whatever. normally 50ml OR the total mass of the solution [g]. If df_data in ppb, this must be the total mass
+            so that Q_e is in g/g !
+        .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle (normally 250mg)
     
     *Outputs (in that order):
         .df with the Kd data
@@ -1067,7 +1071,7 @@ def ICPMS_KdQe_calc (df_data, df_V_disol, df_m_be):
     that were not found by ICPMS, I can just put NaN instead, since that will not give the Div0 error when computing Kd
     '''
     
-    df_data.replace(0, np.nan, inplace=True)
+    df_data.replace(0, np.nan, inplace=True)                    #replace 0 values with NaN, to avoid Div0 error!
     
     
     ########### 1) Calcs ###########
@@ -1102,9 +1106,10 @@ def ICPMS_KdQe_calc (df_data, df_V_disol, df_m_be):
     df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
     df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
     
-    df_V_1 = df_V_disol.iloc[ 0: round( ( df_V_disol.shape[0] ) / 2 ) ]      #1st replicate
-    df_V_2 = df_V_disol.iloc[ round( ( df_V_disol.shape[0] ) / 2 ) :  ]       #replicate 2
+    df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 2 ) ]      #1st replicate
+    df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 2 ) :  ]       #replicate 2
             #Achtung! In shape I put 0, because they are series, so 1D!!!!
+            #VoM = Volume or Mass!
     df_m_1 = df_m_be.iloc[ 0: round( ( df_m_be.shape[0] ) / 2 ) ]      #1st replicate
     df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 2 ) :  ]       #replicate 2    
     
@@ -1136,20 +1141,19 @@ def ICPMS_KdQe_calc (df_data, df_V_disol, df_m_be):
     df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
                         #new_series = data.drop(data.index[0]) also work, from Chatgpt
     df_m_2 = df_m_2[1:]
-    df_V_1 = df_V_1[1:]
-    df_V_2 = df_V_2[1:]
+    df_VoM_1 = df_VoM_1[1:]
+    df_VoM_2 = df_VoM_2[1:]
     
     #And now I can operate:
         
-    df_Qe_1 = dfC0_Ceq_1 * df_V_1 / df_m_1
-    df_Qe_2 = dfC0_Ceq_2 * df_V_2 / df_m_2 
+    df_Qe_1 = dfC0_Ceq_1 * df_VoM_1 / df_m_1
+    df_Qe_2 = dfC0_Ceq_2 * df_VoM_2 / df_m_2 
     
     ######## 3) Apply 1/C_eq = Kd
-    df_Kd_1 = df_Qe_1.div(df_1.drop( [df_1.iloc[:,0].name], axis = 1) )
-            #Not df_1 contains blk (1st column), so I remove it for the operation!    
-    df_Kd_2 = df_Qe_2.div(df_2.drop( [df_2.iloc[:,0].name], axis = 1) ) 
-
-
+    df_Kd_1 = df_Qe_1 / df_1.drop( [df_1.iloc[:,0].name], axis = 1)   
+                        #Not df_1 contains blk (1st column), so I remove it for the operation!    
+                        #This also works: df_Qe_1.div(df_1.drop( [df_1.iloc[:,0].name], axis = 1) )
+    df_Kd_2 = df_Qe_2 / df_2.drop( [df_2.iloc[:,0].name], axis = 1)
     
     '''
     Now that the calcs are done, we just need to add them into a single df
@@ -1157,7 +1161,6 @@ def ICPMS_KdQe_calc (df_data, df_V_disol, df_m_be):
 
     df_Kd = pd.concat( [df_Kd_1, df_Kd_2], axis = 1)         #mergind the 2 little df ina  huge one
     df_Qe = pd.concat( [df_Qe_1, df_Qe_2 ] , axis = 1)
-
 
     '''
     THAT NEEDS TO BE CHECKED!!!! Essentially if the numbers are okay, but the calcs works!
@@ -1169,13 +1172,29 @@ def ICPMS_KdQe_calc (df_data, df_V_disol, df_m_be):
 
 
 
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+####################### PLOTTERS ####################################
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 
 #%%######################################
 ########### 1.12) ICPMS Bar plotter #############
 #####################################
 
-def ICPMS_Barplotter (df_cps, df_rstd, folder_name = 'Bar_plots'):
+def ICPMS_Barplotter (df_cps, df_rstd, folder_name = 'Bar_plots',
+                      pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
+                      Elem_rel = ['Si28', 'Si29', 'Si30',
+                              'Al27',
+                              'Mg24', 'Mg25', 'Mg26',
+                              'Mn55',
+                              'Fe56', 'Fe57',
+                              'Ca42', 'Ca43', 'Ca44', 
+                              'Na23', 
+                              'K', 
+                              'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                              'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
     '''
     Function that will do bar plots of the raw data from the ICPMS, the cps and the rstd. By raw
     I mean withoutany corrections/calibrations (neither the dilution factor correction). This is a
@@ -1185,6 +1204,26 @@ def ICPMS_Barplotter (df_cps, df_rstd, folder_name = 'Bar_plots'):
         .df_cps, df_rstd: dataframes containing the cps and the relative standard deviation. Those are
         outputs for the Read_ICPMS_excel function. Note the Isotopes column are the inde!
         .folder_name: folder name. Default value: 'Bar_plots'
+        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
+            Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        
+        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
+            in a specific folder. Default value: 
+                ['Si28', 'Si29', 'Si30',
+                        'Al27',
+                        'Mg24', 'Mg25', 'Mg26',
+                        'Mn55',
+                        'Fe56', 'Fe57',
+                        'Ca42', 'Ca43', 'Ca44', 
+                        'Na23', 
+                        'K', 
+                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
+                #List of relevant elements. Note T sheet made of Si and Al,
+                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
+                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
         
     *Outputs:
         .Plots (saving them) of the raw data
@@ -1200,17 +1239,6 @@ def ICPMS_Barplotter (df_cps, df_rstd, folder_name = 'Bar_plots'):
     First the folder to store the plots will be created. IN the main folder a subfolder
     with the relevant elements, to be given, will be created
     '''
-    Elem_rel = ['Si28', 'Si29', 'Si30',
-            'Al27',
-            'Mg24', 'Mg25', 'Mg26',
-            'Mn55',
-            'Fe56', 'Fe57',
-            'Ca42', 'Ca43', 'Ca44', 
-            'Na23', 
-            'K', 
-            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            'P31', 
-            'S32', 'S33', 'S34']      #List of relevant elements
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
         #Note os.getcwd() give current directory. With that structure we are able
@@ -1260,7 +1288,7 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
                     #
                     ########### Bar plot ###########################
         plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-        plt.title("Concentration of " + df_cps.index[i][:-4], fontsize=22, wrap=True)           #title
+        plt.title(pre_title_plt + df_cps.index[i][:-4], fontsize=22, wrap=True)           #title
         a = plt.bar(X_axis - w/2, df_cps.loc[df_cps.index[i]], width = w, edgecolor="black", 
             label = "I ", align='center') 
             #-2 not to plot the blank!! Remove it to plot it!
@@ -1312,7 +1340,19 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
 ########### 1.12) ICPMS plotter #############
 #####################################
 
-def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
+def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', 
+                   pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
+                   Elem_rel =['Si28', 'Si29', 'Si30',
+                           'Al27',
+                           'Mg24', 'Mg25', 'Mg26',
+                           'Mn55',
+                           'Fe56', 'Fe57',
+                           'Ca42', 'Ca43', 'Ca44', 
+                           'Na23', 
+                           'K', 
+                           'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                           'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'], 
+                   plot_everything = False ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
@@ -1330,13 +1370,35 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
             default value: 'Plots'
         . plot_everything: string defining if you want to plot all the elements or only the
             relevant ones. Default value: False (only plot relevants)
-        
+        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
+            Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
+            in a specific folder. Default value: 
+                ['Si28', 'Si29', 'Si30',
+                        'Al27',
+                        'Mg24', 'Mg25', 'Mg26',
+                        'Mn55',
+                        'Fe56', 'Fe57',
+                        'Ca42', 'Ca43', 'Ca44', 
+                        'Na23', 
+                        'K', 
+                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
+                #List of relevant elements. Note T sheet made of Si and Al,
+                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
+                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+                                    
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
     
     
     ### TO DO: ####
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	.Implement error plotting (in an errorbar pyplot)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
     '''
     
     
@@ -1345,22 +1407,6 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
     First the folder to store the plots will be created. IN the main folder a subfolder
     with the relevant elements, to be given, will be created
     '''
-    Elem_rel = ['Si28', 'Si29', 'Si30',
-            'Al27',
-            'Mg24', 'Mg25', 'Mg26',
-            'Mn55',
-            'Fe56', 'Fe57',
-            'Ca42', 'Ca43', 'Ca44', 
-            'Na23', 
-            'K', 
-            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La133']     
-    
-    #List of relevant elements. Note T sheet made of Si and Al,
-                        #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                        #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                #Previous elements that were deleted: S32,33,34, P31 (impurities). Last elements of that list
-                #are the CL elements!
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
         #Note os.getcwd() give current directory. With that structure we are able
@@ -1397,8 +1443,8 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
         if index[:-4] in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
-            plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-            plt.title("Concentration of " + index[:-4], fontsize=22, wrap=True)           #title
+            plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+            plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)           #title
             plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
                      MarkerSize = 5, label = 'Repl_1') 
                     #+1 needed since the df contain a row with the column names!
@@ -1411,13 +1457,13 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
             plt.grid(True)
             plt.legend()
             plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        'Conc_' + index[:-4] + '.png', format='png', bbox_inches='tight')
+                        pre_save_name + '_' + index[:-4] + '.png', format='png', bbox_inches='tight')
             #
         else:        #if the element is not relevant
-            if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+            if plot_everything == True :        #if you want to plot all the elements (may be desired?)
                 #    
-                plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-                plt.title("Concentration of " + index[:-4], fontsize=22, wrap=True)     #title
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
                 plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
                          MarkerSize = 5, label = 'Repl_1') 
                 plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
@@ -1429,7 +1475,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
                 plt.grid(True)
                 plt.legend()            
                 plt.savefig(folder_name +'/' +  
-                        'Conc_' + index[:-4] +'.png', format='png', bbox_inches='tight')
+                        pre_save_name + '_' + index[:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
         
         
@@ -1460,7 +1506,18 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_ever
 ########### 1.13) ICPMS plotter 3 bentonites #############
 #####################################
 
-def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
+def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False,
+                    pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
+                    Elem_rel = ['Si28', 'Si29', 'Si30',
+                            'Al27',
+                            'Mg24', 'Mg25', 'Mg26',
+                            'Mn55',
+                            'Fe56', 'Fe57',
+                            'Ca42', 'Ca43', 'Ca44', 
+                            'Na23', 
+                            'K', 
+                            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                            'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, for the 3 bentonites. This assume we have 2 replicates, 1 series after the other.
@@ -1478,17 +1535,34 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
             default value: 'Plots'
         . plot_everything: string defining if you want to plot all the elements or only the
             relevant ones. Default value: False (only plot relevants)
-        
+        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
+            Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
+            in a specific folder. Default value: 
+                ['Si28', 'Si29', 'Si30',
+                        'Al27',
+                        'Mg24', 'Mg25', 'Mg26',
+                        'Mn55',
+                        'Fe56', 'Fe57',
+                        'Ca42', 'Ca43', 'Ca44', 
+                        'Na23', 
+                        'K', 
+                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
+                #List of relevant elements. Note T sheet made of Si and Al,
+                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
+                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+                                    
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
     
     
     ### TO DO: ####
-    .Adapt to isotope in index, not first column!!!!!!!!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    THIS SHOULD NOT WORK Xd
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	.Implement error plotting (in an errorbar pyplot)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     '''
     
     
@@ -1497,19 +1571,6 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
     First the folder to store the plots will be created. IN the main folder a subfolder
     with the relevant elements, to be given, will be created
     '''
-    Elem_rel = ['Si28', 'Si29', 'Si30',
-            'Al27',
-            'Mg24', 'Mg25', 'Mg26',
-            'Mn55',
-            'Fe56', 'Fe57',
-            'Ca42', 'Ca43', 'Ca44', 
-            'Na23', 
-            'K', 
-            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            'Sr84']      #List of relevant elements. Note T sheet made of Si and Al,
-                        #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                        #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                #Previous elements that were deleted: S32,33,34, P31 (impurities)
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
         #Note os.getcwd() give current directory. With that structure we are able
@@ -1538,16 +1599,16 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
     
     ###Plot
 
-    for i in list( range(df_cps['Sard'].shape[0] ) ):     #Loop thorugh all rows
+    for i in list( range(df_cps['Sard'].shape[0] ) ):       #Loop thorugh all rows
 		   # 4 because of the way the df is created (and hence the excel tabelle)
         #
         
         #Saving in the folder
-        if df_cps['Sard'].index[i][:-4] in Elem_rel:  #if the element is relevant
+        if df_cps['Sard'].index[i][:-4] in Elem_rel:        #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-            plt.title("Concentration of " + df_cps['Sard'].index[i][:-4], fontsize=22, wrap=True)           #title
+            plt.title(pre_title_plt + df_cps['Sard'].index[i][:-4], fontsize=22, wrap=True)           #title
             #PLot bentonite 1, Sard
             plt.plot(x['Sard'][:int(len(x['Sard'])/2)], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][:int(len(x['Sard'])/2)], 'o--', color = Bent_color['Sard'],
                      MarkerSize = 5, label = 'Repl_1 S') 
@@ -1573,13 +1634,13 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
             plt.grid(True)
             plt.legend()
             plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        'Conc_' + df_cps['Sard'].index[i][:-4]+ '.png', format='png', bbox_inches='tight')
+                        pre_save_name + '_'  + df_cps['Sard'].index[i][:-4]+ '.png', format='png', bbox_inches='tight')
             #
         else:        #if the element is not relevant
             if plot_everything == True :     #if you want to plot all the elements (may be desired?)
                 #    
                 plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-                plt.title("Concentration of " + df_cps['Sard']['Isotopes'][i], fontsize=22, wrap=True)           #title
+                plt.title(pre_title_plt + df_cps['Sard']['Isotopes'][i], fontsize=22, wrap=True)           #title
                 #PLot bentonite 1, Sard
                 plt.plot(x['Sard'][:int(len(x['Sard'])/2)], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][:int(len(x['Sard'])/2)], 'o--', color = Bent_color['Sard'],
                      MarkerSize = 5, label = 'Repl_1 S') 
@@ -1605,7 +1666,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
                 plt.grid(True)
                 plt.legend()
                 plt.savefig(folder_name +'/' +  
-                        'Conc_' + df_cps['Sard'].index[i][:-4] +'.png', format='png', bbox_inches='tight')   #To save plot in folder
+                        pre_save_name + '_' + df_cps['Sard'].index[i][:-4] +'.png', format='png', bbox_inches='tight')   #To save plot in folder
         
         
         plt.close()             #to clsoe the plot not to consume too much resources
@@ -1628,7 +1689,18 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
 ########### 1.14) ICPMS plotter blank appart #############
 #####################################
 
-def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False ):
+def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False, 
+                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
+                       Elem_rel = ['Si28', 'Si29', 'Si30',
+                               'Al27',
+                               'Mg24', 'Mg25', 'Mg26',
+                               'Mn55',
+                               'Fe56', 'Fe57',
+                               'Ca42', 'Ca43', 'Ca44', 
+                               'Na23', 
+                               'K', 
+                               'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                               'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
@@ -1645,7 +1717,26 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
             default value: 'Plots'
         . plot_everything: string defining if you want to plot all the elements or only the
             relevant ones. Default value: False (only plot relevants)
-        
+        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
+                Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
+            in a specific folder. Default value: 
+                ['Si28', 'Si29', 'Si30',
+                        'Al27',
+                        'Mg24', 'Mg25', 'Mg26',
+                        'Mn55',
+                        'Fe56', 'Fe57',
+                        'Ca42', 'Ca43', 'Ca44', 
+                        'Na23', 
+                        'K', 
+                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
+                #List of relevant elements. Note T sheet made of Si and Al,
+                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
+                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+                                    
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
     
@@ -1661,20 +1752,6 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     First the folder to store the plots will be created. IN the main folder a subfolder
     with the relevant elements, to be given, will be created
     '''
-    Elem_rel = ['Si28', 'Si29', 'Si30',
-            'Al27',
-            'Mg24', 'Mg25', 'Mg26',
-            'Mn55',
-            'Fe56', 'Fe57',
-            'Ca42', 'Ca43', 'Ca44', 
-            'Na23', 
-            'K', 
-            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            'Sr84', 'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']
-                  #List of relevant elements. Note T sheet made of Si and Al,
-                        #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                        #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                #Previous elements that were deleted: S32,33,34, P31 (impurities)
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
         #Note os.getcwd() give current directory. With that structure we are able
@@ -1707,24 +1784,19 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
         #
         
         #Saving in the folder
-        if index[:-4] in Elem_rel:  #if the element is relevant
+        if index[:-4] in Elem_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
-            plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-            plt.title("Concentration of " + index[:-4], fontsize=22, wrap=True)     #title
+            plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+            plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
             plt.plot(x[:int(len(x)/2) ], row[:int(len(x)/2)], 'bo--', 
                      MarkerSize = 5, label = 'Repl_1') 
-              #+1 needed since the df contain a row with the column names! 
-              #blank excluded!
             plt.hlines(row[0], min(x[:int(len(x)/2)]), max(x[:int(len(x)/2)] ), label = 'Blk_1' )
                     #row[0] is 1_1, 1st sample of 1st replicate!
             #Now replicate 2
             plt.plot(x[int(len(x)/2):], row[int(len(x)/2 ):], 'ro--', 
                      MarkerSize = 5, label = 'Repl_2') 
             
-              #+1 needed since the df contain a row with the column names! 
-              #blank excluded!
-              #x -1 because x do not have isotopes column!!
             plt.hlines(row[int(len(x)/2)], min(x[int(len(x)/2):] ), max(x[int(len(x)/2):] ), label = 'Blk_2', colors = 'r' )
             plt.ylabel(y_label, fontsize=14)              #ylabel
             plt.xlabel(x_label, fontsize = 14)
@@ -1733,26 +1805,25 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
             plt.grid(True)
             plt.legend()
             plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        'Conc_' + index[:-4] + '.png', format='png', bbox_inches='tight')
+                        pre_save_name + '_'  + index[:-4] + '.png', format='png', bbox_inches='tight')
             #
         else:        #if the element is not relevant
             if plot_everything == True :     #if you want to plot all the elements (may be desired?)
                 #    
-                plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-                plt.title("Concentration of " + index[:-4], fontsize=22, wrap=True)     #title
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
                 plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
                          MarkerSize = 5, label = 'Repl_1') 
-                    #+1 needed since the df contain a row with the column names!
                 plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
                          MarkerSize = 5, label = 'Repl_2') 
-                plt.ylabel(y_label, fontsize=14)              #ylabel
+                plt.ylabel(y_label, fontsize=14)                #ylabel
                 plt.xlabel(x_label, fontsize = 14)
                 plt.tick_params(axis='both', labelsize=14)              #size of axis
                 #plt.yscale('log') 
                 plt.grid(True)
                 plt.legend()            
                 plt.savefig(folder_name +'/' +  
-                        'Conc_' + index[:-4] +'.png', format='png', bbox_inches='tight')
+                        pre_save_name + '_'  + index[:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
         
         

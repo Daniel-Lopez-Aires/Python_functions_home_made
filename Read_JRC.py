@@ -352,7 +352,7 @@ def ICPMS_Df_corrector (df_data, Df):
 ########### 1.5) ICPMS Sample blank substraction #############
 #####################################
 
-def ICPMS_Sample_Blk_corrector (df_data):
+def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
     '''
     Function that will apply the sample blank correction to the other samples in the ICPMS results df.
     This version is the 2 replicates version. Remember we already applied in the excel the IS correction
@@ -371,6 +371,7 @@ def ICPMS_Sample_Blk_corrector (df_data):
         output fromt he reader function. You could apply this before or after Df corrections. Format:
             isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
             this function!!!!
+        .Nrepl: number of replicates. Default value: 2 (2 replicates). Can also be 3
 
     *Outputs:
         .df with the correction factor (Df) applied
@@ -394,37 +395,54 @@ def ICPMS_Sample_Blk_corrector (df_data):
     from there, and replace negatives values for 0, for a good plot
     '''
 
-    df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
-    df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
+    if Nrepl ==2:               #2 replicates, standard case
+        df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
+        df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
     
-    #The next step is blank substraction
-    df_1_blk = df_1.subtract(df_1.iloc[:,0], axis = 0 ) 
+        #The next step is blank substraction
+        df_1_blk = df_1.subtract(df_1.iloc[:,0], axis = 0 ) 
                 #0 since 1st columns is the blank  
-    df_1_blk.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)     #removing the value I use to substract
+        df_1_blk.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)     #removing the value I use to substract
     
     #Finally, for plotting purposes, we will replace negative values with 0:
-    df_1_blk[df_1_blk < 0] = 0          #substituyin negative values with 0! 
+        df_1_blk[df_1_blk < 0] = 0          #substituyin negative values with 0! 
                                     #This needs that no Div0 in excel!    
-                                    
+    #And now we do the same for replicate 2   
     
-    '''
-    And we just need to do the same for df_2. With the caution than in the substraction, now there
-    is no isotopes column:
-    '''
-    
-    df_2_blk = df_2.subtract(df_2.iloc[:,0],  axis = 0 )        #substraction
-    df_2_blk.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)     #removing the value I use to substract
-    df_2_blk[df_2_blk < 0] = 0      #replcaing negative values with 0
+        df_2_blk = df_2.subtract(df_2.iloc[:,0],  axis = 0 )        #substraction
+        df_2_blk.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)     #removing the value I use to substract
+        df_2_blk[df_2_blk < 0] = 0      #replcaing negative values with 0
             #Those 3 lines would be needed for a loop, so sohuld be easy, if needed
     
-    '''
-    Now that the calcs are done, we just need to add them into a single df
-    '''
+    #Finally, lets store it
 
-    df_blk = pd.concat( [df_1_blk, df_2_blk], axis = 1)         #mergind the 2 little df ina  huge one
+        df_blk = pd.concat( [df_1_blk, df_2_blk], axis = 1)         #mergind the 2 little df ina  huge one
     
+    elif Nrepl == 3:         #3 replicates case
+        #Copy paste the before code, now for 3 replicates
+        df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
+        df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
+        df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
 
+        df_1_blk = df_1.subtract(df_1.iloc[:,0], axis = 0 ) 
+        df_2_blk = df_2.subtract(df_2.iloc[:,0], axis = 0 ) 
+        df_3_blk = df_3.subtract(df_3.iloc[:,0], axis = 0 ) 
 
+        df_1_blk.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)
+        df_2_blk.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
+        df_3_blk.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)
+        
+        df_1_blk[df_1_blk < 0] = 0                      #replcaing negative values with 0
+        df_2_blk[df_2_blk < 0] = 0     
+        df_3_blk[df_3_blk < 0] = 0      
+        
+        df_blk = pd.concat( [df_1_blk, df_2_blk, df_3_blk], axis = 1)         #mergind the 2 little df ina  huge one
+    
+    else:                   #Otherwise, error
+        print('Wrong number of replicates Nrepl!, nothing has been done!')
+        df_blk = 0                      #Error case, not doing anything
+    
+    
     ########### 2) Return #############
     return df_blk             #return
 
@@ -1030,7 +1048,7 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 ########### 1.11) Kd calculaor #############
 #####################################
 
-def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be):
+def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
     '''
     Function that will compute the distribution constant Kd and the adsorption quantity
     q_e from the ppb data obtained with ICPMS. Note that data must be corrected
@@ -1066,6 +1084,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be):
         or whatever. normally 50ml OR the total mass of the solution [g]. If df_data in ppb, this must be the total mass
             so that Q_e is in g/g !
         .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle (normally 250mg)
+        .Nrepl: number of replicates. Default value = 2. 3 also accepted
     
     *Outputs (in that order):
         .df with the Kd data
@@ -1111,71 +1130,119 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be):
     the number of replicates and so!
     '''
     
+    if Nrepl == 2:          #Standard case, 2 replicates
+        df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
+        df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
     
-    df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
-    df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
-    
-    df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 2 ) ]      #1st replicate
-    df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 2 ) :  ]       #replicate 2
+        df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 2 ) ]      #1st replicate
+        df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 2 ) :  ]       #replicate 2
             #Achtung! In shape I put 0, because they are series, so 1D!!!!
             #VoM = Volume or Mass!
-    df_m_1 = df_m_be.iloc[ 0: round( ( df_m_be.shape[0] ) / 2 ) ]      #1st replicate
-    df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 2 ) :  ]       #replicate 2    
-    
+        df_m_1 = df_m_be.iloc[ 0: round( ( df_m_be.shape[0] ) / 2 ) ]      #1st replicat
+        df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 2 ) :  ]       #replicate 2    
     
     #######Future note: here you see the automatization to N-replicates, doing this with a function.
         #Then the operations you can done them, grouping the df in an array, and for element in array, perform
         #them!
     
-
     ###### 1) C_0 - C_eq = - (C_eq - C0)
-    '''
-    I will do C_eq - C0, and then invert that, since its easier. C0 is the blank data, 
-    thats why is easier, so I can copy paste the blank substraction
-    '''
-    dfCeq_C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
-    dfCeq_C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-    #
-    dfCeq_C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )               #Replicate 2
-    dfCeq_C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
+    #I will do C_eq - C0, and then invert that, since its easier. C0 is the blank data, 
+    #thats why is easier, so I can copy paste the blank substraction
     
-    #Now lets invert the sign:
-    dfC0_Ceq_1 = - dfCeq_C0_1
-    dfC0_Ceq_2 = - dfCeq_C0_2
+        dfCeq_C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
+        dfCeq_C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        #
+        dfCeq_C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )               #Replicate 2
+        dfCeq_C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
+    
+        #Now lets invert the sign:
+        dfC0_Ceq_1 = - dfCeq_C0_1
+        dfC0_Ceq_2 = - dfCeq_C0_2
 
     ######## 2) Apply the V/ m giving q_e (from Df_exp)
-    '''
-    For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
-    '''
-    df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
+    #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
+
+        df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
                         #new_series = data.drop(data.index[0]) also work, from Chatgpt
-    df_m_2 = df_m_2[1:]
-    df_VoM_1 = df_VoM_1[1:]
-    df_VoM_2 = df_VoM_2[1:]
+        df_m_2 = df_m_2[1:]
+        df_VoM_1 = df_VoM_1[1:]
+        df_VoM_2 = df_VoM_2[1:]
     
     #And now I can operate:
         
-    df_Qe_1 = dfC0_Ceq_1 * df_VoM_1 / df_m_1
-    df_Qe_2 = dfC0_Ceq_2 * df_VoM_2 / df_m_2 
+        df_Qe_1 = dfC0_Ceq_1 * df_VoM_1 / df_m_1
+        df_Qe_2 = dfC0_Ceq_2 * df_VoM_2 / df_m_2 
     
     ######## 3) Apply 1/C_eq = Kd
-    df_Kd_1 = df_Qe_1 / df_1.drop( [df_1.iloc[:,0].name], axis = 1)   
+        df_Kd_1 = df_Qe_1 / df_1.drop( [df_1.iloc[:,0].name], axis = 1)   
                         #Not df_1 contains blk (1st column), so I remove it for the operation!    
                         #This also works: df_Qe_1.div(df_1.drop( [df_1.iloc[:,0].name], axis = 1) )
-    df_Kd_2 = df_Qe_2 / df_2.drop( [df_2.iloc[:,0].name], axis = 1)
+        df_Kd_2 = df_Qe_2 / df_2.drop( [df_2.iloc[:,0].name], axis = 1)
     
-    '''
-    Now that the calcs are done, we just need to add them into a single df
-    '''
+    #Now lets add them together
 
-    df_Kd = pd.concat( [df_Kd_1, df_Kd_2], axis = 1)         #mergind the 2 little df ina  huge one
-    df_Qe = pd.concat( [df_Qe_1, df_Qe_2 ] , axis = 1)
+        df_Kd = pd.concat( [df_Kd_1, df_Kd_2], axis = 1)         #mergind the 2 little df ina  huge one
+        df_Qe = pd.concat( [df_Qe_1, df_Qe_2 ] , axis = 1)
 
-    '''
-    THAT NEEDS TO BE CHECKED!!!! Essentially if the numbers are okay, but the calcs works!
-    '''
+    elif Nrepl == 3:            #3 replicates
+    #Gathering the replicates sepparately    
+        df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
+        df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
+        df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
+        
+        df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 3 ) ]      #1st replicate
+        df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 3 ): 2* round( ( df_VoM_disol.shape[0] ) / 3 ) ]      
+        df_VoM_3 = df_VoM_disol.iloc[ 2 *round( ( df_VoM_disol.shape[0] ) / 3 ) : ]      #3rd replicate
+        
+        df_m_1 = df_m_be.iloc[ : round( ( df_m_be.shape[0] ) / 3 ) ]      #1st replicat
+        df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 3 ) : 2* round( ( df_m_be.shape[0] ) / 3 )]      #2nd replicat
+        df_m_3 = df_m_be.iloc[ 2 *round( ( df_m_be.shape[0] ) / 3 ) : ]      #3rd replicat
     
+        #1) 
+        dfCeq_C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
+        dfCeq_C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )       #doing the substraction        
+        dfCeq_C0_3 = df_3.subtract(df_3.iloc[:,0], axis = 0 )       #doing the substraction
+        
+        dfCeq_C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        dfCeq_C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        dfCeq_C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column        
     
+        dfC0_Ceq_1 = - dfCeq_C0_1
+        dfC0_Ceq_2 = - dfCeq_C0_2
+        dfC0_Ceq_3 = - dfCeq_C0_3
+    
+    ######## 2) Apply the V/ m giving q_e (from Df_exp)
+    #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
+
+        df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
+        df_m_2 = df_m_2[1:]
+        df_m_3 = df_m_3[1:]
+        df_VoM_1 = df_VoM_1[1:]
+        df_VoM_2 = df_VoM_2[1:]
+        df_VoM_3 = df_VoM_3[1:]
+        
+    #And now I can operate:
+        
+        df_Qe_1 = dfC0_Ceq_1 * df_VoM_1 / df_m_1
+        df_Qe_2 = dfC0_Ceq_2 * df_VoM_2 / df_m_2 
+        df_Qe_3 = dfC0_Ceq_3 * df_VoM_3 / df_m_3
+        
+        
+    ######## 3) Apply 1/C_eq = Kd
+        df_Kd_1 = df_Qe_1 / df_1.drop( [df_1.iloc[:,0].name], axis = 1)   
+        df_Kd_2 = df_Qe_2 / df_2.drop( [df_2.iloc[:,0].name], axis = 1)
+        df_Kd_3 = df_Qe_3 / df_3.drop( [df_3.iloc[:,0].name], axis = 1)
+    
+    #Now lets add them together
+        df_Kd = pd.concat( [df_Kd_1, df_Kd_2, df_Kd_3], axis = 1)         
+        df_Qe = pd.concat( [df_Qe_1, df_Qe_2, df_Qe_3 ] , axis = 1)  
+    
+    else:               #Error case
+        print('Erro case, wrong Nrepl introduced!')    
+        df_Kd = 0
+        df_Qe =0
+                
+        
     ########### 2) Return #############
     return df_Kd, df_Qe             #return
 
@@ -1853,9 +1920,11 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     
         
     
-    
-    
-    
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@ End ICPMS shit xD @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@q    
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
     
     
     

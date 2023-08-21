@@ -182,7 +182,6 @@ def ICPMS_std_calculator (df_cps, df_rsd):
     ############ To Do ############
         Not tested, but was copied literally from a function that worked (the reader was bigger), 
         so it should work, right? not even changed the names xD
-    	.Can I remove the  [:,:] ?
     
     ##################
             
@@ -205,7 +204,7 @@ def ICPMS_std_calculator (df_cps, df_rsd):
     and then apply that
     
     '''
-    df_std= pd.DataFrame(df_cps.iloc[:,:] * df_rsd.iloc[:,:].values / 100, 
+    df_std= pd.DataFrame(df_cps * df_rsd / 100, 
                   columns=df_cps.columns, index=df_cps.index)   #std df    
     
     '''
@@ -303,7 +302,7 @@ def ICPMS_Df_corrector (df_data, Df):
     '''
     Function that will apply the correction for the dilution factor to the ICPMS results.
     Note There is 2 dilution factors involved:
-            1) Dlution actor for the ICPMS sample preparation (simeq 50). In this case you add 
+            1) Dlution factor for the ICPMS sample preparation (simeq 50). In this case you add 
                                     .8.8mL HNO3 1M
                                     .1mL IS (2IS; 0.5mL each)
                                     .0.2mL sample
@@ -353,7 +352,7 @@ def ICPMS_Df_corrector (df_data, Df):
 ########### 1.5) ICPMS Sample blank substraction #############
 #####################################
 
-def ICPMS_Blk_corrector (df_data):
+def ICPMS_Sample_Blk_corrector (df_data):
     '''
     Function that will apply the sample blank correction to the other samples in the ICPMS results df.
     This version is the 2 replicates version. Remember we already applied in the excel the IS correction
@@ -394,8 +393,9 @@ def ICPMS_Blk_corrector (df_data):
     I shuold then remove those columns
     from there, and replace negatives values for 0, for a good plot
     '''
-    df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] - 1 ) / 2 + 1) ]      #1st replicate
-    df_2 = df_data.iloc[ :, round( ( df_data.shape[1] - 1 ) / 2 + 1) :  ]       #replicate 2
+
+    df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
+    df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
     
     #The next step is blank substraction
     df_1_blk = df_1.subtract(df_1.iloc[:,0], axis = 0 ) 
@@ -490,6 +490,8 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
                                name_IS_sens_LR_plot = 'IS_sensLR_plot', 
                                name_IS_sens_MR_plot = 'IS_sensMR_plot'):
     '''
+    Function part of the ICPMS Data processing!
+    
     Function th<t will compute the IS sens (cps/ppb) for a df containing the cps and ppb. The format is like
     Stefaans excel, his first sheet. It IS needed the ppb table below the cps data. How below? Do not care, I
     find the data using locate functions ;)
@@ -630,6 +632,8 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
 def IS_sens_correction(df_raw, df_IS_sens, 
                        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']):
     '''
+    PART OF THE ICPMS Data processing!
+    
     Function that will apply the IS sens correction to the cps data, from the raw ICPMS data.
     This is aprt of the ICPMS data analysis. You need to correct for IS sens, then apply ICPMS
     blanks, and then calibrate with 2+4 and 3+5 IS.
@@ -791,7 +795,10 @@ def IS_sens_correction(df_raw, df_IS_sens,
 #####################################
 
 def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
+    
     '''
+    PART OF THE ICPMS Data processing!
+    
     Function to be run after the IS sensitivity correction, to apply the next step in the ICPMS data
     analysis process, the ICPMS blanks correction. 
     
@@ -894,6 +901,8 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
                        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
                        excel_name = 'df_IS_Blks_corr.xlsx'):
     '''
+    SUITE of ICPMS Data Processing!
+    
     Function that will apply all the steps for the automatization of the ICPMS data processing:
         1) Read cps amd ppb data
         2) Compute sens = cps/ppb and plot it

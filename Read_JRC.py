@@ -916,18 +916,22 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
 #####################################
 
 def ICPMS_data_process(df_cps, ICPblk_columns, 
+                       name_plot_LR_bef = 'IS_sensLR_plotBEF', name_plot_MR_bef = 'IS_sensMR_plotBEF',
+                       name_plot_LR_aft = 'IS_sensLR_plot', name_plot_MR_aft = 'IS_sensMR_plot',
                        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
                        excel_name = 'df_IS_Blks_corr.xlsx'):
     '''
     SUITE of ICPMS Data Processing!
     
     Function that will apply all the steps for the automatization of the ICPMS data processing:
-        1) Read cps amd ppb data
+        1) Read cps amd ppb data 
         2) Compute sens = cps/ppb and plot it
         3) Apply the sensitivity correction
         4) plot the new sensitivtiy plots (should be straight lines)
         5) Substract ICPMS blanks
         6) Save that data (to calibrate after, by hand, for the moment..)
+    
+    To do 2), its needed that the ppb data table begins with IS conc [ppb]!
     
     *Inputs:
         .df_cps: df containing the cps data and also the ppb data, in the classic format. Must not contain the wash, will give 
@@ -936,8 +940,9 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
         .IS_meas: array containing in a list the IS and its resolution, like how they appear in the isotopes column. Default value:
                 ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
             That mean those isotopes were measured. If Ho165(MR) also measured, just included it, and fine ;)
-        .ICPblk_columns: np array containing the columns numbers where the ICPMS blanks are. Numbers from
+        .ICPblk_columns: np array containing the columns numbers where the ICPMS blanks are (blank and std 0ppt). Numbers from
             the excel (A = 0, B = 1, etc)
+        .name_plot_L(M)R_bef(aft): name of the plots of the IS sensitivity before and after doing the IS correction. 
         .excel_name: string that will be the name of the file containing the output. Default: 'df_IS_Blks_corr.xlsx'
         
     *Output:
@@ -946,20 +951,20 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     
     To Do:
             .Automatize more stuff? 
-            .Cope with strange cases as they appear, like not all the IS used, etc In T-BIC-CL-KIN appears Th232MR, not taken care!
             .Optimize excel saving!
     '''
     
     ###### 1) IS sens calc ######
-    df_IS_sens = IS_sens_calculator_plotter(df_cps, IS_meas, name_IS_sens_LR_plot = 'IS_sensLR_plotBEF', 
-    name_IS_sens_MR_plot = 'IS_sensMR_plotBEF')         #calculation the IS correction
+    df_IS_sens = IS_sens_calculator_plotter(df_cps, IS_meas, name_IS_sens_LR_plot = name_plot_LR_bef, 
+    name_IS_sens_MR_plot = name_plot_MR_bef)         #calculation the IS correction
                 #I define names of the plot, so the other ones have the default name
     
     
     ###### 2) IS sens correction and new sens calc ##########
     df_IS_corrected = IS_sens_correction(df_cps, df_IS_sens, IS_meas)       #applying the IS correction
 
-    df_IS_sens_co = IS_sens_calculator_plotter(df_IS_corrected, IS_meas)    #getting and plotting new IS sens
+    df_IS_sens_co = IS_sens_calculator_plotter(df_IS_corrected, IS_meas, name_IS_sens_LR_plot= name_plot_LR_aft,
+                                               name_IS_sens_MR_plot= name_plot_MR_aft)    #getting and plotting new IS sens
     
     
     ##### 3)ICPMS Blk correction #########
@@ -1428,7 +1433,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                            'K', 
                            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
                            'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'], 
-                   plot_everything = False ):
+                   plot_everything = False, Nrepl = 2 ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
@@ -1449,6 +1454,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
         .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
             Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        . Nrepl: number of replicates. Default value: 2. 3 also accepted
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
             in a specific folder. Default value: 
                 ['Si28', 'Si29', 'Si30',
@@ -1503,61 +1509,120 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
     '''
     This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
     THe best way is loop with python style
-    
-
     '''
     t_start = tr.time()       #[s] start time of the plot execution
     
+    '''
+    Before plotting, I need to see whether I have 2 or 3 replicates, to divide the df in one or another way.
+    That will be with an if loop, as usual
+    '''
+    
+    if Nrepl == 2:          #2 replicates, standard case
+    
     ###Plot
-
-    for index, row in df_cps.iterrows():   #Loop throught all the rows, the isotopes
+        for index, row in df_cps.iterrows():   #Loop throught all the rows, the isotopes
                     #df_cps.index give the index values, low and high
 		   # 4 because of the way the df is created (and hence the excel tabelle)
-        #
-        
-        #Saving in the folder
-        if index[:-4] in Elem_rel:  #if the element is relevant
+
+            #Saving in the folder
+            if index[:-4] in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
-            plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-            plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)           #title
-            plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)           #title
+                plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
                      MarkerSize = 5, label = 'Repl_1') 
                     #+1 needed since the df contain a row with the column names!
-            plt.plot(x[int(len(x)/2):], row[int(len(x)/2) :], 'ro--', 
+                plt.plot(x[int(len(x)/2):], row[int(len(x)/2) :], 'ro--', 
                      MarkerSize = 5, label = 'Repl_2') 
-            plt.ylabel(y_label, fontsize=14)              #ylabel
-            plt.xlabel(x_label, fontsize = 14)
-            plt.tick_params(axis='both', labelsize=14)              #size of axis
-            #plt.yscale('log') 
-            plt.grid(True)
-            plt.legend()
-            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_' + index[:-4] + '.png', format='png', bbox_inches='tight')
-            #
-        else:        #if the element is not relevant
-            if plot_everything == True :        #if you want to plot all the elements (may be desired?)
-                #    
-                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
-                plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
-                         MarkerSize = 5, label = 'Repl_1') 
-                plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
-                         MarkerSize = 5, label = 'Repl_2') 
                 plt.ylabel(y_label, fontsize=14)              #ylabel
                 plt.xlabel(x_label, fontsize = 14)
                 plt.tick_params(axis='both', labelsize=14)              #size of axis
                 #plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()            
-                plt.savefig(folder_name +'/' +  
+                plt.legend()
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_' + index[:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                if plot_everything == True :        #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
+                    plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
+                         MarkerSize = 5, label = 'Repl_1') 
+                    plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
+                         MarkerSize = 5, label = 'Repl_2') 
+                    plt.ylabel(y_label, fontsize=14)              #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    #plt.yscale('log') 
+                    plt.grid(True)
+                    plt.legend()            
+                    plt.savefig(folder_name +'/' +  
                         pre_save_name + '_' + index[:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
         
         
-        plt.close()             #to clsoe the plot not to consume too much resources
+            plt.close()             #to clsoe the plot not to consume too much resources
     
-    
+    elif Nrepl == 3:             #3 replicates case!
+   
+    ###Plot
+        for index, row in df_cps.iterrows():   #Loop throught all the rows, the isotopes
+                    #df_cps.index give the index values, low and high
+		   # 4 because of the way the df is created (and hence the excel tabelle)
+
+            #Saving in the folder
+            if index[:-4] in Elem_rel:  #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)           #title
+                plt.plot(x[:int(len(x)/3)], row[:int(len(x)/3)], 'bo--', 
+                     MarkerSize = 5, label = 'Repl_1') 
+                    #+1 needed since the df contain a row with the column names!
+                plt.plot(x[int(len(x)/3): 2* int(len(x)/3)], row[int(len(x)/3) :2* int(len(x)/3)], 'ro--', 
+                     MarkerSize = 5, label = 'Repl_2') 
+                plt.plot(x[2* int(len(x)/3):], row[2* int(len(x)/3) :], 'go--', 
+                     MarkerSize = 5, label = 'Repl_3') 
+                plt.ylabel(y_label, fontsize=14)              #ylabel
+                plt.xlabel(x_label, fontsize = 14)
+                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                plt.grid(True)
+                plt.legend()
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_' + index[:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                if plot_everything == True :        #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
+                    plt.plot(x[:int(len(x)/3)], row[:int(len(x)/3)], 'bo--', 
+                     MarkerSize = 5, label = 'Repl_1') 
+                    #+1 needed since the df contain a row with the column names!
+                    plt.plot(x[int(len(x)/3): 2* int(len(x)/3)], row[int(len(x)/3) :2* int(len(x)/3)], 'ro--', 
+                     MarkerSize = 5, label = 'Repl_2') 
+                    plt.plot(x[2* int(len(x)/3):], row[2* int(len(x)/3) :], 'go--', 
+                     MarkerSize = 5, label = 'Repl_3') 
+                    plt.ylabel(y_label, fontsize=14)              #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    #plt.yscale('log') 
+                    plt.grid(True)
+                    plt.legend()            
+                    plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_' + index[:-4] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+
+            plt.close()             #to clsoe the plot not to consume too much resources   
+            #
+    else:            #Wrong number of replicates 
+            print('!!!!! Wrong number of replicates Nrepl, nothing done!!!! \n')    
+        
+        
     ######### 3) Running time displaying ###############
     '''
     The last thing will be to see and display the time needed
@@ -1639,6 +1704,8 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	.Implement error plotting (in an errorbar pyplot)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    .Improve it, not soo god, averaging replicates and plotting average and its error would be better!
+    . TO include 3 replicates version!
     '''
     
     
@@ -1766,7 +1833,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
 #####################################
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False, 
-                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
+                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc', Nrepl = 2,
                        Elem_rel = ['Si28', 'Si29', 'Si30',
                                'Al27',
                                'Mg24', 'Mg25', 'Mg26',
@@ -1796,6 +1863,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
         .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
                 Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        .Nrepl : number of replicates. Default value : 2. 3 value also accepted
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
             in a specific folder. Default value: 
                 ['Si28', 'Si29', 'Si30',
@@ -1847,63 +1915,118 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     ######### 2) plotting ###############
     '''
     This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
-    
+    I inlcude in if statement the numer of replicates, currently only 2 and 3!
 
     '''
     t_start = tr.time()       #[s] start time of the plot execution
     
+    if Nrepl == 2:               #2 replicates, standard case!
     ###Plot
-
-    for index,row in df_cps.iterrows(): 
+        for index,row in df_cps.iterrows(): 
                     #df_cps.index give the index values, low and high
 		   # 4 because of the way the df is created (and hence the excel tabelle)
-        #
-        
-        #Saving in the folder
-        if index[:-4] in Elem_rel:                      #if the element is relevant
+
+            #Saving in the folder
+            if index[:-4] in Elem_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
-            plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-            plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
-            plt.plot(x[:int(len(x)/2) ], row[:int(len(x)/2)], 'bo--', 
-                     MarkerSize = 5, label = 'Repl_1') 
-            plt.hlines(row[0], min(x[:int(len(x)/2)]), max(x[:int(len(x)/2)] ), label = 'Blk_1' )
-                    #row[0] is 1_1, 1st sample of 1st replicate!
-            #Now replicate 2
-            plt.plot(x[int(len(x)/2):], row[int(len(x)/2 ):], 'ro--', 
-                     MarkerSize = 5, label = 'Repl_2') 
-            
-            plt.hlines(row[int(len(x)/2)], min(x[int(len(x)/2):] ), max(x[int(len(x)/2):] ), label = 'Blk_2', colors = 'r' )
-            plt.ylabel(y_label, fontsize=14)              #ylabel
-            plt.xlabel(x_label, fontsize = 14)
-            plt.tick_params(axis='both', labelsize=14)              #size of axis
-            #plt.yscale('log') 
-            plt.grid(True)
-            plt.legend()
-            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + index[:-4] + '.png', format='png', bbox_inches='tight')
-            #
-        else:        #if the element is not relevant
-            if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                 plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
-                plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
-                         MarkerSize = 5, label = 'Repl_1') 
-                plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
-                         MarkerSize = 5, label = 'Repl_2') 
-                plt.ylabel(y_label, fontsize=14)                #ylabel
+                plt.plot(x[:int(len(x)/2) ], row[:int(len(x)/2)], 'bo--', 
+                     MarkerSize = 5, label = 'Repl_1') 
+                plt.hlines(row[0], min(x[:int(len(x)/2)]), max(x[:int(len(x)/2)] ), label = 'Blk_1' )
+                    #row[0] is 1_1, 1st sample of 1st replicate!
+            #Now replicate 2
+                plt.plot(x[int(len(x)/2):], row[int(len(x)/2 ):], 'ro--', 
+                     MarkerSize = 5, label = 'Repl_2') 
+            
+                plt.hlines(row[int(len(x)/2)], min(x[int(len(x)/2):] ), max(x[int(len(x)/2):] ), label = 'Blk_2', colors = 'r' )
+                plt.ylabel(y_label, fontsize=14)              #ylabel
                 plt.xlabel(x_label, fontsize = 14)
                 plt.tick_params(axis='both', labelsize=14)              #size of axis
-                #plt.yscale('log') 
+            #plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()            
-                plt.savefig(folder_name +'/' +  
+                plt.legend()
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + index[:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
+                    plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
+                         MarkerSize = 5, label = 'Repl_1') 
+                    plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
+                         MarkerSize = 5, label = 'Repl_2') 
+                    plt.ylabel(y_label, fontsize=14)                #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                    plt.grid(True)
+                    plt.legend()            
+                    plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + index[:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
         
+            plt.close()             #to clsoe the plot not to consume too much resources
+            
+    elif Nrepl == 3:                        #3 replicates case
+        for index,row in df_cps.iterrows(): 
+                    #df_cps.index give the index values, low and high
+		   # 4 because of the way the df is created (and hence the excel tabelle)
+
+            #Saving in the folder
+            if index[:-4] in Elem_rel:                      #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
+                plt.plot(x[:int(len(x)/3) ], row[:int(len(x)/3)], 'bo--', 
+                     MarkerSize = 5, label = 'Repl_1') 
+                plt.plot(x[int(len(x)/3): 2*int(len(x)/3) ], row[ int(len(x)/3): 2*int(len(x)/3) ], 'ro--', 
+                     MarkerSize = 5, label = 'Repl_2') 
+                plt.plot(x[ 2*int(len(x)/3): ], row[ 2*int(len(x)/3): ], 'go--', 
+                     MarkerSize = 5, label = 'Repl_3') 
+                plt.hlines(row[0], min(x[:int(len(x)/3)]), max(x[:int(len(x)/3)] ), label = 'Blk_1', colors = 'b' )
+                    #row[0] is 1_1, 1st sample of 1st replicate!
+                plt.hlines(row[int(len(x)/3)], min(x[int(len(x)/3): 2*int(len(x)/3)] ), max(x[int(len(x)/3): 2* int(len(x)/3)] ), 
+                           label = 'Blk_2', colors = 'r' )
+                plt.hlines(row[2* int(len(x)/3)], min(x[2*int(len(x)/3):] ), max(x[2* int(len(x)/3):] ), 
+                           label = 'Blk_3', colors = 'g' )
+                plt.ylabel(y_label, fontsize=14)              #ylabel
+                plt.xlabel(x_label, fontsize = 14)
+                plt.tick_params(axis='both', labelsize=14)              #size of axis
+            #plt.yscale('log') 
+                plt.grid(True)
+                plt.legend()
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + index[:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
+                    plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
+                         MarkerSize = 5, label = 'Repl_1') 
+                    plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
+                         MarkerSize = 5, label = 'Repl_2') 
+                    plt.ylabel(y_label, fontsize=14)                #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                    plt.grid(True)
+                    plt.legend()            
+                    plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_'  + index[:-4] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
         
-        plt.close()             #to clsoe the plot not to consume too much resources
+            plt.close()             #to clsoe the plot not to consume too much resources    
+    
+    else:           #Wrong case
+        print('\n Wrong Nrepl introduced, nothing being done (:')
+    
     
     
     ######### 3) Running time displaying ###############

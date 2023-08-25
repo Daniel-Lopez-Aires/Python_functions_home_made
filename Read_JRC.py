@@ -822,8 +822,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     
     Note that in the excel, int he part of the ppb table, you should delete the names, that stefaan write twice,
     for this to work!!!! 
-    
-
+    Also needed that the ppb data table is introduced by:  "IS conc [ppb]". beware, sometimes Stef writes (ppb), not [ppb]!!
     
     
     *Inputs:
@@ -837,6 +836,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
             
     ##### To DO ###########
         *Improve style and remove ppb data (would need modifications for the IS sens function)
+    
     '''
     
     ###################################################################
@@ -844,9 +844,8 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     So, for the Blank correction, I need:
         1) To put ina  df all of the blanks. I could indicate column numbers, KISS
         2) Compute average from the cps of the blank
-        3) Substract either the average, or the minimum cps value (from cps IS corrected), to
-            ensure no negative values. Well, since the values are always positive, the mean will
-            always be superior thatn the average value! So, we substract the minimum value!
+        3) Substract either the average or the ICPMS blanks, or the minimum cps value of the samples (from IS corrected, no 
+                 ICPMS blanks), to ensure no negative values. 
 
     I would really need the IS corrected data without the sens also bro, but I could get it easily I think
     '''
@@ -854,18 +853,27 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     columns_blks = columns_blks - 1 #to adapt to the system in the df, isotopes are index, not columns!
     
     #1) is trivial:
-    df_blanks = df_IS_co.iloc[:, columns_blks ]          #df with blanks
+    df_blanks = df_IS_co.iloc[:, columns_blks ]          #df with the ICPMS blanks
                     #no isotope label contained!!
 
+    ######### Debug: printing the labels of df ICPMS blanks  ##########
+    
+    print('\n ######################################')
+    print('\n The columns used as ICPMS blanks are (should be std 0ppt and blank, ' + 
+          'if not, correct the columns that you give as an input!): \n')
+    print(df_blanks.columns)            #printing columns
+    print('\n ######################################')
+    
     #2) could be done with df
-    blk_means = df_blanks.mean(axis = 1)
+    blk_means = df_blanks.mean(axis = 1)            #df series with mean values of ICPMS blanks!
 
     #3) The substraction
     '''
-    THe first step is getting the minimun values. Those values are for the columns of the samples except the blanks!
+    THe first step is getting the minimun values of the cps data
+    Those values are for the columns of the samples except the blanks!
     '''
     df_Is_co_no_blk = df_IS_co.drop(df_IS_co.columns[columns_blks ], axis = 1)
-                        #df initial without the blanks!! no isotope also!
+                        #df initial without the ICPMS blanks!! 
 
     #I could do the min to that, but since also contain the cps data there are some NaN, which make things not work. If I do
     #fill nan with the mean values, that could fix it. Lets try bro! 
@@ -891,12 +899,12 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
 
     for i in range(np.where(df_IS_co.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
                     #[0]s we get the desired value!
-        if min_values[i] <= blk_means[i]:     #min low, so substracting min
+        if min_values[i] <= blk_means[i]:     #min low, so substracting min of cps data (no blanks)
             
             df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],df_IS_co.columns[:]] - min_values[i]
                             #substraction of the min value        
             
-        else:           #mean lower, so substracting the mean
+        else:           #mean lower, so substracting the mean of ICPMS blanks
             df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],df_IS_co.columns[:]] - blk_means[i]
 
     
@@ -907,8 +915,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
 
 
     ########### Return ###########
-    return df_IS_blk_co_final           #return of the data
-
+    return df_IS_blk_co_final         #return of the data
 
 
 #%%######################################

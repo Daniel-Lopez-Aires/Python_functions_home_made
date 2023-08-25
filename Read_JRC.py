@@ -985,14 +985,37 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     '''
     writer = pd.ExcelWriter(excel_name, engine = 'xlsxwriter')      #excel writer
 
-    df_IS_Blks_co.to_excel(writer, sheet_name = 'Blk_correction', startrow = 5, freeze_panes = (6, 1))            
+            
                 #saving to excel. i freeze row 6 and column 1, so I can see all the data in a good way :)
-                
-    df_IS_corrected.to_excel(writer, sheet_name = 'IS_correction', startrow = 5, freeze_panes = (6, 1))        #saving to excel in another sheet
+    df_IS_Blks_co.to_excel(writer, sheet_name = 'Blk_correction', startrow = 6, header = False, freeze_panes = (6, 1))            
+
+    #Chatgpt helped me to get the format I want, the one that Stefaan uses :)
+
+    excel_sheet = writer.sheets['Blk_correction']
+    bold_format = writer.book.add_format({'bold': True})      
+    excel_sheet.write_row('B2', df_IS_Blks_co.columns, bold_format)      #Write from cell B2 with the numer of columns
+                    #Note B2 is column B, row 2
+    excel_sheet.write_row('B1', range(1, len(df_IS_Blks_co.columns) + 1), bold_format)  #2nd row with columns names
+    excel_sheet.write_row('B3', [None] * len(df_IS_Blks_co.columns))            #row 3 empty
+    excel_sheet.write_row('B4', ['Net <Int>'] * len(df_IS_Blks_co.columns))         #row 4 with a value repeated
+    excel_sheet.write_row('B5', ['[cps]'] * len(df_IS_Blks_co.columns))     #row 5 with a value repeated
+    
+    
+    df_IS_corrected.to_excel(writer, sheet_name = 'IS_correction', startrow = 6, freeze_panes = (6, 1),
+                             header = False)        #saving to excel in another sheet
             #Note it does not have perfect format, to optimize it!!!
             #THe start trow make that Co59 is on row 7, as it should be!
-    df_IS_sens_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 5 + df_IS_corrected.shape[0] + 2)
+    df_IS_sens_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 6 + df_IS_corrected.shape[0] + 2,
+                           header = False)
                         #putting the new IS sensitivity below the IS corrected data!!
+    
+    excel_sheet2 = writer.sheets['IS_correction']
+    excel_sheet2.write_row('B2', df_IS_corrected.columns, bold_format)      #1st row with numbers of columns
+    excel_sheet2.write_row('B1', range(1, len(df_IS_corrected.columns) + 1), bold_format)  #2nd row with columns names
+    excel_sheet2.write_row('B3', [None] * len(df_IS_corrected.columns))            #row 3 empty
+    excel_sheet2.write_row('B4', ['<Int>'] * len(df_IS_corrected.columns))         #row 4 with a value repeated
+    excel_sheet2.write_row('B5', ['[cps]'] * len(df_IS_corrected.columns))     #row 5 with a value repeated
+    
     
     writer.save()                                           #critical step, save the excel xD 
 

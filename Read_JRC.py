@@ -1290,7 +1290,10 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
 
 def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
     '''
-    Function that will compute the mean and std of the measuring sequence. Note we measure 2 or 3 replicates,
+    Function that will compute the mean and std of:
+        .the measuring sequence (df). Note we measure 2 or 3 replicates,
+        OR
+        .a df series, like the shaking time
     so this function will ocmpute the average and sigma, ready to plot them :)
 
 
@@ -1316,49 +1319,94 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
         2) std if each sample number (Divideb by N-1, as excel do when suing STDEV() function! )
     
     Those cals are really easy since they are implemented in pandas. I just need to sort the proper way
-    of sepparating the df and getting the results, see below
-    '''
-
-    df_mean = pd.DataFrame()         #Empty df to store the values
-    df_std = pd.DataFrame()        #Empty df to store the std
+    of sepparating the df and getting the results, see below.
+    I need to discriminate whether the data is a df or a Series.
     
-    if Nrepl == 2:          #Standard case, 2 replicates
-         df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
-         df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
+    '''
+    
+    if type(df_data) == pd.core.frame.DataFrame :         #If True data is a df
+
+        df_mean = pd.DataFrame()         #Empty df to store the values
+        df_std = pd.DataFrame()        #Empty df to store the std
+    
+        if Nrepl == 2:          #Standard case, 2 replicates
+             df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
+             df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
         #
-         for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
-            df_temp = df_data.iloc[:, [i, i+ df_1.shape[1] ] ]        #df containing the 2 replicates of the number i
+             for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
+                 df_temp = df_data.iloc[:, [i, i+ df_1.shape[1] ] ]        #df containing the 2 replicates of the number i
             
-            #TO store temporarily those values I create an auxiliary df
-            df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )
-            df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )
+                #TO store temporarily those values I create an auxiliary df
+                 df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )
+                 df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )
 
-            #And I add that to the storing df (add as columns)
-            df_mean['<Sample ' + str(i +1) + '>'] = df_aux1
-            df_std['std Sample ' + str(i +1)] = df_aux2
+                #And I add that to the storing df (add as columns)
+                 df_mean['<Sample ' + str(i +1) + '>'] = df_aux1
+                 df_std['std Sample ' + str(i +1)] = df_aux2
         
 
-    elif Nrepl == 3:            #3 replicates
-    #Gathering the replicates sepparately    
-        df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
-        df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
-        df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
+        elif Nrepl == 3:            #3 replicates
+        #Gathering the replicates sepparately    
+            df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
+            df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
+            df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
         
-        for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
-            df_temp = df_data.iloc[:, [i, i+ df_1.shape[1], i+ 2 * df_1.shape[1] ] ]        
+            for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
+                df_temp = df_data.iloc[:, [i, i+ df_1.shape[1], i+ 2 * df_1.shape[1] ] ]        
                                                 #df containing the 3 replicates of the number i
             
-            #TO store temporarily those values I create an auxiliary df
-            df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )      #< >. 1 indicates compute by columns
-            df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )       # Std 
+                #TO store temporarily those values I create an auxiliary df
+                df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )      #< >. 1 indicates compute by columns
+                df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )       # Std 
 
-            #And I add that to the storing df (add as columns)
-            df_mean['<Sample ' + str(i +1) + '>'] = df_aux1
-            df_std['std Sample ' + str(i +1)] = df_aux2
+                #And I add that to the storing df (add as columns)
+                df_mean['<Sample ' + str(i +1) + '>'] = df_aux1
+                df_std['std Sample ' + str(i +1)] = df_aux2
 
+    elif type(df_data) == pd.core.frame.Series :      #if data is a serie
+        df_mean = pd.Series()         #Empty df to store the values
+        df_std = pd.Series()        #Empty df to store the std
+        
+        if Nrepl == 2:          #Standard case, 2 replicates
+             df_1 = df_data.iloc[ 0: round( ( df_data.shape[0] ) / 2 ) ]      #1st replicate
+             df_2 = df_data.iloc[ round( ( df_data.shape[0] ) / 2 ) :  ]       #replicate 2
+            #
+             for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
+                df_temp = df_data.iloc[[i, i+ df_1.shape[0] ] ]        #df containing the 2 replicates of the number i
+                
+                #TO store temporarily those values I create an auxiliary df
+                #df_temp.mean and .std gives mean and std
+                
+                df_mean['<Sample> ' + str(i +1 ) + '>'] = df_temp.mean()      #<>
+                df_std['Std ' + str(i +1 )] = df_temp.std()         #std
 
-    ########### 2) Return #############
+        
+        elif Nrepl == 3:            #3 replicates
+        #Gathering the replicates sepparately    
+            df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
+            df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
+            df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
+            
+            for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
+                df_temp = df_data.iloc[ [i, i+ df_1.shape[0], i+ 2 * df_1.shape[0] ] ]        
+                                                    #df containing the 3 replicates of the number i
+
+                #And I add that to the storing df (add as columns)
+                df_mean['<Sample ' + str(i +1) + '>'] = df_temp.mean()
+                df_std['std Sample ' + str(i +1)] = df_temp.std()    
+    
+    
+    else:       #weird data
+        print('############################')
+        print('\n Bro WTF? Wrong data type! pd.Series or pd.DataFrame only!')
+        print('############################')
+        
+        df_mean = False
+        df_std = False
+    
+########### 2) Return #############
     return df_mean, df_std             #return
+
 
 
 
@@ -2138,6 +2186,155 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     
     
     
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
+    
+    
+    
+    
+#%%######################################
+########### 1.15) ICPMS plotter blank appart Average of replicates #############
+#####################################
+
+def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps, 
+                           x_label, y_label, folder_name = 'Plots', plot_everything = False, 
+                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
+                       Elem_rel = ['Si28', 'Si29', 'Si30',
+                               'Al27',
+                               'Mg24', 'Mg25', 'Mg26',
+                               'Mn55',
+                               'Fe56', 'Fe57',
+                               'Ca42', 'Ca43', 'Ca44', 
+                               'Na23', 
+                               'K', 
+                               'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                               'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
+    '''
+    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
+    time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
+    Blank is plotted sepparately, so the data must include a blank, which should be 1st, the number 1
+    
+    *Inputs:
+        .x: x axis variable in the plot (mean values). This should be a df series
+        .std_x: df Series with the std of the x variable
+        .df_mean_cps: dataframes containing the cps, but average values (1,2,3,4, etc). From run of the mean and std calc
+        .df_mean_cps: df containing the std of the mean values of the cps.
+        .x_label: string that will be the x label for the plot (for math stuff, 
+                                    use $$. eg: '$\Delta t[h]$')
+        .y_label: string that will be the y label for the plot
+        .folder_name: string defining the name of the folder to create to store the plots
+            default value: 'Plots'
+        . plot_everything: string defining if you want to plot all the elements or only the
+            relevant ones. Default value: False (only plot relevants)
+        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
+                Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
+            in a specific folder. Default value: 
+                ['Si28', 'Si29', 'Si30',
+                        'Al27',
+                        'Mg24', 'Mg25', 'Mg26',
+                        'Mn55',
+                        'Fe56', 'Fe57',
+                        'Ca42', 'Ca43', 'Ca44', 
+                        'Na23', 
+                        'K', 
+                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
+                #List of relevant elements. Note T sheet made of Si and Al,
+                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
+                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+                                    
+    *Outputs:
+        .Plots (saving them) of the x and df_mean_cps data, cps vs x!
+    
+    
+    ### TO DO: ####
+	.Plot 2 blk lines, <>+- std?
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
+    I inlcude in if statement the numer of replicates, currently only 2 and 3!
+    I need to do a for loop with an index, since I have several df here!
+
+    '''
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+
+        if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+            plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+            plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
+            plt.errorbar(x[1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
+                         std_x[1:], 'ro--', markersize = 5, label = '<Samples>') 
+                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
+            plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), label = '<Blk>' )
+                    #Like that you can plot the blank
+            plt.ylabel(y_label, fontsize=14)              #ylabel
+            plt.xlabel(x_label, fontsize = 14)
+            plt.tick_params(axis='both', labelsize=14)              #size of axis
+            #plt.yscale('log') 
+            plt.grid(True)
+            plt.legend()
+            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+            #
+        else:        #if the element is not relevant
+            if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
+                plt.errorbar(x[1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
+                             std_x[1:], 'bo--', markersize = 5, label = '<Samples>') 
+                plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), label = '<Blk>' )
+                plt.ylabel(y_label, fontsize=14)                #ylabel
+                plt.xlabel(x_label, fontsize = 14)
+                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                plt.grid(True)
+                plt.legend()            
+                plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+        
+        plt.close()             #to clsoe the plot not to consume too much resources
+            
+        
     ######### 3) Running time displaying ###############
     '''
     The last thing will be to see and display the time needed

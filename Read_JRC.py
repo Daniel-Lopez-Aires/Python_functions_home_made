@@ -1283,6 +1283,85 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
 
 
 
+#%%######################################
+########### 1.12) Mean/std of replicates calculaor #############
+#####################################
+
+
+def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
+    '''
+    Function that will compute the mean and std of the measuring sequence. Note we measure 2 or 3 replicates,
+    so this function will ocmpute the average and sigma, ready to plot them :)
+
+
+    *Inputs:
+        .df_data: dataframe containing the data, the full data, with the 2 replicates. Should be Dfs corrected
+            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
+            this function!!!!
+        .Nrepl: number of replicates. Default value = 2. 3 also accepted
+    
+    *Outputs (in that order):
+        .df with the < >
+        .df with the std
+        
+        '''
+    
+    #df_data.replace(0, np.nan, inplace=True)                    #replace 0 values with NaN, to avoid Div0 error!
+    
+    
+    ########### 1) Calcs ###########
+    '''
+    The operations to perform are:
+        1) < > of each sample number (1,2,..) 
+        2) std if each sample number (Divideb by N-1, as excel do when suing STDEV() function! )
+    
+    Those cals are really easy since they are implemented in pandas. I just need to sort the proper way
+    of sepparating the df and getting the results, see below
+    '''
+
+    df_mean = pd.DataFrame()         #Empty df to store the values
+    df_std = pd.DataFrame()        #Empty df to store the std
+    
+    if Nrepl == 2:          #Standard case, 2 replicates
+         df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
+         df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
+        #
+         for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
+            df_temp = df_data.iloc[:, [i, i+ df_1.shape[1] ] ]        #df containing the 2 replicates of the number i
+            
+            #TO store temporarily those values I create an auxiliary df
+            df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )
+            df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )
+
+            #And I add that to the storing df (add as columns)
+            df_mean['<Sample ' + str(i +1) + '>'] = df_aux1
+            df_std['std Sample ' + str(i +1)] = df_aux2
+        
+
+    elif Nrepl == 3:            #3 replicates
+    #Gathering the replicates sepparately    
+        df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
+        df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
+        df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
+        
+        for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
+            df_temp = df_data.iloc[:, [i, i+ df_1.shape[1], i+ 2 * df_1.shape[1] ] ]        
+                                                #df containing the 3 replicates of the number i
+            
+            #TO store temporarily those values I create an auxiliary df
+            df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )      #< >. 1 indicates compute by columns
+            df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )       # Std 
+
+            #And I add that to the storing df (add as columns)
+            df_mean['<Sample ' + str(i +1) + '>'] = df_aux1
+            df_std['std Sample ' + str(i +1)] = df_aux2
+
+
+    ########### 2) Return #############
+    return df_mean, df_std             #return
+
+
+
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 ####################### PLOTTERS ####################################

@@ -26,7 +26,8 @@ import Fits, Peak_analyis_spectra
 import time as tr                                #to measure the running time
 
 #############################################################
-
+#Useful stuff
+Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#EEE8AA', 'BK' : 'grey'} 
 
 
 #%%######################################
@@ -2226,7 +2227,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
         .x: x axis variable in the plot (mean values). This should be a df series
         .std_x: df Series with the std of the x variable
         .df_mean_cps: dataframes containing the cps, but average values (1,2,3,4, etc). From run of the mean and std calc
-        .df_mean_cps: df containing the std of the mean values of the cps.
+        .df_std_cps: df containing the std of the mean values of the cps.
         .x_label: string that will be the x label for the plot (for math stuff, 
                                     use $$. eg: '$\Delta t[h]$')
         .y_label: string that will be the y label for the plot
@@ -2346,6 +2347,164 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
     print('Plotting running time: ' + str(t_run) + 's')
     print('###############################################')
     
+
+
+
+#%%######################################
+########### 1.16) ICPMS plotter blank appart Average of replicates, 3 bentonites! #############
+#####################################
+
+def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
+                              x_BK, std_x_BK, df_mean_cps_BK, df_std_cps_BK,
+                              x_S, std_x_S, df_mean_cps_S, df_std_cps_S,
+                           x_label, y_label, folder_name = 'Plots', plot_everything = False, 
+                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
+                       Elem_rel = ['Si28', 'Si29', 'Si30',
+                               'Al27',
+                               'Mg24', 'Mg25', 'Mg26',
+                               'Mn55',
+                               'Fe56', 'Fe57',
+                               'Ca42', 'Ca43', 'Ca44', 
+                               'Na23', 
+                               'K', 
+                               'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                               'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
+    '''
+    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
+    time, the cps and the rstd, for the 3 bentonites, plotting the average values ideally (output of average computer).
+    
+    *Inputs:
+        .x_S/BK/T: x axis variable in the plot (mean values) for each bentonite. This should be a df series
+        .std_x_T/BK/S: df Series with the std of the x variable for each bentonite
+        .df_mean_cps_T/BK/S: dataframes containing the cps, but average values (1,2,3,4, etc) for the 3 benotnites
+            .From run of the mean and std calc
+        .df_std_cps_T/BK/S: df containing the std of the mean values of the cps of the 3 benotnites
+        .x_label: string that will be the x label for the plot (for math stuff, 
+                                    use $$. eg: '$\Delta t[h]$')
+        .y_label: string that will be the y label for the plot
+        .folder_name: string defining the name of the folder to create to store the plots
+            default value: 'Plots'
+        . plot_everything: string defining if you want to plot all the elements or only the
+            relevant ones. Default value: False (only plot relevants)
+        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
+                Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
+            in a specific folder. Default value: 
+                ['Si28', 'Si29', 'Si30',
+                        'Al27',
+                        'Mg24', 'Mg25', 'Mg26',
+                        'Mn55',
+                        'Fe56', 'Fe57',
+                        'Ca42', 'Ca43', 'Ca44', 
+                        'Na23', 
+                        'K', 
+                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
+                #List of relevant elements. Note T sheet made of Si and Al,
+                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
+                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
+                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+                                    
+    *Outputs:
+        .Plots (saving them) of the x and df_mean_cps data, cps vs x!
+    
+    
+    ### TO DO: ####
+	.Plot 2 blk lines, <>+- std? OPtional, since for Qe I do not have blank, but for conce I do!
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
+    I inlcude in if statement the numer of replicates, currently only 2 and 3!
+    I need to do a for loop with an index, since I have several df here!
+
+    '''
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    for i in list( range(df_mean_cps_T.shape[0] ) ):       #Loop thorugh all rows (elements)
+
+        if df_mean_cps_T.index[i][:-4] in Elem_rel:                      #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+            plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+            plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22, wrap=True)     #title
+            #
+            plt.errorbar(x_T, df_mean_cps_T.loc[df_mean_cps_T.index[i] ], df_std_cps_T.loc[df_mean_cps_T.index[i] ],
+                         std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
+            plt.errorbar(x_BK, df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
+                         std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
+            plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i] ], df_std_cps_S.loc[df_mean_cps_S.index[i] ],
+                         std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
+                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
+            #
+            plt.ylabel(y_label, fontsize=14)              #ylabel
+            plt.xlabel(x_label, fontsize = 14)
+            plt.tick_params(axis='both', labelsize=14)              #size of axis
+            #plt.yscale('log') 
+            plt.grid(True)
+            plt.legend()
+            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+            #
+        else:        #if the element is not relevant
+            if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22, wrap=True)     #title
+                plt.errorbar(x_T, df_mean_cps_T.loc[df_mean_cps_T.index[i] ], df_std_cps_T.loc[df_mean_cps_T.index[i] ],
+                         std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
+                plt.errorbar(x_BK, df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
+                         std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
+                plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i] ], df_std_cps_S.loc[df_mean_cps_S.index[i] ],
+                         std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
+                plt.ylabel(y_label, fontsize=14)                #ylabel
+                plt.xlabel(x_label, fontsize = 14)
+                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                plt.grid(True)
+                plt.legend()            
+                plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+        
+        plt.close()             #to clsoe the plot not to consume too much resources
+            
+        
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
+
     
         
     

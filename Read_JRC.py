@@ -27,7 +27,7 @@ import time as tr                                #to measure the running time
 
 #############################################################
 #Useful stuff
-Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#EEE8AA', 'BK' : 'grey'} 
+Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'} 
 
 
 #%%######################################
@@ -1278,7 +1278,9 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
         df_Kd = 0
         df_Qe =0
                 
-        
+      
+   ####Checked that the Qe calc is correct, and then Kd must be also :)     
+      
     ########### 2) Return #############
     return df_Kd, df_Qe             #return
 
@@ -1378,7 +1380,7 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
                 #TO store temporarily those values I create an auxiliary df
                 #df_temp.mean and .std gives mean and std
                 
-                df_mean['<Sample> ' + str(i +1 ) + '>'] = df_temp.mean()      #<>
+                df_mean['<Sample ' + str(i +1 ) + '>'] = df_temp.mean()      #<>
                 df_std['Std ' + str(i +1 )] = df_temp.std()         #std
 
         

@@ -26,10 +26,15 @@ import Fits, Peak_analyis_spectra
 import time as tr                                #to measure the running time
 
 #############################################################
+
 #Useful stuff
 Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'} 
-
-
+Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23',     #bentonite elements
+            'Sr88', 'Cs133', 'Eu153', 'La139', 'U238']              #CL eleements
+            #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+            
+            
+#############################################################            
 #%%######################################
 ########### 1.1) ICPMS excel reader #############
 #####################################
@@ -1084,7 +1089,7 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 ########### 1.11) Kd calculaor #############
 #####################################
 
-def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
+def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = False):
     '''
     Function that will compute the distribution constant Kd and the adsorption quantity
     q_e from the ppb data obtained with ICPMS. Note that data must be corrected
@@ -1102,11 +1107,9 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
         Q_e = absorbed quantity in equil [g soluto / g bent]
         
     In our case, that we measure C in ppb = ng soluto /g disol, we need to mutiply by g tot / m bent, to
-    achieve the same units in Q_e!!
+    achieve the same units in Q_e!! And we do not have equilibirum since its kinetic, so Qe, Ke ==> Q(t), K(t)
 
-    Necessary that the data
-    contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
-    Only for 2 replicates, but could be generalized for N replicates easily.
+    Necessary that the data contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
     
     Note this requires a df series with the volume, that you were not measuring in the first exp
     (up to 8/23). Note ten that units are involved!. If measuring mass ing and volumes in L, Q
@@ -1121,6 +1124,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
             so that Q_e is in g/g !
         .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle (normally 250mg)
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
+        ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
     
     *Outputs (in that order):
         .df with the Kd data
@@ -1185,15 +1189,15 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
     #I will do C_eq - C0, and then invert that, since its easier. C0 is the blank data, 
     #thats why is easier, so I can copy paste the blank substraction
     
-        dfCeq_C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
-        dfCeq_C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        dfCeq__C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
+        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
         #
-        dfCeq_C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )               #Replicate 2
-        dfCeq_C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
+        dfCeq__C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )               #Replicate 2
+        dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
     
         #Now lets invert the sign:
-        dfC0_Ceq_1 = - dfCeq_C0_1
-        dfC0_Ceq_2 = - dfCeq_C0_2
+        dfC0__Ceq_1 = - dfCeq__C0_1
+        dfC0__Ceq_2 = - dfCeq__C0_2
 
     ######## 2) Apply the V/ m giving q_e (from Df_exp)
     #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
@@ -1206,8 +1210,8 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
     
     #And now I can operate:
         
-        df_Qe_1 = dfC0_Ceq_1 * df_VoM_1 / df_m_1
-        df_Qe_2 = dfC0_Ceq_2 * df_VoM_2 / df_m_2 
+        df_Qe_1 = dfC0__Ceq_1 * df_VoM_1 / df_m_1
+        df_Qe_2 = dfC0__Ceq_2 * df_VoM_2 / df_m_2 
     
     ######## 3) Apply 1/C_eq = Kd
         df_Kd_1 = df_Qe_1 / df_1.drop( [df_1.iloc[:,0].name], axis = 1)   
@@ -1216,8 +1220,9 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
         df_Kd_2 = df_Qe_2 / df_2.drop( [df_2.iloc[:,0].name], axis = 1)
     
     #Now lets add them together
-
-        df_Kd = pd.concat( [df_Kd_1, df_Kd_2], axis = 1)         #mergind the 2 little df ina  huge one
+        
+        df_C0__Ceq = pd.concat( [dfC0__Ceq_1, dfC0__Ceq_2], axis = 1)     #merging the 2 df (replicates) in a hugeone 
+        df_Kd = pd.concat( [df_Kd_1, df_Kd_2], axis = 1)         
         df_Qe = pd.concat( [df_Qe_1, df_Qe_2 ] , axis = 1)
 
     elif Nrepl == 3:            #3 replicates
@@ -1235,17 +1240,17 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
         df_m_3 = df_m_be.iloc[ 2 *round( ( df_m_be.shape[0] ) / 3 ) : ]      #3rd replicat
     
         #1) 
-        dfCeq_C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
-        dfCeq_C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )       #doing the substraction        
-        dfCeq_C0_3 = df_3.subtract(df_3.iloc[:,0], axis = 0 )       #doing the substraction
+        dfCeq__C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
+        dfCeq__C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )       #doing the substraction        
+        dfCeq__C0_3 = df_3.subtract(df_3.iloc[:,0], axis = 0 )       #doing the substraction
         
-        dfCeq_C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-        dfCeq_C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-        dfCeq_C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column        
+        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        dfCeq__C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column        
     
-        dfC0_Ceq_1 = - dfCeq_C0_1
-        dfC0_Ceq_2 = - dfCeq_C0_2
-        dfC0_Ceq_3 = - dfCeq_C0_3
+        dfC0__Ceq_1 = - dfCeq__C0_1
+        dfC0__Ceq_2 = - dfCeq__C0_2
+        dfC0__Ceq_3 = - dfCeq__C0_3
     
     ######## 2) Apply the V/ m giving q_e (from Df_exp)
     #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
@@ -1259,9 +1264,9 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
         
     #And now I can operate:
         
-        df_Qe_1 = dfC0_Ceq_1 * df_VoM_1 / df_m_1
-        df_Qe_2 = dfC0_Ceq_2 * df_VoM_2 / df_m_2 
-        df_Qe_3 = dfC0_Ceq_3 * df_VoM_3 / df_m_3
+        df_Qe_1 = dfC0__Ceq_1 * df_VoM_1 / df_m_1
+        df_Qe_2 = dfC0__Ceq_2 * df_VoM_2 / df_m_2 
+        df_Qe_3 = dfC0__Ceq_3 * df_VoM_3 / df_m_3
         
         
     ######## 3) Apply 1/C_eq = Kd
@@ -1272,6 +1277,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
     #Now lets add them together
         df_Kd = pd.concat( [df_Kd_1, df_Kd_2, df_Kd_3], axis = 1)         
         df_Qe = pd.concat( [df_Qe_1, df_Qe_2, df_Qe_3 ] , axis = 1)  
+        df_C0__Ceq = pd.concat( [dfC0__Ceq_1, dfC0__Ceq_2, dfC0__Ceq_3], axis = 1)
     
     else:               #Error case
         print('Erro case, wrong Nrepl introduced!')    
@@ -1282,8 +1288,13 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2):
    ####Checked that the Qe calc is correct, and then Kd must be also :)     
       
     ########### 2) Return #############
-    return df_Kd, df_Qe             #return
-
+    #Here the if for returning or not C_0 - C(t) applies
+    
+    if ret_Co__Ceq == False:            #do not return it
+        return df_Kd, df_Qe             #return
+    
+    else:                   #return C0-Ceq
+        return df_Kd, df_Qe, df_C0__Ceq
 
 
 #%%######################################
@@ -1426,16 +1437,7 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 
 def ICPMS_Barplotter (df_cps, df_rstd, folder_name = 'Bar_plots',
                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                      Elem_rel = ['Si28', 'Si29', 'Si30',
-                              'Al27',
-                              'Mg24', 'Mg25', 'Mg26',
-                              'Mn55',
-                              'Fe56', 'Fe57',
-                              'Ca42', 'Ca43', 'Ca44', 
-                              'Na23', 
-                              'K', 
-                              'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                              'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
+                      Elem_rel = Isot_rel ):
     '''
     Function that will do bar plots of the raw data from the ICPMS, the cps and the rstd. By raw
     I mean withoutany corrections/calibrations (neither the dilution factor correction). This is a
@@ -1447,24 +1449,9 @@ def ICPMS_Barplotter (df_cps, df_rstd, folder_name = 'Bar_plots',
         .folder_name: folder name. Default value: 'Bar_plots'
         .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
             Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
-        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
-        
+        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex           
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: 
-                ['Si28', 'Si29', 'Si30',
-                        'Al27',
-                        'Mg24', 'Mg25', 'Mg26',
-                        'Mn55',
-                        'Fe56', 'Fe57',
-                        'Ca42', 'Ca43', 'Ca44', 
-                        'Na23', 
-                        'K', 
-                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
-                #List of relevant elements. Note T sheet made of Si and Al,
-                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+            in a specific folder. Default value: (see above in the script)   
         
     *Outputs:
         .Plots (saving them) of the raw data
@@ -1583,16 +1570,7 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', 
                    pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                   Elem_rel =['Si28', 'Si29', 'Si30',
-                           'Al27',
-                           'Mg24', 'Mg25', 'Mg26',
-                           'Mn55',
-                           'Fe56', 'Fe57',
-                           'Ca42', 'Ca43', 'Ca44', 
-                           'Na23', 
-                           'K', 
-                           'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                           'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'], 
+                   Elem_rel = Isot_rel, 
                    plot_everything = False, Nrepl = 2 ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
@@ -1616,21 +1594,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
         . Nrepl: number of replicates. Default value: 2. 3 also accepted
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: 
-                ['Si28', 'Si29', 'Si30',
-                        'Al27',
-                        'Mg24', 'Mg25', 'Mg26',
-                        'Mn55',
-                        'Fe56', 'Fe57',
-                        'Ca42', 'Ca43', 'Ca44', 
-                        'Na23', 
-                        'K', 
-                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
-                #List of relevant elements. Note T sheet made of Si and Al,
-                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+            in a specific folder. Default value: (see above in the script)     
                                     
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
@@ -1809,16 +1773,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False,
                     pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                    Elem_rel = ['Si28', 'Si29', 'Si30',
-                            'Al27',
-                            'Mg24', 'Mg25', 'Mg26',
-                            'Mn55',
-                            'Fe56', 'Fe57',
-                            'Ca42', 'Ca43', 'Ca44', 
-                            'Na23', 
-                            'K', 
-                            'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                            'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
+                    Elem_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, for the 3 bentonites. This assume we have 2 replicates, 1 series after the other.
@@ -1840,21 +1795,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
             Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: 
-                ['Si28', 'Si29', 'Si30',
-                        'Al27',
-                        'Mg24', 'Mg25', 'Mg26',
-                        'Mn55',
-                        'Fe56', 'Fe57',
-                        'Ca42', 'Ca43', 'Ca44', 
-                        'Na23', 
-                        'K', 
-                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
-                #List of relevant elements. Note T sheet made of Si and Al,
-                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+            in a specific folder. Default value: (see above in the script)       
                                     
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
@@ -1994,16 +1935,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False, 
                        pre_title_plt = "Concentration of ", pre_save_name = 'Conc', Nrepl = 2,
-                       Elem_rel = ['Si28', 'Si29', 'Si30',
-                               'Al27',
-                               'Mg24', 'Mg25', 'Mg26',
-                               'Mn55',
-                               'Fe56', 'Fe57',
-                               'Ca42', 'Ca43', 'Ca44', 
-                               'Na23', 
-                               'K', 
-                               'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                               'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
+                       Elem_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
@@ -2025,21 +1957,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
         .Nrepl : number of replicates. Default value : 2. 3 value also accepted
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: 
-                ['Si28', 'Si29', 'Si30',
-                        'Al27',
-                        'Mg24', 'Mg25', 'Mg26',
-                        'Mn55',
-                        'Fe56', 'Fe57',
-                        'Ca42', 'Ca43', 'Ca44', 
-                        'Na23', 
-                        'K', 
-                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
-                #List of relevant elements. Note T sheet made of Si and Al,
-                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+            in a specific folder. Default value: (see above in the script)        
                                     
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
@@ -2210,16 +2128,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
 def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps, 
                            x_label, y_label, folder_name = 'Plots', plot_everything = False, 
                        pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                       Elem_rel = ['Si28', 'Si29', 'Si30',
-                               'Al27',
-                               'Mg24', 'Mg25', 'Mg26',
-                               'Mn55',
-                               'Fe56', 'Fe57',
-                               'Ca42', 'Ca43', 'Ca44', 
-                               'Na23', 
-                               'K', 
-                               'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                               'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
+                       Elem_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
@@ -2241,21 +2150,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                 Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: 
-                ['Si28', 'Si29', 'Si30',
-                        'Al27',
-                        'Mg24', 'Mg25', 'Mg26',
-                        'Mn55',
-                        'Fe56', 'Fe57',
-                        'Ca42', 'Ca43', 'Ca44', 
-                        'Na23', 
-                        'K', 
-                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
-                #List of relevant elements. Note T sheet made of Si and Al,
-                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+            in a specific folder. Default value: (see above in the script)   
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!
@@ -2361,16 +2256,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                               x_S, std_x_S, df_mean_cps_S, df_std_cps_S,
                            x_label, y_label, folder_name = 'Plots', plot_everything = False, 
                        pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                       Elem_rel = ['Si28', 'Si29', 'Si30',
-                               'Al27',
-                               'Mg24', 'Mg25', 'Mg26',
-                               'Mn55',
-                               'Fe56', 'Fe57',
-                               'Ca42', 'Ca43', 'Ca44', 
-                               'Na23', 
-                               'K', 
-                               'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                               'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139'] ):
+                       Elem_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd, for the 3 bentonites, plotting the average values ideally (output of average computer).
@@ -2392,21 +2278,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                 Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: 
-                ['Si28', 'Si29', 'Si30',
-                        'Al27',
-                        'Mg24', 'Mg25', 'Mg26',
-                        'Mn55',
-                        'Fe56', 'Fe57',
-                        'Ca42', 'Ca43', 'Ca44', 
-                        'Na23', 
-                        'K', 
-                        'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-                        'Sr86', 'Sr87', 'Sr88', 'Cs133', 'U238', 'U235', 'U234', 'Eu151', 'Eu153', 'La139']      
-                #List of relevant elements. Note T sheet made of Si and Al,
-                                            #Oct sheet by Al, Mg, Mn, Fe, and rest in interlaminar spaces.
-                                            #commoninterlaminars are Ca, Na, K, Ti, li, Sr.
-                                    #Previous elements that were deleted: S32,33,34, P31 (impurities)
+            in a specific folder. Default value: (see above in the script)   
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!

@@ -2126,13 +2126,13 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
 #####################################
 
 def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps, 
-                           x_label, y_label, folder_name = 'Plots', plot_everything = False, 
-                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                       Elem_rel = Isot_rel ):
+                           x_label, y_label, folder_name = 'Plots', Blank_here = False, 
+                           plot_everything = False,  pre_title_plt = "Concentration of ", 
+                           pre_save_name = 'Conc', Elem_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
-    time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
-    Blank is plotted sepparately, so the data must include a blank, which should be 1st, the number 1
+    time, the cps and the rstd. This plots the avg value, with its std, so no replicates here.
+    In those average values, blank could or not be there. If yes, the blk is plotted as an hor line
     
     *Inputs:
         .x: x axis variable in the plot (mean values). This should be a df series
@@ -2144,6 +2144,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
         .y_label: string that will be the y label for the plot
         .folder_name: string defining the name of the folder to create to store the plots
             default value: 'Plots'
+        .Blank_here: True if the df contain the blank. Default: False
         . plot_everything: string defining if you want to plot all the elements or only the
             relevant ones. Default value: False (only plot relevants)
         .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
@@ -2191,46 +2192,88 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
     '''
     t_start = tr.time()       #[s] start time of the plot execution
     
-    for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+    #TO make it more computing efficient, the Blank if will be here:
+        
+    if Blank_here == True:          #Blank is here, so plot it!
+        for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
 
-        if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
+            if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
-            plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-            plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
-            plt.errorbar(x[1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
-                         std_x[1:], 'ro--', markersize = 5, label = '<Samples>') 
-                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
-            plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), label = '<Blk>' )
-                    #Like that you can plot the blank
-            plt.ylabel(y_label, fontsize=14)              #ylabel
-            plt.xlabel(x_label, fontsize = 14)
-            plt.tick_params(axis='both', labelsize=14)              #size of axis
-            #plt.yscale('log') 
-            plt.grid(True)
-            plt.legend()
-            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')
-            #
-        else:        #if the element is not relevant
-            if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                 plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
                 plt.errorbar(x[1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
-                             std_x[1:], 'bo--', markersize = 5, label = '<Samples>') 
+                         std_x[1:], 'o--', markersize = 5, label = '<Samples>') 
+                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
                 plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), label = '<Blk>' )
-                plt.ylabel(y_label, fontsize=14)                #ylabel
+                    #Like that you can plot the blank
+                plt.ylabel(y_label, fontsize=14)              #ylabel
                 plt.xlabel(x_label, fontsize = 14)
                 plt.tick_params(axis='both', labelsize=14)              #size of axis
-                #plt.yscale('log') 
+            #plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()            
-                plt.savefig(folder_name +'/' +  
+                plt.legend()
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
+                    plt.errorbar(x[1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
+                             std_x[1:], 'o--', markersize = 5, label = '<Samples>') 
+                    plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), label = '<Blk>' )
+                    plt.ylabel(y_label, fontsize=14)                #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                    plt.grid(True)
+                    plt.legend()            
+                    plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
         
-        plt.close()             #to clsoe the plot not to consume too much resources
+            plt.close()             #to clsoe the plot not to consume too much resources
+
+    else:          #Blank is hnot ere, so dont plot it!
+        for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+
+            if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
+                plt.errorbar(x, df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
+                         std_x, 'o--', markersize = 5, label = '<Samples>') 
+                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
+                plt.ylabel(y_label, fontsize=14)              #ylabel
+                plt.xlabel(x_label, fontsize = 14)
+                plt.tick_params(axis='both', labelsize=14)              #size of axis
+            #plt.yscale('log') 
+                plt.grid(True)
+                plt.legend()
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
+                    plt.errorbar(x, df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
+                             std_x, 'o--', markersize = 5, label = '<Samples>') 
+                    plt.ylabel(y_label, fontsize=14)                #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                #plt.yscale('log') 
+                    plt.grid(True)
+                    plt.legend()            
+                    plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+        
+            plt.close()             #to clsoe the plot not to consume too much resources
             
         
     ######### 3) Running time displaying ###############

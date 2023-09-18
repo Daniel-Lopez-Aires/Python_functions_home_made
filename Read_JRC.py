@@ -29,6 +29,7 @@ import time as tr                                #to measure the running time
 
 #Useful stuff
 Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'} 
+    #'Tur' :  '#EEE8AA' is perfect, but not for real visulaiztion xD
 Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23',     #bentonite elements
             'Sr88', 'Cs133', 'Eu153', 'La139', 'U238']              #CL eleements
             #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
@@ -2412,16 +2413,84 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
 
     
         
-    
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@ End ICPMS shit xD @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@q    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    
+ 
+####################################################
+#%% ######### 2) PSO fit #############################
+###################################################
+def PSO_fit(t, t__Qt, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
+    '''
+    Function to do and compute some variables relevant to the PSO (pseudo second order) kinetic model. THis model
+    comes from
+    d(Q(t))7dt = K * (Q_e - Q(t))**2,
+    
+    where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. THe solution of that can be casted in linear form:
+        t/Q(t) = 1/KQ_e**2 + t/Q_e
+        
+    so, plotting t/Q(t) vs t is linear (y = ax + b), being 1/Q_e the slope, and 1/KQ_e**2 the intercept. 
+    For the fit I will use my fit function.
+    
+    You may need to select certain time intervals, and not all of them. Note the units are defined by t and t/Qt!
+    
+    *Inputs
+        .t: df series containing the time. Must have same index as the df columns in order to plot them!!
+        .t__Qt: df containnig the t/Q(t) data. I usually give here the averaged data.
+        .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
+        .post_title = '' : title to add after 'Linear fit '
+        .save_name = filename of the fit plot, if it wants to be save. Default value = '' ==> no saving.
+                    this variable is followed by .png for savinf
+        .Color = 'b': color for the plot
+        .Folder_name: folder name, where to store the fit plots
     
     
+    *Outputs
+        .df series with all the relevant info, from the fit and computed quantities, errors (quadratic propagation) included
     
     
+    '''    
+    ############# 0) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    
+    ############# 1)Fit ######################
+    fit = Fits.LinearRegression(t, t__Qt, 
+                                   x_label = x_label, y_label = y_label, 
+                                   Color = Color, save_name = folder_name +'/' + save_name, post_title = post_title)       
+                            #Fit (i dont use npo variable, fit variable)
+    
+    ################ 2) Model parameters ################
+    '''
+    From that I can also get Qe and K easy:
+        y = ax + b;
+         a = 1/Qe ==> Qe = 1/a
+         b = 1/KQe**2 == > K = 1/bQe**2 = a**2 /b
+    '''
+    fit['Q_e'] = 1 / fit['a']         #Qe = 1/a, y= ax + b
+    fit['\Delta(Q_e)'] = fit['\Delta(a)'] /fit['a']**2     #Delta(Qe)
+    fit['K'] = fit['a']**2 /fit['b']         #K = 1/b * Qe**2 = a**2/b
+    fit['\Delta(K)'] = fit['K'] * np.sqrt( 2*(fit['\Delta(a)'] / fit['a'] )**2 + (fit['\Delta(b)'] / fit['b'])**2 )  
+                            #Delta(K)
+
+    ########## 3) Return ###########
+    
+    return fit
     
     
 #%% ###############################################

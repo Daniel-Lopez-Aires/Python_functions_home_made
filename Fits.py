@@ -18,19 +18,25 @@ from statsmodels.formula.api import ols
 ############### 1) Linear fit function ############################
 ####################################################################
 
-def LinearRegression(x, y, npo = 100):
+def LinearRegression(x, y, npo = 100, x_label = 'x', y_label = 'y', post_title = '',
+                     Color = 'b', save_name = ''):
     '''
     Function that makes a linear regression of the 2 list (numpy preferred) X, Y
-    and returns, if the fit equation is y = m x + n:
-        m, \Delta{m}, n, \Delta{n}, r (correlation coefficient, aka r^2)
+    and returns, if the fit equation is y = a x + b:
+        a, \Delta{a}, b, \Delta{b}, r (correlation coefficient, aka r^2)
         
 
     *Inputs:
-        .x, y = 1D numpy arrays containing the data to fit
+        .x, y = 1D numpy arrays containing the data to fit/ pd Series, with maching indexes!
         .npo = 'number of points of the linspace for the fit plotting. Default value = 100
+        .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
+        .post_title = '' : title to add after 'Linear fit '
+        .save_name = filename of the plot, if it wants to be save. Default value = '' ==> no saving.
+            this variable is followed by .png for savinf
+        .Color = 'b': color for the plot
         
     *Outputs:
-        .fit parameters: slope and its error, intercept and its error, correlation
+        .df Series with fit parameters: slope and its error, intercept and its error, correlation
         	coefficient
 	'''
     
@@ -44,42 +50,40 @@ def LinearRegression(x, y, npo = 100):
                     #Important to write "Y ~ X". If you write "X ~ Y", it will do
                     #the opposite analysis
                     
-    slope = fit.params[1]                         #slope
-    intercept = fit.params[0]                     #intercept with the X axis
+    a = fit.params[1]                         #slope
+    b = fit.params[0]                     #intercept with the X axis
     r = fit.rsquared                             #correlation coefficient R
     
     ################## 2) Error calculation ##############
 
-    
-    delta_slope = 3 * np.sqrt(slope**2/(N-2) * (1/r**2 - 1))
-    delta_intercept = 3 * np.sqrt( sum(x**2) * delta_slope**2 / N)
+    delta_a = 3 * np.sqrt(a**2/(N-2) * (1/r**2 - 1))
+    delta_b = 3 * np.sqrt( sum(x**2) * delta_a**2 / N)
   
-    
     ################ 3) Storing #########################
-    values = {'Slope' : slope, 'Intercept' : intercept, 'r' : r, 
-              '\Delta{slope}' : delta_slope, 
-              '\Delta{intercept}' : delta_intercept}
-    
-    
+    values = {'a' : a, 'b' : b, 'r' : r, 
+              '\Delta(a)' : delta_a, 
+              '\Delta(b)' : delta_b}
+    Ser_values = pd.Series(values, name = post_title)      #gathering output in a df Series
+            #naming the column like the post_title variable, since this variable is an isotope: U238
     
     ############# 4) Plot of the fit##########
     x_vector = np.linspace(min(x),max(x),npo)         #for the fit plotting
     
     fig = plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
     ax = fig.add_subplot(111)
-    ax.plot(x,y, 'ro', markersize = 8)
-    ax.plot(x_vector, linear(x_vector, values['Slope'], values['Intercept']),'--' )      #fit
-    ax.set_title('Linear regression', fontsize=22)          #title
-    ax.set_xlabel("x ", fontsize=14)                                    #xlabel
-    ax.set_ylabel('y', fontsize=14)                                    #ylabel
+    ax.plot(x,y, 'o', color = Color, markersize = 5, label = 'Data')
+    ax.plot(x_vector, linear(x_vector, a, b),'--', color = Color,
+            label= 'Fit: ' + y_label + f' = {a:.1e} ' + x_label + f'+{b:.1e}' + ', r= ' + f'{r:.5f}')      #fit
+            #.2f to show 2 decimals on the coefficients!
+            #2e for scientific notation with 2 significative digits
+    ax.set_title('Linear fit ' + post_title, fontsize=22)          #title
+    ax.set_xlabel(x_label, fontsize=14)                                    #xlabel
+    ax.set_ylabel(y_label, fontsize=14)                                    #ylabel
     ax.tick_params(axis='both', labelsize=14)            #size of tick labels  
     ax.grid(True)                                              #show grid
-    ax.legend(['Data','Linear fit'], fontsize=14)             #legend
-    ax.text(0.5,0.1, 'y(x) = {0:1.3f}x + {1:1.3f} ; r = {2:1.3f}'.format(values['Slope'],
-                values['Intercept'],values['r']), horizontalalignment='center',
-     verticalalignment='center', transform=ax.transAxes, fontsize=14) 
+    ax.legend()             #legend
                     #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
-                    
+    plt.savefig(save_name +'.png', format='png', bbox_inches='tight')                
                     ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
     
     
@@ -87,14 +91,19 @@ def LinearRegression(x, y, npo = 100):
         #the values will be returned in a dictionary indicating what is each
         #value
 
-    return values
+    return Ser_values
 
 
 
 
 #####Fit function    
-def linear(x, m, n):       #Definition of the function to use to fit the data
-	return m * x + n 
+def linear(x, a, b):       #Definition of the function to use to fit the data
+    '''
+    Linear function:
+        f(x) = a*x + b
+    '''
+	
+    return a * x + b 
 
 
 
@@ -128,15 +137,15 @@ def linear(x, m, n):       #Definition of the function to use to fit the data
 def QuadraticRegression(x, y, npo = 100):
     '''
     Function that makes a linear regression of the 2 list (numpy preferred) X, Y
-    and returns, if the fit equation is y = m x + n:
-        m, \Delta{m}, n, \Delta{n}, r (correlation coefficient, aka r^2)
+    and returns, if the fit equation is y = ax**2 + bx + c:
+        a,b,c, \Delta{a,b,c}, n, r (correlation coefficient, aka r^2)
         
     *Inputs:
-        .x, y = 1D numpy arrays containing the data to fit
+        .x, y = 1D numpy arrays containing the data to fit / pd series (same index names)
         .npo = 'number of points of the linspace for the fit plotting. Default value = 100
         
     *Outputs:
-        .fit parameters and their errors, correlation
+        .pd Series with the fit parameters and their errors, correlation
         	coefficient
         '''
 
@@ -173,27 +182,27 @@ def QuadraticRegression(x, y, npo = 100):
     r = r_square(x, y, 2)
 
 
-
     #### 2.2) Storing###
     values = {'a' : a, 'b' : b, 'c' : c,
               'r' : r, '\Delta{a}' : delta_a,  '\Delta{b}' : delta_b, 
               '\Delta{c}' : delta_c}
     
-    
+    Ser_values = pd.Series(values)      #gathering output in a df Series
     
     
     ####3) Plot of the fit####
     x_vector = np.linspace(min(x),max(x),npo)         #for the fit plotting
     plt.figure(figsize=(10,6))  #width, heigh 6.4*4.8 inches by default
-    plt.plot(x, y, 'r*', linewidth=3 )                         #original data
-    plt.plot(x_vector, cuadratic(x_vector, a, b, c), linewidth=3)      #fit
-
+    plt.plot(x, y, 'bo', markersize = 5, label = 'Data' )                         #original data
+    plt.plot(x_vector, cuadratic(x_vector, a, b, c), 'r--', linewidth=2, 
+             label=f'Fit: y = {a:.1e}x^2 + {b:.1e}x + {c:.1e}' + ', r= ' + f'{r:.5f}')      #fit
+                        #Like that I put the fit eq into the legend plot ;)
     plt.title('Quadratic fit', fontsize=22)          #title
     plt.xlabel("X ", fontsize=14)                                    #xlabel
     plt.ylabel('Y', fontsize=14)                                    #ylabel
     plt.tick_params(axis='both', labelsize=14)            #size of tick labels  
     plt.grid(True)                                              #show grid
-    plt.legend(['data', 'quadratic fit'], fontsize=16)             #legend
+    plt.legend(fontsize=12)             #legend
     #plt.text(2.7,300, 'y(x) = {0:1.3f}x^2 + {1:1.3f}x + {2:1.3f} ; r = {3:1.3f}'
        #  .format(a, b, c,r_cuadratic_fit), fontsize=14) #10 default size
        #plt.xlim(0,15)
@@ -205,14 +214,15 @@ def QuadraticRegression(x, y, npo = 100):
         #the values will be returned in a dictionary indicating what is each
         #value
 
-    return values
+    return Ser_values
 
 
 #####Fit function    
 
 def cuadratic(x, a, b, c):       
     '''
-    Definition of the function to use to fit the data
+    Definition of the function to use to fit the data:
+        f(x) = a x**2 + b*x + c
     '''
     return a * x**2 + b*x + c 
 

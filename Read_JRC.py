@@ -24,6 +24,7 @@ sys.path.insert(0, '//net1.cec.eu.int/jrc-services/KRU-Users/lopedan/Desktop/PhD
                                     #path where I have the functions
 import Fits, Peak_analyis_spectra
 import time as tr                                #to measure the running time
+from scipy.optimize import curve_fit             #Fit tool
 
 #############################################################
 
@@ -625,10 +626,10 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
     
     for i in range(0, df_IS_sens.shape[0]):   #looping through rows of the df
         if df_IS_sens.index[i][-4:] == '(LR)':      #low resolution
-            axL.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:], label = df_IS_sens.index[i]) 
+            axL.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],'-o' ,label = df_IS_sens.index[i]) 
             
         else:   #MR
-            axM.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:], label = df_IS_sens.index[i])  
+            axM.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],'-o' ,label = df_IS_sens.index[i])  
     
     #Final styling of the plot
     axL.legend()
@@ -2425,7 +2426,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
 ####################################################
 #%% ######### 2) PSO fit #############################
 ###################################################
-def PSO_fit(t, t__Qt, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
+def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
     '''
     Function to do and compute some variables relevant to the PSO (pseudo second order) kinetic model. THis model
     comes from
@@ -2439,9 +2440,12 @@ def PSO_fit(t, t__Qt, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color 
     
     You may need to select certain time intervals, and not all of them. Note the units are defined by t and t/Qt!
     
+    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe you need to modify it in the future??????
+    
     *Inputs
-        .t: df series containing the time. Must have same index as the df columns in order to plot them!!
-        .t__Qt: df containnig the t/Q(t) data. I usually give here the averaged data.
+        .t, Q: df series containing the time and Q(t) data. Expected the averaged values
+            . Must have same index as the df columns in order to plot them!!
+        .delta_t/Q: df with the errors of t and Q. Default value = 0, since I do not use them!
         .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
         .post_title = '' : title to add after 'Linear fit '
         .save_name = filename of the fit plot, if it wants to be save. Default value = '' ==> no saving.
@@ -2452,6 +2456,7 @@ def PSO_fit(t, t__Qt, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color 
     
     *Outputs
         .df series with all the relevant info, from the fit and computed quantities, errors (quadratic propagation) included
+            The input units define those units!! Remember saltpepper!
     
     
     '''    
@@ -2468,9 +2473,16 @@ def PSO_fit(t, t__Qt, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color 
     if not os.path.exists(path_bar_pl):
         os.makedirs(path_bar_pl)
 
+
+    ############## 1) Calcs #################
+    #I need to compute t/Q(t) to do the PSO fit!
     
-    ############# 1)Fit ######################
-    fit = Fits.LinearRegression(t, t__Qt, 
+    t__Q = t / Q          #t/Q(t) for S
+    Delta_t__Q = t__Q * np.sqrt((delta_Q / Q )**2 + (delta_t /t )**2 )      #error, unused!!
+    
+    ############# 2)Fit ######################
+    
+    fit = Fits.LinearRegression(t, t__Q, delta_t, Delta_t__Q,
                                    x_label = x_label, y_label = y_label, 
                                    Color = Color, save_name = folder_name +'/' + save_name, post_title = post_title)       
                             #Fit (i dont use npo variable, fit variable)
@@ -2485,16 +2497,127 @@ def PSO_fit(t, t__Qt, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color 
     fit['Q_e'] = 1 / fit['a']         #Qe = 1/a, y= ax + b
     fit['\Delta(Q_e)'] = fit['\Delta(a)'] /fit['a']**2     #Delta(Qe)
     fit['K'] = fit['a']**2 /fit['b']         #K = 1/b * Qe**2 = a**2/b
-    fit['\Delta(K)'] = fit['K'] * np.sqrt( 2*(fit['\Delta(a)'] / fit['a'] )**2 + (fit['\Delta(b)'] / fit['b'])**2 )  
-                            #Delta(K)
+    fit['\Delta(K)'] = np.abs(fit['K']) * np.sqrt( 2*(fit['\Delta(a)'] / fit['a'] )**2 + (fit['\Delta(b)'] / fit['b'])**2 )  
+                            #Delta(K) np.abs() so its always >0
 
     ########## 3) Return ###########
     
     return fit
     
+
+####################################################
+#%% ######### 2) PFO fit #############################
+###################################################
+def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color = 'b', 
+            save_name = '', post_title = ' ', npo=100):    
+    '''
+    Function to do and compute some variables relevant to the PFO (pseudo first order) kinetic model. THis model
+    comes from
+    d(Q(t))/dt = K * (Q_e - Q(t))
+    
+    where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. THe solution of that is:
+        Q(t) = Q_e* (1- exp(-t*K_1) ) 
+        
+    I could fit the data to that equation. Note that usually that is casted into linear form:
+            ln (Qe - Q) = ln Qe - K_1t,
+    And the Qe-Q you compute by using the experimetnal Qe, from the graph, and from the fit you get the other. Bro, WFT? 
+    
+    
+    So I do the fit. You may need to select certain time intervals, and not all of them. 
+    Note the units are defined by t and Q!
+    
+    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe you need to modify it in the future??????
+    
+    *Inputs
+        .t, Q: df series containing the time and Q(t) data. Expected the averaged values
+            . Must have same index as the df columns in order to plot them!!
+        .delta_t/Q: df with the errors of t and Q. Default value = 0, since I do not use them!
+        .p_0 = None: initial stimation of the fit parameters. 
+        .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
+        .post_title = '' : title to add after 'Linear fit '
+        .save_name = filename of the fit plot, if it wants to be save. Default value = '' ==> no saving.
+                    this variable is followed by .png for savinf
+        .Color = 'b': color for the plot
+        .Folder_name: folder name, where to store the fit plots
+        .npo=100: number of points for the fit plot
+    
+    
+    *Outputs
+        .df series with all the relevant info, from the fit and computed quantities, errors (quadratic propagation) included
+            The input units define those units!! Remember saltpepper!
+    
+    
+    '''    
+    ############# 0.1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    
+    ######## 0.2) Fit eq #########
+    def PFO_eq(x, C_1, C_2):            #equation to fit!
+        return C_1 * (1 - np.exp(-C_2 * x))
+
+
+    ############# 1)Fit ######################
+    param, cov = curve_fit(PFO_eq, t, Q, p0 = p_0)        #easy, in principle! No initial stim of parameters given!
+    std = np.sqrt(np.diag(cov))     #std, since a cov amtrix is returned (read in the raw code)
+    
+    ################ 2) Model parameters ################
+    '''
+    From that I can also get Qe and K easy:
+        y = ax + b;
+         a = 1/Qe ==> Qe = 1/a
+         b = 1/KQe**2 == > K = 1/bQe**2 = a**2 /b
+    '''
+    Qe = param[0]
+    K1 = param[1]
+    Delta_Qe = std[0]
+    Delta_K1 = std[1]
+    
+    #Storing them in a df Series
+    values = {'Qe' : Qe, '\Delta(Qe)' : Delta_Qe,
+              'K1' : K1, '\Delta(K1)' : Delta_K1}
+    Ser_values = pd.Series(values, name = post_title)      #gathering output in a df Series
+            #naming the column like the post_title variable, since this variable is an isotope: U238    
+    
+    
+    ############# 3) Plot of the fit##########
+    t_vector = np.linspace(min(t),max(t),npo)         #for the fit plotting
+    
+    fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+    ax = fig.add_subplot(111)
+    ax.errorbar(t, Q, delta_Q, delta_t, 'o', color = Color, markersize = 5, label = 'Data')
+    ax.plot(t_vector, PFO_eq(t_vector, Qe, K1),'--', color = Color,
+            label= 'Fit: ' + y_label + f' = {Qe:.1e} ' + '$\cdot$ [1- exp(-'+ x_label + '$\cdot$' +f'+{K1:.1e} )]')      #fit
+            #.2f to show 2 decimals on the coefficients!
+            #2e for scientific notation with 2 significative digits
+    ax.set_title('PFO fit ' + post_title, fontsize=22)          #title
+    ax.set_xlabel(x_label, fontsize=14)                                    #xlabel
+    ax.set_ylabel(y_label, fontsize=14)                                    #ylabel
+    ax.tick_params(axis='both', labelsize=14)            #size of tick labels  
+    ax.grid(True)                                              #show grid
+    ax.legend()             #legend
+                    #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
+    plt.savefig(folder_name +'/' + save_name +'.png', format='png', bbox_inches='tight')                
+                    ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
+    
+    
+    ########## 4) Return ###########
+    
+    return Ser_values
+
     
 #%% ###############################################
-################### 2) TGA reader ##################### 
+################### 4) TGA reader ##################### 
 ##################################################
 
 
@@ -2541,7 +2664,7 @@ def Read_TGA (name):
     
  
 #%%##################################################
-##################### 8) XRD reader #################### 
+##################### 5) XRD reader #################### 
 ######################################################
  
 def Read_XRD_WB (name):

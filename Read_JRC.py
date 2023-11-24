@@ -32,8 +32,11 @@ from scipy.optimize import curve_fit             #Fit tool
 Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'} 
     #'Tur' :  '#EEE8AA' is perfect, but not for real visulaiztion xD
 Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23',     #bentonite elements
-            'Sr88', 'Cs133', 'Eu153', 'La139', 'U238']              #CL eleements
+            'Sr88', 'Cs133','Eu151' , 'Eu153', 'La139', 'U238']              #CL eleements
             #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+            
+            #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from Baoxides,
+            #so for low Eu concentrations, Eu151 better!! [Stef]
             
             
 #############################################################            
@@ -371,7 +374,7 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
     contain no Div0, ensure in the excel by deleting those!
     that only a portion was measuring. 
     
-    Only for 2 replicates, but could be generalized for N replicates easily.
+    Only for 2 and 3 replicates, but could be generalized for N replicates easily.
 
 
     *Inputs:
@@ -667,7 +670,8 @@ def IS_sens_correction(df_raw, df_IS_sens,
     'IS conc [ppb]' should be the box that indicates where the ppb chart start. That is, in A column in excel,
     that should be written, since that is used to find the ppb data!!!
     
-    Note the plots appear in the plots pannel in Spyder
+    Note the plots appear in the plots pannel in Spyder, and that the IS measured decide the correction, I defined
+    them with if statements, have not yet come up with a better idea...
 
     
     * Input
@@ -740,7 +744,7 @@ def IS_sens_correction(df_raw, df_IS_sens,
         #so, THIS data is mandatory that exist like that!!
     '''
     To generalize, I will do if statement for the different IS measured cases. By far only 2, the sequence done in the past, the
-    4 in LR and 2 in MR; and now (8/23) 4 in MR also, the most detailed case.
+    4 in LR and 2 in MR; and now (8/23) 4 in MR also, the most detailed case. 11/23, only LR elements!
     '''
     
     if IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']:   
@@ -807,11 +811,38 @@ def IS_sens_correction(df_raw, df_IS_sens,
                 else:   #if mass in range(210, 249):    rest of mass range
                     df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[7],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[7],df_IS_sens.columns[:]].mean() 
 
-
+    elif  IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)']:   #######case 3, only LR IS!
+        for i in range(np.where(df_raw.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
+                #df_raw.loc[229,'Isotopes'] = df_raw.iloc[226,0]#relation iloc, loc
+        
+            mass, resol = Get_A_Resol(df_raw.index[i])
+            #Now, which mass?
+            if int(mass) in range(59,81): #mass from 59 to 80 included both
+                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
+        
+            elif int(mass) in range (81, 139):
+                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
+            
+            elif int(mass) in range (139, 210):
+                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
+            
+            else:   #if mass in range(210, 249):    rest of mass range
+                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
+        
+    
+            
+    
+    else:           #no contempled case
+        print('\n---------------------------\n')
+        print('The Internal standards used are not defined as a case, do it! (if statements)\n')
+        print("Das Lebe ist kein Ponyhof / Embeses la bida no e kmo keremo / c'st la vie, mon ami\n")
+    
+    
     ################## Return ###############
     '''
-    After th eloop ends, we can return it
+    After the loop ends, we can return it
     '''
+    
     return df_IS_correct
 
 
@@ -826,7 +857,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     PART OF THE ICPMS Data processing!
     
     Function to be run after the IS sensitivity correction, to apply the next step in the ICPMS data
-    analysis process, the ICPMS blanks correction. 
+    analysis process, the ICPMS blanks correction (std 0ppt and blanks). 
     
     Note that in the excel, int he part of the ppb table, you should delete the names, that stefaan write twice,
     for this to work!!!! 
@@ -873,7 +904,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     print('\n ######################################')
     
     #2) could be done with df
-    blk_means = df_blanks.mean(axis = 1)            #df series with mean values of ICPMS blanks!
+    df_blanks['<cps>'] = df_blanks.mean(axis = 1)            #I append the mean values. Gives a warning, but nothing is wrong!
 
     #3) The substraction
     '''
@@ -888,9 +919,8 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
 
     df_Is_co_no_blk.fillna(99999, inplace = True)           #filling NaN values with 99999 (easily recognizable)
 
-    #Now the min values are_
-
-    min_values = df_Is_co_no_blk.min(axis = 1) 
+    #Now the min values are, storing them in the same df:
+    df_Is_co_no_blk['min cps'] = df_Is_co_no_blk.min(axis = 1) 
                 #axis = 1 for columns!
     '''
     For this I would need a loop to check for each row which value to substract. I would say we always substract
@@ -907,13 +937,13 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
 
     for i in range(np.where(df_IS_co.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
                     #[0]s we get the desired value!
-        if min_values[i] <= blk_means[i]:     #min low, so substracting min of cps data (no blanks)
+        if df_Is_co_no_blk['min cps'][i] <= df_blanks['<cps>'][i]:     #min low, so substracting min of cps data (no blanks)
             
-            df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],df_IS_co.columns[:]] - min_values[i]
+            df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],df_IS_co.columns[:]] - df_Is_co_no_blk['min cps'][i]
                             #substraction of the min value        
             
         else:           #mean lower, so substracting the mean of ICPMS blanks
-            df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],df_IS_co.columns[:]] - blk_means[i]
+            df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],df_IS_co.columns[:]] - df_blanks['<cps>'][i]
 
     
     #FInally we delete the blanks before returning the data: 
@@ -946,8 +976,10 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
         5) Substract ICPMS blanks
         6) Save that data (to calibrate after, by hand, for the moment..)
     
-    To do 2), its needed that the ppb data table begins with IS conc [ppb]!
-    
+    Important notes:
+        . To do 2), its needed that the ppb data table begins with IS conc [ppb]!
+        . To do 3), you define the IS cases, so beware, maybe your case its not (yet) defined!!  
+        
     *Inputs:
         .df_cps: df containing the cps data and also the ppb data, in the classic format. Must not contain the wash, will give 
             errors (divide by zero). Take care of the names (like for the cps table), they are crutial for the sens calc and 
@@ -965,7 +997,7 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     
     
     To Do:
-            .Automatize more stuff? 
+            .Automatize more stuff? such as the sens corrections, not by case something better, more general??
             .Optimize excel saving!
     '''
     
@@ -976,14 +1008,14 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     
     
     ###### 2) IS sens correction and new sens calc ##########
-    df_IS_corrected = IS_sens_correction(df_cps, df_IS_sens, IS_meas)       #applying the IS correction
+    df_cps_IS_corr = IS_sens_correction(df_cps, df_IS_sens, IS_meas)       #applying the IS correction to teh cps data
 
-    df_IS_sens_co = IS_sens_calculator_plotter(df_IS_corrected, IS_meas, name_IS_sens_LR_plot= name_plot_LR_aft,
+    df_IS_sens_co = IS_sens_calculator_plotter(df_cps_IS_corr, IS_meas, name_IS_sens_LR_plot= name_plot_LR_aft,
                                                name_IS_sens_MR_plot= name_plot_MR_aft)    #getting and plotting new IS sens
     
     
     ##### 3)ICPMS Blk correction #########
-    df_IS_Blks_co = ICPMS_ICPMSBlanks_corrector(df_IS_corrected, ICPblk_columns)    #correcting for ICPMS blanks
+    df_IS_Blks_co = ICPMS_ICPMSBlanks_corrector(df_cps_IS_corr, ICPblk_columns)    #correcting for ICPMS blanks
 
 
     ##### 4) Saving and Output #########
@@ -1009,20 +1041,20 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     excel_sheet.write_row('B5', ['[cps]'] * len(df_IS_Blks_co.columns))     #row 5 with a value repeated
     
     
-    df_IS_corrected.to_excel(writer, sheet_name = 'IS_correction', startrow = 6, freeze_panes = (6, 1),
+    df_cps_IS_corr.to_excel(writer, sheet_name = 'IS_correction', startrow = 6, freeze_panes = (6, 1),
                              header = False)        #saving to excel in another sheet
             #Note it does not have perfect format, to optimize it!!!
             #THe start trow make that Co59 is on row 7, as it should be!
-    df_IS_sens_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 6 + df_IS_corrected.shape[0] + 2,
+    df_IS_sens_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 6 + df_cps_IS_corr.shape[0] + 2,
                            header = False)
                         #putting the new IS sensitivity below the IS corrected data!!
     
     excel_sheet2 = writer.sheets['IS_correction']
-    excel_sheet2.write_row('B2', df_IS_corrected.columns, bold_format)      #1st row with numbers of columns
-    excel_sheet2.write_row('B1', range(1, len(df_IS_corrected.columns) + 1), bold_format)  #2nd row with columns names
-    excel_sheet2.write_row('B3', [None] * len(df_IS_corrected.columns))            #row 3 empty
-    excel_sheet2.write_row('B4', ['<Int>'] * len(df_IS_corrected.columns))         #row 4 with a value repeated
-    excel_sheet2.write_row('B5', ['[cps]'] * len(df_IS_corrected.columns))     #row 5 with a value repeated
+    excel_sheet2.write_row('B2', df_cps_IS_corr.columns, bold_format)      #1st row with numbers of columns
+    excel_sheet2.write_row('B1', range(1, len(df_cps_IS_corr.columns) + 1), bold_format)  #2nd row with columns names
+    excel_sheet2.write_row('B3', [None] * len(df_cps_IS_corr.columns))            #row 3 empty
+    excel_sheet2.write_row('B4', ['<Int>'] * len(df_cps_IS_corr.columns))         #row 4 with a value repeated
+    excel_sheet2.write_row('B5', ['[cps]'] * len(df_cps_IS_corr.columns))     #row 5 with a value repeated
     
     
     writer.save()                                           #critical step, save the excel xD 
@@ -1118,9 +1150,9 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
 
 
     *Inputs:
-        .df_data: dataframe containing the data, the full data, with the 2 replicates. Should be Dfs corrected
-            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
-            this function!!!!
+        .df_data: dataframe containing the data, the full data, with the 2 or 3 replicates. Should be Dfs corrected
+            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. Note the 1st sample
+            in each replicate must be the sample blank!
         .df_VoM_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, 
         or whatever. normally 50ml OR the total mass of the solution [g]. If df_data in ppb, this must be the total mass
             so that Q_e is in g/g !
@@ -2138,8 +2170,8 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
     In those average values, blank could or not be there. If yes, the blk is plotted as an hor line
     
     *Inputs:
-        .x: x axis variable in the plot (mean values). This should be a df series
-        .std_x: df Series with the std of the x variable
+        .x: x axis variable in the plot (mean values). This could be a df series or a df
+        .std_x: df Series or df with the std of the x variable
         .df_mean_cps: dataframes containing the cps, but average values (1,2,3,4, etc). From run of the mean and std calc
         .df_std_cps: df containing the std of the mean values of the cps.
         .x_label: string that will be the x label for the plot (for math stuff, 
@@ -2208,36 +2240,14 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
     '''
     t_start = tr.time()       #[s] start time of the plot execution
     
-    #TO make it more computing efficient, the Blank if will be here:
-              
-    for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-
-        if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
+    #TO make it more computing efficient, the Blank if will be here. I will generalize the function, so x
+    #can be a df, not only a df.series. I need an additional if, that will be here:
+        
+    if isinstance(x, pd.Series):                 #If x is a pd Series          
+        for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+            if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
-            plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-            plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
-            if Blank_here:                                                      ####IS BLANK HERE?
-                plt.errorbar(x[1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
-                                     std_x[1:], 'o--', color = Color, markersize = 5, label = '<Samples>') 
-                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
-                plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), color = Color, label = '<Blk>' )
-            else:               #No blank
-                plt.errorbar(x, df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
-                                     std_x, 'o--', color = Color, markersize = 5, label = '<Samples>') 
-                    #Like that you can plot the blank
-            plt.ylabel(y_label, fontsize=14)              #ylabel
-            plt.xlabel(x_label, fontsize = 14)
-            plt.tick_params(axis='both', labelsize=14)              #size of axis
-            if LogScale:                                                     ####LOG SCALE?
-                plt.yscale('log') 
-            plt.grid(True)
-            plt.legend()
-            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')       
-        else:                                                       #if the element is not relevant
-            if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                 plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
                 if Blank_here:                                                      ####IS BLANK HERE?
@@ -2252,18 +2262,99 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                 plt.ylabel(y_label, fontsize=14)              #ylabel
                 plt.xlabel(x_label, fontsize = 14)
                 plt.tick_params(axis='both', labelsize=14)              #size of axis
-                if LogScale:                                                  ####LOG SCALE?
+                if LogScale:                                                     ####LOG SCALE?
                     plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()            
-                plt.savefig(folder_name +'/' +  
+                plt.legend()
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')       
+            else:                                                       #if the element is not relevant
+                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
+                    if Blank_here:                                                      ####IS BLANK HERE?
+                        plt.errorbar(x[1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
+                                     std_x[1:], 'o--', color = Color, markersize = 5, label = '<Samples>') 
+                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
+                        plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), color = Color, label = '<Blk>' )
+                    else:               #No blank
+                        plt.errorbar(x, df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
+                                     std_x, 'o--', color = Color, markersize = 5, label = '<Samples>') 
+                    #Like that you can plot the blank
+                    plt.ylabel(y_label, fontsize=14)              #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    if LogScale:                                                  ####LOG SCALE?
+                        plt.yscale('log') 
+                
+                    plt.grid(True)
+                    plt.legend()            
+                    plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
-        plt.close()
+                plt.close()
+
+    elif isinstance(x, pd.DataFrame):                 #If x is a pd Dattaframe       
+        for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+            if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
+                if Blank_here:                                                      ####IS BLANK HERE?
+                    plt.errorbar(x.loc[x.index[i]][1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
+                                     std_x.loc[std_x.index[i]][1:], 'o--', color = Color, markersize = 5, label = '<Samples>') 
+                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
+                    plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), color = Color, label = '<Blk>' )
+                else:               #No blank
+                    plt.errorbar(x.loc[x.index[i]], df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
+                                     std_x.loc[std_x.index[i]], 'o--', color = Color, markersize = 5, label = '<Samples>') 
+                    #Like that you can plot the blank
+                plt.ylabel(y_label, fontsize=14)              #ylabel
+                plt.xlabel(x_label, fontsize = 14)
+                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                if LogScale:                                                     ####LOG SCALE?
+                    plt.yscale('log') 
+                plt.grid(True)
+                plt.legend()
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')       
+            else:                                                       #if the element is not relevant
+                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + df_mean_cps.index[i][:-4], fontsize=22, wrap=True)     #title
+                    if Blank_here:                                                      ####IS BLANK HERE?
+                        plt.errorbar(x.loc[x.index[i]][1:], df_mean_cps.loc[df_mean_cps.index[i] ][1:], df_std_cps.loc[df_mean_cps.index[i] ][1:],
+                                     std_x.loc[std_x.index[i]][1:], 'o--', color = Color, markersize = 5, label = '<Samples>') 
+                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
+                        plt.hlines(df_mean_cps.loc[df_mean_cps.index[i] ][0], min(x), max(x), color = Color, label = '<Blk>' )
+                    else:               #No blank
+                        plt.errorbar(x.loc[x.index[i]], df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
+                                     std_x.loc[std_x.index[i]], 'o--', color = Color, markersize = 5, label = '<Samples>') 
+                    #Like that you can plot the blank
+                    plt.ylabel(y_label, fontsize=14)              #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    if LogScale:                                                  ####LOG SCALE?
+                        plt.yscale('log') 
+                
+                    plt.grid(True)
+                    plt.legend()            
+                    plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+                plt.close()
+    else:           #Error case
+        print('WTF is x bro? xD')
+        
         
     '''
     Well, in the past I did the if statemetns outside the for loop, but it seems to be shorter like that! Unexpected. Anyhow its
     shorter the code, save 100lines, I needed to copy that thing 8 times xD
+    
+    15/11/23, the if of where x is df or series I put it outisde tohugh!
     '''
         
     ######### 3) Running time displaying ###############

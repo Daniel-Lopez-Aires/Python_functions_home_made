@@ -260,7 +260,7 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
         .D_f_data: array with the rows where the sample names and the Dilution factor 
             (ICPMS sample prep) is found.
             Note that info is also important for getting the index labels!
-            Df_data = [1, 3] means names in row 1, Df in row 3 (in the excel)
+            df_samples = [1, 3] means names in row 1, Df in row 3 (in the excel)
         .samp_prep_sheet_name: string with the name of the sheet containing
             the ICPMS sample prep data, for the dilution factor. Default: 'Sample_prep'
 
@@ -611,6 +611,14 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
     '''
     df_IS_sens.columns = df_cps_ppb_dat.columns
     
+    'I can print the %rstd values = std/mean * 100 of the IS sens, useful to spot fluctuations!'
+    rstd = df_IS_sens.std(axis =1) / df_IS_sens.mean(axis =1) * 100                   #%rstd of the IS sens
+                                    #ofc agrees with excel!
+    print('##################################################################### \n')
+    print('%rstd of the IS sens:')
+    print(rstd)
+    print('Values >= 5/6% start to be suspicious, something happened! (Th oxidation for ex?) \n')
+    print('##################################################################### \n')
     
     #################################################
     ############# IS sens plotter ####################
@@ -978,7 +986,8 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     
     Important notes:
         . To do 2), its needed that the ppb data table begins with IS conc [ppb]!
-        . To do 3), you define the IS cases, so beware, maybe your case its not (yet) defined!!  
+        . To do 3), you define the IS cases (which IS are to be used), so beware, 
+                maybe your case its not (yet) defined!!  
         
     *Inputs:
         .df_cps: df containing the cps data and also the ppb data, in the classic format. Must not contain the wash, will give 
@@ -1331,6 +1340,172 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
         return df_Kd, df_Qe, df_C0__Ceq
 
 
+
+#%%######################################
+########### 1.12) Kd calculaor, Adsorption version #############
+#####################################
+def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, ret_Co__Ceq = False):
+    '''
+    Function that will compute the distribution constant Kd and the adsorption quantity
+    q_e from the ppb data obtained with ICPMS. Note that data must be corrected
+    for the dilutions factors. 
+    
+    Based on the blk corrector function. 
+    
+    THe distribution constant Kd is:
+        K_d = (C_0 - C_eq)/C_eq * V/m = Q_e / C_eq;
+    being            
+        C_0 = initial concentration [M]
+        C_eq = concentration at equilibrium [M]
+        m = mass of dry bentonite [g]
+        V = volume of the solution [L]
+        Q_e = absorbed quantity in equil [g soluto / g bent]
+        
+    In our case, that we measure C in ppb = ng soluto /g disol, we need to mutiply by g tot / m bent, to
+    achieve the same units in Q_e!! And we do not have equilibirum since its kinetic, so Qe, Ke ==> Q(t), K(t)
+    
+    Here we have different omther solutions, whihc is the main different
+    from th eother funciton, where all the samples had a common mother solution (C_0). Here we have several C_0
+
+    Necessary that the data contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
+    
+    Note this requires a df series with the volume, that you were not measuring in the first exp
+    (up to 8/23). Note ten that units are involved!. If measuring mass ing and volumes in L, Q
+
+
+    *Inputs:
+        .df_samples: dataframe containing the data, the full data, with the 3 replicates. Should be Dfs corrected
+            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. Note the 1st sample
+            in each replicate is removed (procedural blank)
+        .df_mother_sol: df containng the mother solution data, C_0
+        .df_VoM_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, 
+        or whatever. normally 50ml OR the total mass of the solution [g]. If df_samples in ppb, this must be the total mass
+            so that Q_e is in g/g !
+        .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle (normally 250mg)
+        .Nrepl: number of replicates. Default value = 2. 3 also accepted
+        ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
+    
+    *Outputs (in that order):
+        .df with the Kd data
+        .df with q_e data
+        
+        '''
+    
+    
+    ########## 0) Precalcs ##########
+    '''
+    To avoid the div0 error, which occurs when I have 0 as a values in the df, which I have for all the elements
+    that were not found by ICPMS, I can just put NaN instead, since that will not give the Div0 error when computing Kd
+    '''
+    
+    df_samples.replace(0, np.nan, inplace=True)                    #replace 0 values with NaN, to avoid Div0 error!
+    
+    
+    ########### 1) Calcs ###########
+    '''
+    The operations to perform are:
+        1) C_0 - C_eq (>0)
+        2) 1) * V/m = q_e
+        3) 2)	1/C_eq = Kd
+    
+    I must treat the 2 experiments are different, I should substract the blank 1 to the 1st emasurements
+    and the 2 to the others. Since I ordered it in the right way (1st replicacte 1, then replicate 2, 
+    I could) split it easily :D
+            df.shape gives the shape of the df, n_rows, n_columns
+    
+    Note the df have number of samples * 2 replicates columns.
+    
+    Then, I will create a new dataframe substracting that data. To do so, I need to get rid
+    of the isotopes column, since is text, and then add it again. Watch, the substraction is 
+    easy with a pandas mehotd.
+
+    I shuold then remove those columns
+    from there, and replace negatives values for 0, for a good plot
+    '''
+    
+    #So, lets split into the 2 replicates!
+    '''
+    For 2 replicates its easy, for 3 it could be more tricky. Beware! TO create a function you should say
+    the number of replicates and so!
+    '''
+    
+    #Gathering the replicates sepparately    
+    df_1 = df_samples.iloc[:, : round(df_samples.shape[1] / 3)]
+    df_2 = df_samples.iloc[:, round(df_samples.shape[1] / 3): 2*round(df_samples.shape[1] / 3)]
+    df_3 = df_samples.iloc[:, 2*round(df_samples.shape[1] / 3) :]
+        
+    df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 3 ) ]      #1st replicate
+    df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 3 ): 2* round( ( df_VoM_disol.shape[0] ) / 3 ) ]      
+    df_VoM_3 = df_VoM_disol.iloc[ 2 *round( ( df_VoM_disol.shape[0] ) / 3 ) : ]      #3rd replicate
+        
+    df_m_1 = df_m_be.iloc[ : round( ( df_m_be.shape[0] ) / 3 ) ]      #1st replicat
+    df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 3 ) : 2* round( ( df_m_be.shape[0] ) / 3 )]      #2nd replicat
+    df_m_3 = df_m_be.iloc[ 2 *round( ( df_m_be.shape[0] ) / 3 ) : ]      #3rd replicat
+    
+    #1) 
+    '''
+    Note that I have N different mother solutions, which also means N different samples. i could do that with a for loop, but
+    I found a better version. I can ubstrcat df ignoring their indexes by doing df.values!
+    '''
+    N = df_mother_sol.shape[1]       #number of samples in the mother solution
+    
+    dfCeq__C0_1 = pd.DataFrame(df_1.iloc[:,:N].values - df_mother_sol.values,
+                               index = df_mother_sol.index, columns = df_1.columns) ##doing the substraction checked!
+    dfCeq__C0_2 = pd.DataFrame(df_2.iloc[:,:N].values - df_mother_sol.values,
+                               index = df_mother_sol.index, columns = df_2.columns) 
+    dfCeq__C0_3 = pd.DataFrame(df_3.iloc[:,:N].values - df_mother_sol.values,
+                               index = df_mother_sol.index, columns = df_3.columns)
+   
+    #Since 1st sample for each replicate is the procedural bllank, that IN PRINCIPLE is not needed, I remove it!!     
+    dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+    dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+    dfCeq__C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column        
+    
+    dfC0__Ceq_1 = - dfCeq__C0_1
+    dfC0__Ceq_2 = - dfCeq__C0_2
+    dfC0__Ceq_3 = - dfCeq__C0_3
+    
+    ######## 2) Apply the V/ m giving q_e (from Df_exp)
+    #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
+
+    df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
+    df_m_2 = df_m_2[1:]
+    df_m_3 = df_m_3[1:]
+    df_VoM_1 = df_VoM_1[1:]
+    df_VoM_2 = df_VoM_2[1:]
+    df_VoM_3 = df_VoM_3[1:]
+        
+    #And now I can operate:
+        
+    df_Qe_1 = dfC0__Ceq_1 * df_VoM_1 / df_m_1
+    df_Qe_2 = dfC0__Ceq_2 * df_VoM_2 / df_m_2 
+    df_Qe_3 = dfC0__Ceq_3 * df_VoM_3 / df_m_3
+        
+        
+    ######## 3) Apply 1/C_eq = Kd
+    df_Kd_1 = df_Qe_1 / df_1.drop( [df_1.iloc[:,0].name], axis = 1)   
+    df_Kd_2 = df_Qe_2 / df_2.drop( [df_2.iloc[:,0].name], axis = 1)
+    df_Kd_3 = df_Qe_3 / df_3.drop( [df_3.iloc[:,0].name], axis = 1)
+    
+    #Now lets add them together
+    df_Kd = pd.concat( [df_Kd_1, df_Kd_2, df_Kd_3], axis = 1)         
+    df_Qe = pd.concat( [df_Qe_1, df_Qe_2, df_Qe_3 ] , axis = 1)  
+    df_C0__Ceq = pd.concat( [dfC0__Ceq_1, dfC0__Ceq_2, dfC0__Ceq_3], axis = 1)
+    
+                
+   ####Checked that the Qe calc is correct, and then Kd must be also :)     
+      
+    ########### 2) Return #############
+    #Here the if for returning or not C_0 - C(t) applies
+    
+    if ret_Co__Ceq == False:            #do not return it
+        return df_Kd, df_Qe             #return
+    
+    else:                   #return C0-Ceq
+        return df_Kd, df_Qe, df_C0__Ceq
+
+
+
 #%%######################################
 ########### 1.12) Mean/std of replicates calculaor #############
 #####################################
@@ -1455,7 +1630,6 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
     
 ########### 2) Return #############
     return df_mean, df_std             #return
-
 
 
 
@@ -1970,14 +2144,14 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False, 
                        pre_title_plt = "Concentration of ", pre_save_name = 'Conc', Nrepl = 2,
-                       Elem_rel = Isot_rel ):
+                       Blank_here = False, Elem_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
     Blank is plotted sepparately, so the data must include a blank, which should be 1st, the number 1
     
     *Inputs:
-        .x: x axis variable in the plot. This should be a df series
+        .x: x axis variable in the plot. This could be a pd.Series or pd.DataFrame
         .df_cps: dataframes containing the cps. Those are
         outputs for the Read_ICPMS_excel function. Note the isotopes are the index, so 1st column is 1_1!
         .x_label: string that will be the x label for the plot (for math stuff, 
@@ -1992,11 +2166,14 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
         .Nrepl : number of replicates. Default value : 2. 3 value also accepted
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: (see above in the script)        
+            in a specific folder. Default value: (see above in the script)      
+         .Blank_here: True if the df contain the blank. Default: False
                                     
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
     
+    Note as since I included the option to have or not the blank, this makes the old funciton ICPMS_Plotter unnecesary. But I
+    will not remove it, since does not make any harm there :)
     
     ### TO DO: ####
 	.Implement error plotting (in an errorbar pyplot)
@@ -2025,121 +2202,183 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
         os.makedirs(path_bar_pl_rel)   
     
     
-    ######### 2) plotting ###############
+    ############ 2) Data cleaning. pre-process #############
+    '''
+    Here I will clean everything a bit, getting the replicates and so. This depends whether the x data
+    is a df.Series or a df.DataFrame
+    '''
+    if isinstance(x, pd.Series) :             #x is a pd.Series. y (df_cps) is always pd.DataFrame
+        if Nrepl ==2:           #2 replc    
+            x_1 = x[:int(len(x)/2) ]
+            x_2 = x[int(len(x)/2): ]
+            y_1 = df_cps.iloc[ :, : round( df_cps.shape[1] / 2 ) ] 
+            y_2 = df_cps.iloc[ :, round( df_cps.shape[1]  / 2 ): ] 
+        elif Nrepl ==3 :        #3repl
+            x_1 = x[:int(len(x)/3) ]
+            x_2 = x[int(len(x)/3): int(2*len(x)/3) ]
+            x_3 = x[int(2*len(x)/3):]
+            y_1 = df_cps.iloc[ :, : round( df_cps.shape[1] / 3 ) ] 
+            y_2 = df_cps.iloc[ :, round( df_cps.shape[1] / 3 ): round( 2*df_cps.shape[1] / 3 )  ] 
+            y_3 = df_cps.iloc[ :, round( 2*df_cps.shape[1] / 3 ):  ] 
+    elif isinstance(x, pd.DataFrame):
+        if Nrepl == 2:
+            x_1 = x.iloc[ :, : round( x.shape[1] / 2 ) ] 
+            x_2 = x.iloc[ :, round( x.shape[1]  / 2 ): ] 
+            y_1 = df_cps.iloc[ :, : round( df_cps.shape[1] / 2 ) ] 
+            y_2 = df_cps.iloc[ :, round( df_cps.shape[1]  / 2 ): ] 
+        elif Nrepl == 3:             
+            x_1 = x.iloc[ :, : round( x.shape[1] / 3 ) ] 
+            x_2 = x.iloc[ :, round( x.shape[1] / 3 ): round( 2*x.shape[1] / 3 )  ] 
+            x_3 = x.iloc[ :, round( 2*x.shape[1] / 3 ):  ] 
+            y_1 = df_cps.iloc[ :, : round( df_cps.shape[1] / 3 ) ] 
+            y_2 = df_cps.iloc[ :, round( df_cps.shape[1] / 3 ): round( 2*df_cps.shape[1] / 3 )  ] 
+            y_3 = df_cps.iloc[ :, round( 2*df_cps.shape[1] / 3 ):  ] 
+            
+    '''
+    Note that I could plot that more easyly. Still I would need to iterate the df, with an index, to adequately plot it
+    but the essence is in the way how I did it, but instead of :
+        df_cps.loc[df_cps.index[i] ][int(len(x)/2)+1 : 2*int(len(x)/3)]
+        y_2.index[i] should suffice, making everything muuch more clear.
+        
+    Do it puto!!!!!
+    
+    
+    '''
+    ######### 3) plotting ###############
     '''
     This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
     I inlcude in if statement the numer of replicates, currently only 2 and 3!
+    
+    I plot only the relevant elements (they are in a list, or all if plot all included)
+    
+    Now it is generalized to be able to be used with pd series and pd df, so another if statement needed!
 
     '''
     t_start = tr.time()       #[s] start time of the plot execution
-    
-    if Nrepl == 2:               #2 replicates, standard case!
-    ###Plot
-        for index,row in df_cps.iterrows(): 
-                    #df_cps.index give the index values, low and high
-		   # 4 because of the way the df is created (and hence the excel tabelle)
-
-            #Saving in the folder
-            if index[:-4] in Elem_rel:                      #if the element is relevant
-            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
-            #in order to check with the list!
-                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
-                plt.plot(x[:int(len(x)/2) ], row[:int(len(x)/2)], 'bo--', 
-                     MarkerSize = 5, label = 'Repl_1') 
-                plt.hlines(row[0], min(x[:int(len(x)/2)]), max(x[:int(len(x)/2)] ), label = 'Blk_1' )
-                    #row[0] is 1_1, 1st sample of 1st replicate!
-            #Now replicate 2
-                plt.plot(x[int(len(x)/2):], row[int(len(x)/2 ):], 'ro--', 
-                     MarkerSize = 5, label = 'Repl_2') 
-            
-                plt.hlines(row[int(len(x)/2)], min(x[int(len(x)/2):] ), max(x[int(len(x)/2):] ), label = 'Blk_2', colors = 'r' )
-                plt.ylabel(y_label, fontsize=14)              #ylabel
-                plt.xlabel(x_label, fontsize = 14)
-                plt.tick_params(axis='both', labelsize=14)              #size of axis
-            #plt.yscale('log') 
-                plt.grid(True)
-                plt.legend()
-                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + index[:-4] + '.png', format='png', bbox_inches='tight')
-            #
-            else:        #if the element is not relevant
-                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
+      
+    if isinstance(x, pd.Series):         #If x is a pd series (like time and so)  
+        if Nrepl == 2:               #2 replicates, standard case (x is time for ex)    
+            for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+                if y_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                    plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
-                    plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
-                         MarkerSize = 5, label = 'Repl_1') 
-                    plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
-                         MarkerSize = 5, label = 'Repl_2') 
-                    plt.ylabel(y_label, fontsize=14)                #ylabel
+                    plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
+                    if Blank_here:      #if Blank here ==> 1st colum is blk
+                        plt.plot(x_1[1:], y_1.loc[y_1.index[i] ][1:], 'bo--', 
+                                 MarkerSize = 5, label = 'Repl_1')          #repl 1
+                        plt.plot(x_2[1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
+                                 MarkerSize = 5, label = 'Repl_2')          #repl 2                                             
+                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1), max(x_1) , label = 'Blk_1' )
+                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2), max(x_2) , label = 'Blk_2' )                                                                            
+                    else:                   #No blank!
+                        plt.plot(x_1, y_1.loc[y_1.index[i] ], 'bo--', 
+                                 MarkerSize = 5, label = 'Repl_1')          #repl 1
+                        plt.plot(x_2, y_2.loc[y_2.index[i] ], 'ro--', 
+                                 MarkerSize = 5, label = 'Repl_2')          #repl 2
+                    plt.ylabel(y_label, fontsize=14)              #ylabel
                     plt.xlabel(x_label, fontsize = 14)
                     plt.tick_params(axis='both', labelsize=14)              #size of axis
-                #plt.yscale('log') 
+                    #plt.yscale('log') 
                     plt.grid(True)
-                    plt.legend()            
-                    plt.savefig(folder_name +'/' +  
-                        pre_save_name + '_'  + index[:-4] +'.png', format='png', bbox_inches='tight')
-                    #To save plot in folder
-        
-            plt.close()             #to clsoe the plot not to consume too much resources
-            
-    elif Nrepl == 3:                        #3 replicates case
-        for index,row in df_cps.iterrows(): 
-                    #df_cps.index give the index values, low and high
-		   # 4 because of the way the df is created (and hence the excel tabelle)
-
-            #Saving in the folder
-            if index[:-4] in Elem_rel:                      #if the element is relevant
-            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
-            #in order to check with the list!
-                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
-                plt.plot(x[:int(len(x)/3) ], row[:int(len(x)/3)], 'bo--', 
-                     MarkerSize = 5, label = 'Repl_1') 
-                plt.plot(x[int(len(x)/3): 2*int(len(x)/3) ], row[ int(len(x)/3): 2*int(len(x)/3) ], 'ro--', 
-                     MarkerSize = 5, label = 'Repl_2') 
-                plt.plot(x[ 2*int(len(x)/3): ], row[ 2*int(len(x)/3): ], 'go--', 
-                     MarkerSize = 5, label = 'Repl_3') 
-                plt.hlines(row[0], min(x[:int(len(x)/3)]), max(x[:int(len(x)/3)] ), label = 'Blk_1', colors = 'b' )
-                    #row[0] is 1_1, 1st sample of 1st replicate!
-                plt.hlines(row[int(len(x)/3)], min(x[int(len(x)/3): 2*int(len(x)/3)] ), max(x[int(len(x)/3): 2* int(len(x)/3)] ), 
-                           label = 'Blk_2', colors = 'r' )
-                plt.hlines(row[2* int(len(x)/3)], min(x[2*int(len(x)/3):] ), max(x[2* int(len(x)/3):] ), 
-                           label = 'Blk_3', colors = 'g' )
-                plt.ylabel(y_label, fontsize=14)              #ylabel
-                plt.xlabel(x_label, fontsize = 14)
-                plt.tick_params(axis='both', labelsize=14)              #size of axis
-            #plt.yscale('log') 
-                plt.grid(True)
-                plt.legend()
-                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + index[:-4] + '.png', format='png', bbox_inches='tight')
-            #
-            else:        #if the element is not relevant
-                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
+                    plt.legend()
+                    plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')      
+        elif Nrepl ==3:                     #3 replicates
+            for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+                if y_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                    plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
-                    plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
-                         MarkerSize = 5, label = 'Repl_1') 
-                    plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
-                         MarkerSize = 5, label = 'Repl_2') 
-                    plt.ylabel(y_label, fontsize=14)                #ylabel
+                    plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
+                    if Blank_here:      #if Blank here ==> 1st colum is blk
+                        plt.plot(x_1[1:], y_1.loc[y_1.index[i] ][1:], 'bo--', 
+                                 MarkerSize = 5, label = 'Repl_1')          #repl 1
+                        plt.plot(x_2[1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
+                                 MarkerSize = 5, label = 'Repl_2')          #repl 2
+                        plt.plot(x_3[1:], y_3.loc[y_2.index[i] ][1:], 'go--', 
+                                 MarkerSize = 5, label = 'Repl_3')          #repl 3                                               
+                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1), max(x_1) , label = 'Blk_1' )
+                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2), max(x_2) , label = 'Blk_2' )
+                        plt.hlines(y_3.loc[y_3.index[i] ][0], min(x_3), max(x_3) , label = 'Blk_3' )                                                                             
+                    else:                   #No blank!
+                        plt.plot(x_1, y_1.loc[y_1.index[i] ], 'bo--', 
+                                 MarkerSize = 5, label = 'Repl_1')          #repl 1
+                        plt.plot(x_2, y_2.loc[y_2.index[i] ], 'ro--', 
+                                 MarkerSize = 5, label = 'Repl_2')          #repl 2
+                        plt.plot(x_3, y_3.loc[y_2.index[i] ], 'go--', 
+                                 MarkerSize = 5, label = 'Repl_3')          #repl 3 
+                    plt.ylabel(y_label, fontsize=14)              #ylabel
                     plt.xlabel(x_label, fontsize = 14)
                     plt.tick_params(axis='both', labelsize=14)              #size of axis
-                #plt.yscale('log') 
+                    #plt.yscale('log') 
                     plt.grid(True)
-                    plt.legend()            
-                    plt.savefig(folder_name +'/' +  
-                        pre_save_name + '_'  + index[:-4] +'.png', format='png', bbox_inches='tight')
-                    #To save plot in folder
+                    plt.legend()
+                    plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')          
+    #
+    elif isinstance(x, pd.DataFrame):           #if x is a DataFrame    
+        if Nrepl == 2:               #2 replicates, standard case (x is time for ex)    
+            for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+                if y_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
+                    if Blank_here:      #if Blank here ==> 1st colum is blk
+                        plt.plot(x_1.loc[x_1.index[i]][1:], y_1.loc[y_1.index[i] ][1:], 'bo--', 
+                                 MarkerSize = 5, label = 'Repl_1')          #repl 1
+                        plt.plot(x_2.loc[x_2.index[i]][1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
+                                 MarkerSize = 5, label = 'Repl_2')          #repl 2                                           
+                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1.loc[x_1.index[i]]), max(x_1.loc[x_1.index[i]]) , label = 'Blk_1' )
+                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2.loc[x_2.index[i]]), max(x_2.loc[x_2.index[i]]) , label = 'Blk_2' )                                                                            
+                    else:                   #No blank!
+                        plt.plot(x_1.loc[x_1.index[i]], y_1.loc[y_1.index[i] ], 'bo--', 
+                                 MarkerSize = 5, label = 'Repl_1')          #repl 1
+                        plt.plot(x_2.loc[x_2.index[i]], y_2.loc[y_2.index[i] ], 'ro--', 
+                                 MarkerSize = 5, label = 'Repl_2')          #repl 2
+                    plt.ylabel(y_label, fontsize=14)              #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    #plt.yscale('log') 
+                    plt.grid(True)
+                    plt.legend()
+                    plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')            
+        if Nrepl == 3:               #2 replicates, standard case (x is time for ex)    
+            for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
+                if y_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
+                    if Blank_here:      #if Blank here ==> 1st colum is blk
+                        plt.plot(x_1.loc[x_1.index[i]][1:], y_1.loc[y_1.index[i] ][1:], 'bo--', 
+                                 MarkerSize = 5, label = 'Repl_1')          #repl 1
+                        plt.plot(x_2.loc[x_2.index[i]][1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
+                                 MarkerSize = 5, label = 'Repl_2')          #repl 2                                           
+                        plt.plot(x_3.loc[x_3.index[i]][1:], y_3.loc[y_3.index[i] ][1:], 'go--', 
+                                 MarkerSize = 5, label = 'Repl_3')          #repl 3       
+                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1.loc[x_1.index[i]]), max(x_1.loc[x_1.index[i]]) , label = 'Blk_1' )
+                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2.loc[x_2.index[i]]), max(x_2.loc[x_2.index[i]]) , label = 'Blk_2' )                                                                            
+                        plt.hlines(y_3.loc[y_3.index[i] ][0], min(x_3.loc[x_3.index[i]]), max(x_3.loc[x_3.index[i]]) , label = 'Blk_3' )                                                                            
+
+                    else:                   #No blank!
+                        plt.plot(x_1.loc[x_1.index[i]], y_1.loc[y_1.index[i] ], 'bo--', 
+                                 MarkerSize = 5, label = 'Repl_1')          #repl 1
+                        plt.plot(x_2.loc[x_2.index[i]], y_2.loc[y_2.index[i] ], 'ro--', 
+                                 MarkerSize = 5, label = 'Repl_2')          #repl 2                                           
+                        plt.plot(x_3.loc[x_3.index[i]], y_3.loc[y_3.index[i] ], 'go--', 
+                                 MarkerSize = 5, label = 'Repl_3')          #repl 3       
+                    plt.ylabel(y_label, fontsize=14)              #ylabel
+                    plt.xlabel(x_label, fontsize = 14)
+                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    #plt.yscale('log') 
+                    plt.grid(True)
+                    #Mods to compare, comment!!
+                    #plt.xlim(0,3500)
+                    #plt.ylim(0, 700000)
+                    #####
+                    plt.legend()
+                    plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')           
         
-            plt.close()             #to clsoe the plot not to consume too much resources    
-    
-    else:           #Wrong case
-        print('\n Wrong Nrepl introduced, nothing being done (:')
-    
+        else:
+            print('\n Wrong number of replicates given, nothing done xD')
+    else:
+        print('\n What is x? Not a pd.Series nor pd.DataFrame, so nothing done :) ')
     
     
     ######### 3) Running time displaying ###############
@@ -2169,6 +2408,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
     time, the cps and the rstd. This plots the avg value, with its std, so no replicates here.
     In those average values, blank could or not be there. If yes, the blk is plotted as an hor line
     
+
     *Inputs:
         .x: x axis variable in the plot (mean values). This could be a df series or a df
         .std_x: df Series or df with the std of the x variable
@@ -2192,6 +2432,8 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!
+    
+    Note that for df vs df plotting, Logscale with make both axis in log scale(Ad isoth)
     
     
     ### TO DO: ####
@@ -2295,7 +2537,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                     #To save plot in folder
                 plt.close()
 
-    elif isinstance(x, pd.DataFrame):                 #If x is a pd Dattaframe       
+    elif isinstance(x, pd.DataFrame):                 #If x is a pd Dataframe       
         for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
             if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
@@ -2316,6 +2558,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                 plt.tick_params(axis='both', labelsize=14)              #size of axis
                 if LogScale:                                                     ####LOG SCALE?
                     plt.yscale('log') 
+                    plt.xscale('log') 
                 plt.grid(True)
                 plt.legend()
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -2339,6 +2582,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                     plt.tick_params(axis='both', labelsize=14)              #size of axis
                     if LogScale:                                                  ####LOG SCALE?
                         plt.yscale('log') 
+                        plt.xscale('log') 
                 
                     plt.grid(True)
                     plt.legend()            

@@ -1654,23 +1654,28 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 ########### 1.12) ICPMS Bar plotter #############
 #####################################
 
-def ICPMS_Barplotter (df_cps, df_rstd, folder_name = 'Bar_plots',
-                      pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                      Elem_rel = Isot_rel ):
+def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
+                      pre_title_plt = "Concentration of ", pre_save_name = 'Conc_rsd',
+                      Elem_rel = Isot_rel, plot_everything = False ):
     '''
     Function that will do bar plots of the raw data from the ICPMS, the cps and the rstd. By raw
     I mean withoutany corrections/calibrations (neither the dilution factor correction). This is a
     preliminary plot, to check if everything is allright, with the rstd (rstd should be < 20%).
     
     *Inputs:
-        .df_cps, df_rstd: dataframes containing the cps and the relative standard deviation. Those are
-        outputs for the Read_ICPMS_excel function. Note the Isotopes column are the inde!
+        .df_1, df_2: dataframes to plot. Initially containing the cps and the relative standard deviation. 
+        df_1 is a DataFrame, df_2 could be a DataFrame or a df.Series!
+        Note the Isotopes column are the index for the df
         .folder_name: folder name. Default value: 'Bar_plots'
+        .ylabel_1,2. Labels to be used for the legend and the y axes. Default: 
+            ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]"
         .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
             Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex           
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
             in a specific folder. Default value: (see above in the script)   
+        .Plot_everything: boolean stating if we plot everything or only the relevant elements (in Elem_rel). 
+            Default: False
         
     *Outputs:
         .Plots (saving them) of the raw data
@@ -1725,49 +1730,54 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
     
     ###Plot
     #Some parameters for the plot
-    X_axis = np.arange( len(df_cps.axes[1]))                 #To do the 2 bar plot
+    X_axis = np.arange( len(df_1.axes[1]))                 #To do the 2 bar plot
             #choosing the number of columns. [0] for rows
     b = .4                              #[au] blank space between values <1
     w = (1-b)/2          #bar width
 
-    for i in list( range(df_cps.shape[0] ) ):     #Loop thorugh all rows
-                    #df_cps.index give the index values, low and high
+    for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
+                    #df_1.index give the index values, low and high
                     #
-                    ########### Bar plot ###########################
-        plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-        plt.title(pre_title_plt + df_cps.index[i][:-4], fontsize=22, wrap=True)           #title
-        a = plt.bar(X_axis - w/2, df_cps.loc[df_cps.index[i]], width = w, edgecolor="black", 
-            label = "I ", align='center') 
+        if df_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant you plot it!
+        ########### Bar plot ###########################
+            plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+            plt.title(pre_title_plt + df_1.index[i][:-4], fontsize=22, wrap=True)           #title
+            a = plt.bar(X_axis - w/2, df_1.loc[df_1.index[i]], width = w, edgecolor="black", 
+                        label = ylabel_1, align='center') 
             #-2 not to plot the blank!! Remove it to plot it!
-        plt.ylabel("I [cps]", fontsize=14)              #ylabel
-        plt.xlabel('Sample', fontsize = 14)
-        plt.tick_params(axis='both', labelsize=14)              #size of axis
-        plt.yscale('log') 
-        plt.grid(True)
-        plt.xticks(X_axis, [ df_cps.columns[:][j] for j in range(len(df_cps.axes[1]) ) ]
-            , rotation = 90)
-        plt.twinx()             #For setting 2 axes
-        aa = plt.bar( X_axis + w/2, df_rstd.loc[df_cps.index[i]], width = w, edgecolor="black", 
-             label = '$\sigma_{rel}$', align='center', color = 'red') 
-        plt.ylabel("$\sigma_{rel}$ [%]", fontsize=14)              #ylabel
-        #
-        aaa = [a, aa]
-        plt.legend(aaa, [p_.get_label() for p_ in aaa])
+            plt.ylabel(ylabel_1, fontsize=14)              #ylabel
+            plt.xlabel('Sample', fontsize = 14)
+            plt.tick_params(axis='both', labelsize=14)              #size of axis
+            plt.yscale('log') 
+            plt.grid(True)
+            plt.xticks(X_axis, [ df_1.columns[:][j] for j in range(len(df_1.axes[1]) ) ]
+                , rotation = 90)
+            plt.twinx()             #For setting 2 axes
+            if isinstance(df_2, pd.Series):                         #if df_2 is a pd.Series
+                aa =  plt.bar( X_axis + w/2, df_2, width = w, edgecolor="black", 
+                              label = ylabel_2, align='center', color = 'red') 
+            else:               #df_2 is a DataFrame
+                aa = plt.bar( X_axis + w/2, df_2.loc[df_1.index[i]], width = w, edgecolor="black", 
+                             label = ylabel_2, align='center', color = 'red')  ##df version!! works!
+                #
+            plt.yscale('log')  
+            plt.ylabel(ylabel_2, fontsize=14)              #ylabel
+            #
+            aaa = [a, aa]
+            plt.legend(aaa, [p_.get_label() for p_ in aaa])
         
-        #Saving in the folder
-        if df_cps.index[i][:-4] in Elem_rel:  #if the element is relevant
+            #Saving in the folder
+            if df_1.index[i][:-4] in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
-            plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        'Conc_rsd_' + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_' + df_1.index[i][:-4] + '.png', format='png', bbox_inches='tight')
             #
-        else:        #if the element is not relevant
-            plt.savefig(folder_name +'/' +  
-                        'Conc_rsd_' + df_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+            else:        #if the element is not relevant
+                plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_' + df_1.index[i][:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
-        
-        
-        plt.close()             #to clsoe the plot not to consume too much resources
+            plt.close()             #to clsoe the plot not to consume too much resources
     
     
     ######### 3) Running time displaying ###############

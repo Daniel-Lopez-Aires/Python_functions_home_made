@@ -1633,11 +1633,21 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 
 
 
+
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 ####################### PLOTTERS ####################################
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 
 
 #%%######################################
@@ -2267,8 +2277,8 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                                  MarkerSize = 5, label = 'Repl_1')          #repl 1
                         plt.plot(x_2[1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
                                  MarkerSize = 5, label = 'Repl_2')          #repl 2                                             
-                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1), max(x_1) , label = 'Blk_1' )
-                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2), max(x_2) , label = 'Blk_2' )                                                                            
+                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1), max(x_1) , label = 'Blk_1', color = 'b' )
+                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2), max(x_2) , label = 'Blk_2' , color = 'r' )                                                                           
                     else:                   #No blank!
                         plt.plot(x_1, y_1.loc[y_1.index[i] ], 'bo--', 
                                  MarkerSize = 5, label = 'Repl_1')          #repl 1
@@ -2294,9 +2304,9 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                                  MarkerSize = 5, label = 'Repl_2')          #repl 2
                         plt.plot(x_3[1:], y_3.loc[y_2.index[i] ][1:], 'go--', 
                                  MarkerSize = 5, label = 'Repl_3')          #repl 3                                               
-                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1), max(x_1) , label = 'Blk_1' )
-                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2), max(x_2) , label = 'Blk_2' )
-                        plt.hlines(y_3.loc[y_3.index[i] ][0], min(x_3), max(x_3) , label = 'Blk_3' )                                                                             
+                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1), max(x_1) , label = 'Blk_1', color = 'b' )
+                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2), max(x_2) , label = 'Blk_2', color = 'r' )
+                        plt.hlines(y_3.loc[y_3.index[i] ][0], min(x_3), max(x_3) , label = 'Blk_3', color = 'g' )                                                                             
                     else:                   #No blank!
                         plt.plot(x_1, y_1.loc[y_1.index[i] ], 'bo--', 
                                  MarkerSize = 5, label = 'Repl_1')          #repl 1
@@ -2324,8 +2334,10 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                                  MarkerSize = 5, label = 'Repl_1')          #repl 1
                         plt.plot(x_2.loc[x_2.index[i]][1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
                                  MarkerSize = 5, label = 'Repl_2')          #repl 2                                           
-                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1.loc[x_1.index[i]]), max(x_1.loc[x_1.index[i]]) , label = 'Blk_1' )
-                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2.loc[x_2.index[i]]), max(x_2.loc[x_2.index[i]]) , label = 'Blk_2' )                                                                            
+                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1.loc[x_1.index[i]]), 
+                                   max(x_1.loc[x_1.index[i]]) , label = 'Blk_1', color = 'b' ) 
+                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2.loc[x_2.index[i]]), 
+                                   max(x_2.loc[x_2.index[i]]) , label = 'Blk_2', color = 'r' )                                                                            
                     else:                   #No blank!
                         plt.plot(x_1.loc[x_1.index[i]], y_1.loc[y_1.index[i] ], 'bo--', 
                                  MarkerSize = 5, label = 'Repl_1')          #repl 1
@@ -2351,9 +2363,12 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                                  MarkerSize = 5, label = 'Repl_2')          #repl 2                                           
                         plt.plot(x_3.loc[x_3.index[i]][1:], y_3.loc[y_3.index[i] ][1:], 'go--', 
                                  MarkerSize = 5, label = 'Repl_3')          #repl 3       
-                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1.loc[x_1.index[i]]), max(x_1.loc[x_1.index[i]]) , label = 'Blk_1' )
-                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2.loc[x_2.index[i]]), max(x_2.loc[x_2.index[i]]) , label = 'Blk_2' )                                                                            
-                        plt.hlines(y_3.loc[y_3.index[i] ][0], min(x_3.loc[x_3.index[i]]), max(x_3.loc[x_3.index[i]]) , label = 'Blk_3' )                                                                            
+                        plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1.loc[x_1.index[i]]), 
+                                   max(x_1.loc[x_1.index[i]]) , label = 'Blk_1', color = 'b' )
+                        plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2.loc[x_2.index[i]]), 
+                                   max(x_2.loc[x_2.index[i]]) , label = 'Blk_2', color = 'r' )                                                                           
+                        plt.hlines(y_3.loc[y_3.index[i] ][0], min(x_3.loc[x_3.index[i]]), 
+                                   max(x_3.loc[x_3.index[i]]) , label = 'Blk_3', color = 'g' )                                                                          
 
                     else:                   #No blank!
                         plt.plot(x_1.loc[x_1.index[i]], y_1.loc[y_1.index[i] ], 'bo--', 

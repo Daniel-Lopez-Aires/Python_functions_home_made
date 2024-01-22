@@ -514,40 +514,54 @@ def Get_A_Resol(isotope_name):
 ########### 1.7) ICPMS IS sens calculation #############
 #####################################
 
-def IS_sens_calculator_plotter(df_cps_ppb_dat, 
+def IS_sens_calculator_plotter(df_cps_ppb, df_std,
                                IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
                                name_IS_sens_LR_plot = 'IS_sensLR_plot', 
                                name_IS_sens_MR_plot = 'IS_sensMR_plot'):
     '''
-    Function part of the ICPMS Data processing!
-    
-    Function th<t will compute the IS sens (cps/ppb) for a df containing the cps and ppb. The format is like
+    Function part of the ICPMS Data processing! Function that will compute the IS sens (cps/ppb) 
+    for a df containing the cps and ppb, and another df with its std. The format is like
     Stefaans excel, his first sheet. It IS needed the ppb table below the cps data. How below? Do not care, I
     find the data using locate functions ;)
+    Note std is computed using the squared error propagation methods!  
+
+    
+    !!!!!!ASSUMPTION!!!! : Delta(ppb IS)/ppb IS = 2%, completely arbitrary, to simplify everything, as a 1st approx!
+    it may be changed after! Those ppb come from perkin Elmer multielementa solutions, and derived calcs 
+        (logbooks, calculations of concentrations, etc)
     
     Note the plots appear in the plots pannel in Spyder, but are also saved ;)
 
-    
     * Input
-        .df_cps_ppb_dat: df containing the cps and ppb data. THe fashion is like Stefaans raw sheet. Isotopes are index.
-            Take care of the names of the columns (like in IS conc table or so, the values you find), if they dont exist will
-            give error!
+        .df_cps_ppb: df containing the cps and ppb data. THe fashion is like Stefaans raw sheet. 
+        Isotopes are index. Take care of the names of the columns (like in IS conc table or so, the values you find),
+        if they dont exist will give error! For the ppb data, the names are just Co-59, Ho-165, In-115, Th-232.
+        This is extremely important. Otherwise it will not work!
+        . df_std: df containng the std of the cps. Default value: None, so I dont need to give it, since in the
+            past I was not giving it, not to obtian error with the old scripts
         .IS_meas: array containing in a list the measured Internal Standards, containing its resolution, like 
             how they appear in the isotopes column. Default value:
                 ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
             That mean those isotopes were measured. If Ho165(MR) also measured, just included it, and fine ;)
         .name_IS_sens_LR_plot: name for the plot of the IS sens for LR case. Similar for MR. Default values:
             'IS_sensLR_plot' and 'IS_sensMR_plot'. To that is added the .png to create the file.
-            
-        
+              
     #Output
         .df with the IS sens data
+        .df with the std of the IS sens.
         .Plot with the IS sens plot, 2 plots, 1 for LR and other for MR, in .png file
-        
+    
+    Note that if this only one argument for output written, then the output will be a tuple with 2 df        
         
     ###### TO Do
         .Function to compute the ppb data, from Sum isobars? May be complex, possibly too time consuming ?
+        . Think a way so that std can be optionally given, so my old scripts are still working? The alternative
+        is modifying them, inclduding the std, will not be fatal though xD
     '''
+    
+    # if df_std == 'No':      #if no std passed
+    #     df_std = df_cps_ppb * 0 #Creating a ceros matrix if no error provided, so we avoid doing an if loop
+    
     
     ############ Data finder ################
     '''
@@ -555,20 +569,21 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
     To do the find in a loop way I define arrays which the elements to find. 
     Given as an input now, easier, KISS!
 
-    Note they are associated, you take i element of both arrays, they go in pairs. I ahve seen a way, is to create in the loop
-    the lines, and add them separately. The loop find the elements and perform the division cps/ppb
+    Note they are associated, you take i element of both arrays, they go in pairs. 
+    I ahve seen a way, is to create in the loop the lines, and add them separately. 
+    The loop find the elements and perform the division cps/ppb
     '''
 
     df_IS_sens = pd.DataFrame()         #Empty df to store the values
-
+    df_IS_sens_std = pd.DataFrame()        
 
     for i in range(0, len(IS_meas)):
         value_to_find = IS_meas[i]
         
-        #####ppb value #########
+        ##### Getting the ppb values #########
         '''
-        This will be made from the IS_meas variable. Since each element has a different letter, I can just read the 1st letter and
-        say:
+        This will be made from the IS_meas variable. Since each element has a different letter, 
+        I can just read the 1st letter and say:
             C ==> Co-59 in ppb
             I ==> In115 in ppb
             etc
@@ -582,34 +597,42 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
         elif value_to_find[0] == 'T':  #Th232 case
             value_to_find_ppb = 'Th-232'
             
-        matching_rows = df_cps_ppb_dat.loc[df_cps_ppb_dat.index == value_to_find]  #give the full row!
-        matching_rows_ppb = df_cps_ppb_dat.loc[df_cps_ppb_dat.index == value_to_find_ppb]  #give the full row!
+        cps_IS = df_cps_ppb.loc[df_cps_ppb.index == value_to_find]      #cps of the IS (give full row)
+        std_IS = df_std.loc[df_std.index == value_to_find]        #%rstd of the IS 
+        ppb_IS = df_cps_ppb.loc[df_cps_ppb.index == value_to_find_ppb]  #ppb of the IS
 
         #Now the operations, element wise, in array mode to avoid the index problems
-        aux = matching_rows.iloc[:,:].values / matching_rows_ppb.iloc[:,:].values
+        aux = cps_IS.iloc[:,:].values / ppb_IS.iloc[:,:].values
             #eleement wise operation, like this you dont care about having diferent indexes, since you are
             #multiplying arrays. I erased the 1st value (Co name), so I needit to add it again
+        #To compute the error of the sens, I assume that Delta(ppb) = 2% ppb ==> Delta(ppb)/ppb = 2/100!!
+        aux2 = aux * np.sqrt((std_IS/cps_IS)**2 + (2/100)**2)     #std values
         
         #TO store temporarily those values I create an auxiliary df
         df_aux = pd.DataFrame(data = aux)
-
+        df_aux2 =pd.DataFrame(data = aux2)
+        
         #And I add that to the storing df
         df_IS_sens = df_IS_sens.append(df_aux, ignore_index= True)
-
+        df_IS_sens_std = df_IS_sens_std.append(df_aux2, ignore_index= True)
+        
     '''
     Now, to add the isotopes as index, we first add them as a column, and then we set
     the column to index:we need to insert the isotopes column, giving as values the isotopes names or so:
     '''
     #df_IS_sens['Isotopes'] = ['Co LR', 'In LR', 'Ho LR', 'Th LR', 'Co MR', 'In MR']
     df_IS_sens['Isotopes'] = IS_meas        #setting isotopes name from the loop variable, better
-    
     df_IS_sens.set_index('Isotopes', inplace = True)
         
-    
+    df_IS_sens_std['Isotopes'] = IS_meas
+    df_IS_sens_std.set_index('Isotopes', inplace = True)
+
     '''
     As a final stylish, I can put the same column names as the df used to create the IS df:
     '''
-    df_IS_sens.columns = df_cps_ppb_dat.columns
+    df_IS_sens.columns = df_cps_ppb.columns
+    df_IS_sens_std.columns = df_cps_ppb.columns
+    
     
     'I can print the %rstd values = std/mean * 100 of the IS sens, useful to spot fluctuations!'
     rstd = df_IS_sens.std(axis =1) / df_IS_sens.mean(axis =1) * 100                   #%rstd of the IS sens
@@ -620,8 +643,10 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
     print('Values >= 5/6% start to be suspicious, something happened! (Th oxidation for ex?) \n')
     print('##################################################################### \n')
     
+    
     #################################################
     ############# IS sens plotter ####################
+    ########
     '''
     I need to do 2 plots, 1 for the LR and other for the MR. I should sort them somehow. I found how xD, explicit plotting,
     recommended by python, better than implicit(what you normally do xD)
@@ -658,7 +683,7 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
     
          
     ############## Return of values ##########################
-    return df_IS_sens            #mass is an string!
+    return df_IS_sens, df_IS_sens_std            #mass is an string!
 
 
 
@@ -666,7 +691,7 @@ def IS_sens_calculator_plotter(df_cps_ppb_dat,
 ########### 1.8) ICPMS IS sens correction #############
 #####################################
 
-def IS_sens_correction(df_raw, df_IS_sens, 
+def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
                        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']):
     '''
     PART OF THE ICPMS Data processing!
@@ -699,12 +724,6 @@ def IS_sens_correction(df_raw, df_IS_sens,
     #########################
     '''
     
-    
-    ############### 0) Import neccessary functions#################
-    '''
-    Well, not needed to import anything, since it is also here the function to get the mass number A!
-    '''
-    
     ############## 1) Calcs #########################
     '''
     This is simple. If the 4 IS are fine, I do the correction in the following fashion:
@@ -732,7 +751,8 @@ def IS_sens_correction(df_raw, df_IS_sens,
     line by line. The structure would be loop like, at the beginning I check the mass number, and apply. Lets do a
     single one
     
-    Now I can try to do a loop. I could give where the IS sens start from the df inspection (240), and I know the order:
+    Now I can try to do a loop. I could give where the IS sens start from the df inspection (240), and 
+    I know the order:
         .Co LR
         .In LR
         .Ho R
@@ -740,19 +760,20 @@ def IS_sens_correction(df_raw, df_IS_sens,
         .CO MR
         . In MR
         
-    Next step is to create a function to get the mass and apply one or other correction.
-
-    We already have the function, so now we need to create a loop (after a function) that get the mass, and
+    Next step is to create a function to get the mass and apply one or other correction. We already have the 
+    function, so now we need to create a loop (after a function) that get the mass, and
     apply one or other correction
     '''   
     
-    df_IS_correct = df_raw.copy()       #Thats the proper way to create it, copy so it is not asigned to it!
+    df_IS_co = df_raw.copy()       #Thats the proper way to create it, copy so it is not asigned to it!
+    df_IS_co_std = df_raw.copy() 
     
-    	#The loop should go until the alst isotope, which I can find by finding IS conc ppb, the first thing for the ppb chart!
-        #so, THIS data is mandatory that exist like that!!
+    	#The loop should go until the alst isotope, which I can find by finding IS conc ppb, the first thing 
+        #for the ppb chart! so, THIS data is mandatory that exist like that!!
     '''
-    To generalize, I will do if statement for the different IS measured cases. By far only 2, the sequence done in the past, the
-    4 in LR and 2 in MR; and now (8/23) 4 in MR also, the most detailed case. 11/23, only LR elements!
+    To generalize, I will do if statement for the different IS measured cases. By far only 2, the sequence 
+    done in the past, the 4 in LR and 2 in MR; and now (8/23) 4 in MR also, the most detailed case. 11/23,
+    only LR elements!
     '''
     
     if IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']:   
@@ -765,25 +786,92 @@ def IS_sens_correction(df_raw, df_IS_sens,
         #No we neeed to see the resolution, since for LR we have 4, and for MR only 2
             if resol == 'LR':           #low resolution
             #Now, which mass?
-                if int(mass) in range(59,81): #mass from 59 to 80 included both
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
-        
+                if int(mass) in range(59,81): #mass from 59 to 80 included both ==> Use Co59 (element 0 in IS sens)
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],
+                            df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[0], df_IS_sens.columns[:] 
+                            ] * df_IS_sens.loc[df_IS_sens.index[0], df_IS_sens.columns[:]].mean() 
+                    #Take a look a that, I can split the line makins advantage of the parenthesis existing
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[0], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[0], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[0],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[0], df_IS_sens.columns[:]].mean() )**2
+                                )                   #quadratic error prop!                   
                 elif int(mass) in range (81, 139):
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
-            
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],
+                        df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[1], df_IS_sens.columns[:] 
+                        ] * df_IS_sens.loc[df_IS_sens.index[1], df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[1], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[1], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[1],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[1], df_IS_sens.columns[:]].mean() )**2
+                                )
                 elif int(mass) in range (139, 210):
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
-            
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],
+                            df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] 
+                            ] * df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[2], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[2], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[2],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[2], df_IS_sens.columns[:]].mean() )**2
+                                )
                 else:   #if mass in range(210, 249):    rest of mass range
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
-
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i], 
+                        df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[3], df_IS_sens.columns[:] 
+                        ] * df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[3], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[3], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[3],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[3], df_IS_sens.columns[:]].mean() )**2
+                                )
             else:       #Medium resolution,  MR
                 if int(mass) in range(59,81): #mass from 59 to 80 included both
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:]].mean() 
-            
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[4],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[4], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[4], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[4],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[4], df_IS_sens.columns[:]].mean() )**2
+                                )   
                 else:       #rest of mass ranges, only 2 IS here xD
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:]].mean() 
-     
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[5],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[5], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[5], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[5],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[5], df_IS_sens.columns[:]].mean() )**2
+                                )               
     elif  IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 
                'Co59(MR)', 'In115(MR)', 'Ho165(MR)', 'Th232(MR)']:   #######case 2, all IS measured in LR and MR! 
 
@@ -795,30 +883,118 @@ def IS_sens_correction(df_raw, df_IS_sens,
             if resol == 'LR':           #low resolution
             #Now, which mass?
                 if int(mass) in range(59,81): #mass from 59 to 80 included both
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
-        
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[0], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[0], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[0],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[0], df_IS_sens.columns[:]].mean() )**2
+                                )
                 elif int(mass) in range (81, 139):
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
-            
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[1], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[1], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[1],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[1], df_IS_sens.columns[:]].mean() )**2
+                                )                                                     
                 elif int(mass) in range (139, 210):
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
-            
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[2], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[2], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[2],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[2], df_IS_sens.columns[:]].mean() )**2
+                                )                
                 else:   #if mass in range(210, 249):    rest of mass range
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
-
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[3], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[3], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[3],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[3], df_IS_sens.columns[:]].mean() )**2
+                                ) 
             else:       #Medium resolution,  MR
                 if int(mass) in range(59,81): #mass from 59 to 80 included both
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:]].mean() 
-            
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[4],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[4],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[4], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[4], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[4],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[4], df_IS_sens.columns[:]].mean() )**2
+                                )             
                 elif int(mass) in range (81, 139):
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:]].mean() 
-            
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[5],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[5],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[5], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[5], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[5],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[5], df_IS_sens.columns[:]].mean() )**2
+                                )            
                 elif int(mass) in range (139, 210):
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[6],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[6],df_IS_sens.columns[:]].mean() 
-            
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[6],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[6],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[6], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[6], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[6],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[6], df_IS_sens.columns[:]].mean() )**2
+                                )            
                 else:   #if mass in range(210, 249):    rest of mass range
-                    df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[7],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[7],df_IS_sens.columns[:]].mean() 
-
+                    df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                        ] / df_IS_sens.loc[df_IS_sens.index[7],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                            df_IS_sens.index[7],df_IS_sens.columns[:]].mean() 
+                    df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[7], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[7], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[7],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[7], df_IS_sens.columns[:]].mean() )**2
+                                )     
     elif  IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)']:   #######case 3, only LR IS!
         for i in range(np.where(df_raw.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
                 #df_raw.loc[229,'Isotopes'] = df_raw.iloc[226,0]#relation iloc, loc
@@ -826,32 +1002,71 @@ def IS_sens_correction(df_raw, df_IS_sens,
             mass, resol = Get_A_Resol(df_raw.index[i])
             #Now, which mass?
             if int(mass) in range(59,81): #mass from 59 to 80 included both
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
-        
+                df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                    ] / df_IS_sens.loc[df_IS_sens.index[0],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                        df_IS_sens.index[0],df_IS_sens.columns[:]].mean() 
+                df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[0], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[0], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[0],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[0], df_IS_sens.columns[:]].mean() )**2
+                                )             
             elif int(mass) in range (81, 139):
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
-            
+                df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                    ] / df_IS_sens.loc[df_IS_sens.index[1],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                        df_IS_sens.index[1],df_IS_sens.columns[:]].mean() 
+                df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[1], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[1], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[1],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[1], df_IS_sens.columns[:]].mean() )**2
+                                )                           
             elif int(mass) in range (139, 210):
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
-            
+                df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                    ] / df_IS_sens.loc[df_IS_sens.index[2],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                        df_IS_sens.index[2],df_IS_sens.columns[:]].mean() 
+                df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[2], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[2], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[2],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[2], df_IS_sens.columns[:]].mean() )**2
+                                )                   
             else:   #if mass in range(210, 249):    rest of mass range
-                df_IS_correct.loc[df_raw.index[i],df_IS_correct.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
-        
-    
-            
-    
+                df_IS_co.loc[df_raw.index[i],df_IS_co.columns[:]] = df_raw.loc[df_raw.index[i],df_raw.columns[:]
+                    ] / df_IS_sens.loc[df_IS_sens.index[3],df_IS_sens.columns[:] ] * df_IS_sens.loc[
+                        df_IS_sens.index[3],df_IS_sens.columns[:]].mean() 
+                df_IS_co_std.loc[df_raw.index[i],df_IS_co_std.columns[:]] = df_IS_co.loc[df_raw.index[i],
+                            df_IS_co.columns[:]] * np.sqrt(
+                                (df_raw_std.loc[df_raw_std.index[i], df_raw_std.columns[:]] / df_raw
+                                 .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
+                                .loc[df_IS_sens_std.index[3], df_IS_sens_std.columns[:] ] / 
+                                df_IS_sens.loc[df_IS_sens.index[3], df_IS_sens.columns[:] ]
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[2],
+                                        df_IS_sens.columns[:]].std() / df_IS_sens
+                                        .loc[df_IS_sens.index[3], df_IS_sens.columns[:]].mean() )**2
+                                )      
     else:           #no contempled case
         print('\n---------------------------\n')
         print('The Internal standards used are not defined as a case, do it! (if statements)\n')
-        print("Das Lebe ist kein Ponyhof / Embeses la bida no e kmo keremo / c'st la vie, mon ami\n")
-    
+        print("Das Lebe ist kein Ponyhof / Embeses la bida no e kmo keremo / C'st la vie, mon ami\n")
     
     ################## Return ###############
     '''
     After the loop ends, we can return it
     '''
-    
-    return df_IS_correct
+    return df_IS_co, df_IS_co_std
 
 
 
@@ -1656,7 +1871,7 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 
 def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc_rsd',
-                      Elem_rel = Isot_rel, plot_everything = False ):
+                      Elem_rel = Isot_rel, plot_everything = False, Logs = 0 ):
     '''
     Function that will do bar plots of the raw data from the ICPMS, the cps and the rstd. By raw
     I mean withoutany corrections/calibrations (neither the dilution factor correction). This is a
@@ -1676,6 +1891,11 @@ def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{re
             in a specific folder. Default value: (see above in the script)   
         .Plot_everything: boolean stating if we plot everything or only the relevant elements (in Elem_rel). 
             Default: False
+        .logs: value defining if applying log scale to 1, 2, or both. 
+            0: no apply
+            1: apply to df 1. 
+            2: apply to df 2. 
+            3: apply to both
         
     *Outputs:
         .Plots (saving them) of the raw data
@@ -1748,7 +1968,8 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
             plt.ylabel(ylabel_1, fontsize=14)              #ylabel
             plt.xlabel('Sample', fontsize = 14)
             plt.tick_params(axis='both', labelsize=14)              #size of axis
-            plt.yscale('log') 
+            if Logs ==1 or Logs == 3:           #put log scale
+                plt.yscale('log') 
             plt.grid(True)
             plt.xticks(X_axis, [ df_1.columns[:][j] for j in range(len(df_1.axes[1]) ) ]
                 , rotation = 90)
@@ -1760,7 +1981,8 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
                 aa = plt.bar( X_axis + w/2, df_2.loc[df_1.index[i]], width = w, edgecolor="black", 
                              label = ylabel_2, align='center', color = 'red')  ##df version!! works!
                 #
-            plt.yscale('log')  
+            if Logs == 2 or Logs == 3:                  #put scale
+                plt.yscale('log')  
             plt.ylabel(ylabel_2, fontsize=14)              #ylabel
             #
             aaa = [a, aa]

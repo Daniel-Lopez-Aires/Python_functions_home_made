@@ -1203,7 +1203,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
 ########### 1.10) ICPMS data processing automatized #############
 #####################################
 
-def ICPMS_data_process(df_cps, ICPblk_columns, 
+def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns, 
                        name_plot_LR_bef = 'IS_sensLR_plotBEF', name_plot_MR_bef = 'IS_sensMR_plotBEF',
                        name_plot_LR_aft = 'IS_sensLR_plot', name_plot_MR_aft = 'IS_sensMR_plot',
                        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
@@ -1212,12 +1212,15 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     SUITE of ICPMS Data Processing!
     
     Function that will apply all the steps for the automatization of the ICPMS data processing:
-        1) Read cps amd ppb data 
+        1) Read cps amd ppb data and %rsd 
         2) Compute sens = cps/ppb and plot it
         3) Apply the sensitivity correction
         4) plot the new sensitivtiy plots (should be straight lines)
         5) Substract ICPMS blanks
         6) Save that data (to calibrate after, by hand, for the moment..)
+    This function computes as well the std using quadratic uncertainty propagation. Note the excel sheets containing
+    the std also contain info on the ppb, but tha tinfo is just nonsense, I didnt erase it not to have problem with
+    dimensions!
     
     Important notes:
         . To do 2), its needed that the ppb data table begins with IS conc [ppb]!
@@ -1225,14 +1228,17 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
                 maybe your case its not (yet) defined!!  
         
     *Inputs:
-        .df_cps: df containing the cps data and also the ppb data, in the classic format. Must not contain the wash, will give 
-            errors (divide by zero). Take care of the names (like for the cps table), they are crutial for the sens calc and 
-                correction! Also about the format, not rows with 0s etc. Take a lot of care!!!
-        .IS_meas: array containing in a list the IS and its resolution, like how they appear in the isotopes column. Default value:
+        .df_cps: df containing the cps data and also the ppb data, in the classic format. Must not contain the wash, 
+            will give errors (divide by zero). Take care of the names (like for the cps table), they are crutial 
+            for the sens calc and  correction! Also about the format, not rows with 0s etc. 
+                    Take a lot of care!!!
+        
+        .IS_meas: array containing in a list the IS and its resolution, like how they appear in the isotopes column. 
+            Default value:
                 ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
             That mean those isotopes were measured. If Ho165(MR) also measured, just included it, and fine ;)
-        .ICPblk_columns: np array containing the columns numbers where the ICPMS blanks are (blank and std 0ppt). Numbers from
-            the excel (A = 0, B = 1, etc)
+        .ICPblk_columns: np array containing the columns numbers where the ICPMS blanks are (blank and std 0ppt). 
+            Numbers from the excel (A = 0, B = 1, etc)
         .name_plot_L(M)R_bef(aft): name of the plots of the IS sensitivity before and after doing the IS correction. 
         .excel_name: string that will be the name of the file containing the output. Default: 'df_IS_Blks_corr.xlsx'
         
@@ -1243,74 +1249,114 @@ def ICPMS_data_process(df_cps, ICPblk_columns,
     To Do:
             .Automatize more stuff? such as the sens corrections, not by case something better, more general??
             .Optimize excel saving!
+            :Delete the ppb data when not needed, so in excels it doesnt exist neither?
     '''
     
+    ##### 0 ) Std calc ###########
+    'From the %rsd and the cps the std is trivial, %rsd = std/cps * 100 ==> std = cps*%rstd/100'
+    
+    df_std = ICPMS_std_calculator(df_cps, df_rsd)           #Std of the cps
+    
     ###### 1) IS sens calc ######
-    df_IS_sens = IS_sens_calculator_plotter(df_cps, IS_meas, name_IS_sens_LR_plot = name_plot_LR_bef, 
-    name_IS_sens_MR_plot = name_plot_MR_bef)         #calculation the IS correction
+    df_IS_sens, df_IS_sens_std = IS_sens_calculator_plotter(df_cps, df_std, IS_meas, 
+                    name_IS_sens_LR_plot = name_plot_LR_bef, name_IS_sens_MR_plot = name_plot_MR_bef)         
+                #calculation the IS correction
                 #I define names of the plot, so the other ones have the default name
     
     
     ###### 2) IS sens correction and new sens calc ##########
-    df_cps_IS_corr = IS_sens_correction(df_cps, df_IS_sens, IS_meas)       #applying the IS correction to teh cps data
-
-    df_IS_sens_co = IS_sens_calculator_plotter(df_cps_IS_corr, IS_meas, name_IS_sens_LR_plot= name_plot_LR_aft,
-                                               name_IS_sens_MR_plot= name_plot_MR_aft)    #getting and plotting new IS sens
+    df_IS_co, df_IS_co_std = IS_sens_correction(df_cps, df_std, df_IS_sens, df_IS_sens_std, IS_meas)
+                               #applying the IS correction to the cps data
+    
+    df_IS_sens_co, df_IS_sens_co_std = IS_sens_calculator_plotter(df_IS_co, df_IS_co_std, IS_meas, 
+                name_IS_sens_LR_plot= name_plot_LR_aft, name_IS_sens_MR_plot= name_plot_MR_aft)    
+                                #getting and plotting new IS sens
     
     
     ##### 3)ICPMS Blk correction #########
-    df_IS_Blks_co = ICPMS_ICPMSBlanks_corrector(df_cps_IS_corr, ICPblk_columns)    #correcting for ICPMS blanks
+    df_Blks_co, df_Blks_co_std = ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, ICPblk_columns)    
+                                        #correcting for ICPMS blanks
 
 
     ##### 4) Saving and Output #########
     '''
-    Here I want to save the df after IS correction, and after the Blk correction. Both steps would be nice, for debugging!
+    Here I want to save the df after IS correction, and after the Blk correction. Both steps would be nice, 
+    for debugging!
     
     '''
     writer = pd.ExcelWriter(excel_name, engine = 'xlsxwriter')      #excel writer
 
-            
-                #saving to excel. i freeze row 6 and column 1, so I can see all the data in a good way :)
-    df_IS_Blks_co.to_excel(writer, sheet_name = 'Blk_correction', startrow = 6, header = False, freeze_panes = (6, 1))            
-
-    #Chatgpt helped me to get the format I want, the one that Stefaan uses :)
+    #########Blk correction data
+    df_Blks_co.to_excel(writer, sheet_name = 'Blk_correction', startrow = 6, header = False, freeze_panes = (6, 1))            
+                #saving to excel. I freeze row 6 and column 1, so I can see all the data in a good way :)
+                        #Chatgpt helped me to get the format I want, the one that Stefaan uses :)
 
     excel_sheet = writer.sheets['Blk_correction']
     bold_format = writer.book.add_format({'bold': True})      
-    excel_sheet.write_row('B2', df_IS_Blks_co.columns, bold_format)      #Write from cell B2 with the numer of columns
+    excel_sheet.write_row('B2', df_Blks_co.columns, bold_format)      #Write from cell B2 with the numer of columns
                     #Note B2 is column B, row 2
-    excel_sheet.write_row('B1', range(1, len(df_IS_Blks_co.columns) + 1), bold_format)  #2nd row with columns names
-    excel_sheet.write_row('B3', [None] * len(df_IS_Blks_co.columns))            #row 3 empty
-    excel_sheet.write_row('B4', ['Net <Int>'] * len(df_IS_Blks_co.columns))         #row 4 with a value repeated
-    excel_sheet.write_row('B5', ['[cps]'] * len(df_IS_Blks_co.columns))     #row 5 with a value repeated
+    excel_sheet.write_row('B1', range(1, len(df_Blks_co.columns) + 1), bold_format)  #2nd row with columns names
+    excel_sheet.write_row('B3', [None] * len(df_Blks_co.columns))            #row 3 empty
+    excel_sheet.write_row('B4', ['Net <Int>'] * len(df_Blks_co.columns))         #row 4 with a value repeated
+    excel_sheet.write_row('B5', ['[cps]'] * len(df_Blks_co.columns))     #row 5 with a value repeated
+
+    #########std Blk correction data
+    df_Blks_co_std.to_excel(writer, sheet_name = 'Blk_correction_std', startrow = 6, header = False, freeze_panes = (6, 1))            
+
+    excel_sheet = writer.sheets['Blk_correction_std']
+    bold_format = writer.book.add_format({'bold': True})      
+    excel_sheet.write_row('B2', df_Blks_co_std.columns, bold_format)
+    excel_sheet.write_row('B1', range(1, len(df_Blks_co_std.columns) + 1), bold_format)  #2nd row with columns names
+    excel_sheet.write_row('B3', [None] * len(df_Blks_co_std.columns))            #row 3 empty
+    excel_sheet.write_row('B4', ['Net Int std'] * len(df_Blks_co_std.columns))         #row 4 with a value repeated
+    excel_sheet.write_row('B5', ['[cps]'] * len(df_Blks_co_std.columns))     #row 5 with a value repeated
     
     
-    df_cps_IS_corr.to_excel(writer, sheet_name = 'IS_correction', startrow = 6, freeze_panes = (6, 1),
+    ##########Is correction data
+    df_IS_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 6, freeze_panes = (6, 1),
                              header = False)        #saving to excel in another sheet
-            #Note it does not have perfect format, to optimize it!!!
             #THe start trow make that Co59 is on row 7, as it should be!
-    df_IS_sens_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 6 + df_cps_IS_corr.shape[0] + 2,
+    df_IS_sens_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 6 + df_IS_co.shape[0] + 2,
                            header = False)
                         #putting the new IS sensitivity below the IS corrected data!!
     
     excel_sheet2 = writer.sheets['IS_correction']
-    excel_sheet2.write_row('B2', df_cps_IS_corr.columns, bold_format)      #1st row with numbers of columns
-    excel_sheet2.write_row('B1', range(1, len(df_cps_IS_corr.columns) + 1), bold_format)  #2nd row with columns names
-    excel_sheet2.write_row('B3', [None] * len(df_cps_IS_corr.columns))            #row 3 empty
-    excel_sheet2.write_row('B4', ['<Int>'] * len(df_cps_IS_corr.columns))         #row 4 with a value repeated
-    excel_sheet2.write_row('B5', ['[cps]'] * len(df_cps_IS_corr.columns))     #row 5 with a value repeated
+    excel_sheet2.write_row('B2', df_IS_co.columns, bold_format)      #1st row with numbers of columns
+    excel_sheet2.write_row('B1', range(1, len(df_IS_co.columns) + 1), bold_format)  #2nd row with columns names
+    excel_sheet2.write_row('B3', [None] * len(df_IS_co.columns))            #row 3 empty
+    excel_sheet2.write_row('B4', ['<Int>'] * len(df_IS_co.columns))         #row 4 with a value repeated
+    excel_sheet2.write_row('B5', ['[cps]'] * len(df_IS_co.columns))     #row 5 with a value repeated
+    
+    ############ IS correction std data
+    df_IS_co_std.to_excel(writer, sheet_name = 'IS_correction_std', startrow = 6, freeze_panes = (6, 1),
+                             header = False)        #saving to excel in another sheet
+    df_IS_sens_co_std.to_excel(writer, sheet_name = 'IS_correction_std', startrow = 6 + df_IS_co_std.shape[0] + 2,
+                           header = False)
+                        #putting the new IS sensitivity below the IS corrected data!!
+    
+    excel_sheet2 = writer.sheets['IS_correction_std']
+    excel_sheet2.write_row('B2', df_IS_co_std.columns, bold_format)      #1st row with numbers of columns
+    excel_sheet2.write_row('B1', range(1, len(df_IS_co_std.columns) + 1), bold_format)  #2nd row with columns names
+    excel_sheet2.write_row('B3', [None] * len(df_IS_co_std.columns))            #row 3 empty
+    excel_sheet2.write_row('B4', ['std'] * len(df_IS_co_std.columns))         #row 4 with a value repeated
+    excel_sheet2.write_row('B5', ['[cps]'] * len(df_IS_co_std.columns))     #row 5 with a value repeated    
     
     
     writer.save()                                           #critical step, save the excel xD 
 
 
-    return df_IS_Blks_co
-
+    ################ Return ####################
+    '''
+    I return the df with the Blk corrected data, although I only need the excel, which is what I
+    will use for the calib
+    '''
+    
+    return df_Blks_co
 
 
 
 #%%######################################
-########### 1.10) ICPMS Isotope selector #############
+########### 1.11) ICPMS Isotope selector #############
 #####################################
 def ICPMS_Isotope_selector(df_cps, Isotopes):
     '''
@@ -1364,7 +1410,7 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 
 
 #%%######################################
-########### 1.11) Kd calculaor #############
+########### 1.12) Kd calculaor #############
 #####################################
 
 def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = False):
@@ -1577,7 +1623,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
 
 
 #%%######################################
-########### 1.12) Kd calculaor, Adsorption version #############
+########### 1.13) Kd calculaor, Adsorption version #############
 #####################################
 def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, ret_Co__Ceq = False):
     '''
@@ -1742,7 +1788,7 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, ret_Co
 
 
 #%%######################################
-########### 1.12) Mean/std of replicates calculaor #############
+########### 1.14) Mean/std of replicates calculaor #############
 #####################################
 
 
@@ -1886,7 +1932,7 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 
 
 #%%######################################
-########### 1.12) ICPMS Bar plotter #############
+########### 1.15) ICPMS Bar plotter #############
 #####################################
 
 def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
@@ -2036,7 +2082,7 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
     
 
 #%%######################################
-########### 1.12) ICPMS plotter #############
+########### 1.16) ICPMS plotter #############
 #####################################
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', 
@@ -2239,7 +2285,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
  
 
 #%%######################################
-########### 1.13) ICPMS plotter 3 bentonites #############
+########### 1.17) ICPMS plotter 3 bentonites #############
 #####################################
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False,
@@ -2401,7 +2447,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
     
     
 #%%######################################
-########### 1.14) ICPMS plotter blank appart #############
+########### 1.18) ICPMS plotter blank appart #############
 #####################################
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False, 
@@ -2663,7 +2709,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     
     
 #%%######################################
-########### 1.15) ICPMS plotter blank appart Average of replicates #############
+########### 1.19) ICPMS plotter blank appart Average of replicates #############
 #####################################
 
 def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps, 
@@ -2883,7 +2929,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
 
 
 #%%######################################
-########### 1.16) ICPMS plotter blank appart Average of replicates, 3 bentonites! #############
+########### 1.20) ICPMS plotter blank appart Average of replicates, 3 bentonites! #############
 #####################################
 
 def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,

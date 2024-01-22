@@ -526,9 +526,10 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     Note std is computed using the squared error propagation methods!  
 
     
-    !!!!!!ASSUMPTION!!!! : Delta(ppb IS)/ppb IS = 2%, completely arbitrary, to simplify everything, as a 1st approx!
+    !!!!!!ASSUMPTION!!!! : Delta(ppb IS)/ppb IS = 1%, completely arbitrary, to simplify everything, as a 1st approx!
     it may be changed after! Those ppb come from perkin Elmer multielementa solutions, and derived calcs 
         (logbooks, calculations of concentrations, etc)
+        !!!!!!!!!!!!!!!!!!
     
     Note the plots appear in the plots pannel in Spyder, but are also saved ;)
 
@@ -605,8 +606,8 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
         aux = cps_IS.iloc[:,:].values / ppb_IS.iloc[:,:].values
             #eleement wise operation, like this you dont care about having diferent indexes, since you are
             #multiplying arrays. I erased the 1st value (Co name), so I needit to add it again
-        #To compute the error of the sens, I assume that Delta(ppb) = 2% ppb ==> Delta(ppb)/ppb = 2/100!!
-        aux2 = aux * np.sqrt((std_IS/cps_IS)**2 + (2/100)**2)     #std values
+        #To compute the error of the sens, I assume that Delta(ppb) = 1% ppb ==> Delta(ppb)/ppb = 1/100!!
+        aux2 = aux * np.sqrt((std_IS/cps_IS)**2 + (1/100)**2)     #std values
         
         #TO store temporarily those values I create an auxiliary df
         df_aux = pd.DataFrame(data = aux)
@@ -709,18 +710,21 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
     
     * Input
         .df_raw: df containing the raw cps and ppb data. THe fashion is like Stefaans raw sheet
-        .df_IS_sens df containing the IS sens data (cps/ppb). Ensure the size andindexing are
+        .df_raw_std: df containing the std from the cps data. 
+        .df_IS_sens: df containing the IS sens data (cps/ppb). Ensure the size andindexing are
         appropiates!
+        .df_IS_sens_std: df containing the IS sens data std (cps/ppb)
         .IS_meas: array containing in a list the measured Internal Standards, containing its resolution, like 
             how they appear in the isotopes column. Default value:
                 ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
         
     #Output
         .df with the IS corrected data, containing the cps and ppb data
+        .df with the std of the IS corrected data
         
         
     ###### TO Do #############
-        .Switch cases if other corrections needede (avoid one IS because the measuring was wrong?)
+        .Switch cases if other corrections needed (avoid one IS because the measuring was wrong?)
     #########################
     '''
     
@@ -1053,7 +1057,7 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
                                  .loc[df_raw.index[i], df_raw.columns[:]] )**2 + (df_IS_sens_std
                                 .loc[df_IS_sens_std.index[3], df_IS_sens_std.columns[:] ] / 
                                 df_IS_sens.loc[df_IS_sens.index[3], df_IS_sens.columns[:] ]
-                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[2],
+                                )**2 + ( df_IS_sens.loc[df_IS_sens.index[3],
                                         df_IS_sens.columns[:]].std() / df_IS_sens
                                         .loc[df_IS_sens.index[3], df_IS_sens.columns[:]].mean() )**2
                                 )      
@@ -1070,11 +1074,11 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
 
 
 
-#%%######################################
+#%% ######################################
 ########### 1.9) ICPMS Blank correction #############
 #####################################
 
-def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
+def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
     
     '''
     PART OF THE ICPMS Data processing!
@@ -1090,11 +1094,14 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     *Inputs:
         .columns_blks: np.array([]) indicating the number of the columns contaning blanks (std 0ppt and blank std).
             Ex: columns_blanks = np.array([1, 2]). Those columns number are from excel!
-        .df_IS_co: df containing the cps (also ppb, not needed but there it is), output from the IS sens correction funciton.
-            The formatting is like the excel. 
+        .df_IS_co: df containing the cps (also ppb, not needed but there it is), output from the IS sens correction
+            funciton. The formatting is like the excel. 
+        .df_IS_co_std: df containing the std of the cps corrected from the IS
     *Outputs:
-        .df containinng the cps data corrected for the ICPMS blanks. Note it also contains the ppd data, but now modified so they
-            are random numbers. 
+        .df containinng the cps data corrected for the ICPMS blanks. Note it also contains the ppb data, 
+            but now modified so they are random numbers. 
+        .df containing the std of the cps corrected for the ICPMS blanks. Quadratic error propagation used!
+            
             
     ##### To DO ###########
         *Improve style and remove ppb data (would need modifications for the IS sens function)
@@ -1117,7 +1124,8 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     #1) is trivial:
     df_blanks = df_IS_co.iloc[:, columns_blks ]          #df with the ICPMS blanks
                     #no isotope label contained!!
-
+    df_blanks_std = df_IS_co_std.iloc[:, columns_blks ]
+    
     ######### Debug: printing the labels of df ICPMS blanks  ##########
     
     print('\n ######################################')
@@ -1127,7 +1135,9 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     print('\n ######################################')
     
     #2) could be done with df
-    df_blanks['<cps>'] = df_blanks.mean(axis = 1)            #I append the mean values. Gives a warning, but nothing is wrong!
+    df_blanks['<cps>'] = df_blanks.mean(axis = 1)            #I append the mean values. Gives a warning, 
+                                                            #but nothing is wrong!
+    df_blanks_std ['<cps>'] = df_blanks.std(axis = 1) 
 
     #3) The substraction
     '''
@@ -1137,10 +1147,10 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     df_Is_co_no_blk = df_IS_co.drop(df_IS_co.columns[columns_blks ], axis = 1)
                         #df initial without the ICPMS blanks!! 
 
-    #I could do the min to that, but since also contain the cps data there are some NaN, which make things not work. If I do
-    #fill nan with the mean values, that could fix it. Lets try bro! 
+    #I could do the min to that, but since also contain the cps data there are some NaN, which make things not 
+    #work. If I do fill nan with the mean values, that could fix it. Lets try bro! 
 
-    df_Is_co_no_blk.fillna(99999, inplace = True)           #filling NaN values with 99999 (easily recognizable)
+    df_Is_co_no_blk.fillna(999999.999, inplace = True)       #filling NaN values with 99999 (easily recognizable)
 
     #Now the min values are, storing them in the same df:
     df_Is_co_no_blk['min cps'] = df_Is_co_no_blk.min(axis = 1) 
@@ -1157,26 +1167,36 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, columns_blks):
     '''
 
     df_IS_blk_co = df_IS_co.copy(  )        #initilization df for the loop
+    df_IS_blk_co_std = df_IS_co.copy(  )
 
     for i in range(np.where(df_IS_co.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
                     #[0]s we get the desired value!
-        if df_Is_co_no_blk['min cps'][i] <= df_blanks['<cps>'][i]:     #min low, so substracting min of cps data (no blanks)
+        if df_Is_co_no_blk['min cps'][i] <= df_blanks['<cps>'][i]:     #min low, so substracting min of
+                        #cps data (no blanks)
             
-            df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],df_IS_co.columns[:]] - df_Is_co_no_blk['min cps'][i]
+            df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],
+                                df_IS_co.columns[:]] - df_Is_co_no_blk['min cps'][i]
                             #substraction of the min value        
-            
+            df_IS_blk_co_std.loc[df_IS_co_std.index[i],df_IS_blk_co_std.columns[:]] = np.sqrt(2) * df_IS_co_std.loc[
+                df_IS_co_std.index[i], df_IS_co_std.columns[:]]                #error
         else:           #mean lower, so substracting the mean of ICPMS blanks
-            df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],df_IS_co.columns[:]] - df_blanks['<cps>'][i]
-
+            df_IS_blk_co.loc[df_IS_co.index[i],df_IS_blk_co.columns[:]]= df_IS_co.loc[df_IS_co.index[i],
+                                df_IS_co.columns[:]] - df_blanks['<cps>'][i]
+            df_IS_blk_co_std.loc[df_IS_co_std.index[i],df_IS_blk_co_std.columns[:]] = np.sqrt(
+                (df_IS_co_std.loc[df_IS_co_std.index[i], df_IS_co_std.columns[:]]
+                 )**2 + (df_blanks_std['<cps>'][i])**2
+                )
     
     #FInally we delete the blanks before returning the data: 
         
     df_IS_blk_co_final = df_IS_blk_co.drop(df_IS_blk_co.columns[columns_blks], axis = 1)
                 #for some reason I can not do the drop and inplace = True, dont work
+    df_IS_blk_co_std_final = df_IS_blk_co_std.drop(df_IS_blk_co_std.columns[columns_blks], axis = 1)
 
 
     ########### Return ###########
-    return df_IS_blk_co_final         #return of the data
+    return df_IS_blk_co_final, df_IS_blk_co_std_final         #return of the data
+
 
 
 #%%######################################

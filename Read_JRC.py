@@ -8,8 +8,7 @@ This script will contain all the functions I create to read files from experimen
 say TGA, XRD, etc (the ones that needed ofc)
 """
 
-#%%######################################
-############## 0) General packages ###########
+#%%######### 0) General packages ###########
 ######################################
 
 
@@ -37,11 +36,10 @@ Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23',     #bentoni
             
             #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from Baoxides,
             #so for low Eu concentrations, Eu151 better!! [Stef]
-            
+Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)           
             
 #############################################################            
-#%%######################################
-########### 1.1) ICPMS excel reader #############
+#%%## ## 1.1) ICPMS excel reader #############
 #####################################
 
 def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = False):
@@ -165,8 +163,7 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
 
 
 
-#%%######################################
-########### 1.2) Future std computer!!!!!!!!!!!!!!!!!!!!!! #############
+#%%########## 1.2) Future std computer!!!!!!!!!!!!!!!!!!!!!! #############
 #####################################
 
 def ICPMS_std_calculator (df_cps, df_rsd):
@@ -229,8 +226,7 @@ def ICPMS_std_calculator (df_cps, df_rsd):
     
 
 
-#%%######################################
-########### 1.3) ICPMS Dilution factor finder #############
+#%%######## 1.3) ICPMS Dilution factor finder #############
 #####################################
 
 def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep'):
@@ -302,6 +298,57 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     
     return D_f            #return
 
+#%%##### 1.4) ICPMS Dilution factor corrector #############
+#####################################
+
+def ICPMS_Df_corrector (df_data, Df):
+    '''
+    Function that will apply the correction for the dilution factor to the ICPMS results.
+    Note There is 2 dilution factors involved:
+            1) Dlution factor for the ICPMS sample preparation (simeq 50). In this case you add 
+                                    .8.8mL HNO3 1M
+                                    .1mL IS (2IS; 0.5mL each)
+                                    .0.2mL sample
+            2) Dilution factor for the sample you use for the ICPMS sample prep (simeq 1). 
+                    In this case you add some HNO3 conc (65% w/w)to the sample, to stabilize it.
+                                                                            
+                                                                            
+    The correction is essentially scalatin for that factor, so the results takes into account
+    that only a portion was measuring. So:
+            df_data * Df (Df >=1)
+    
+    Its fundamental the labelling is appropiate! The data_exp sheet AND Sample_prep sheet must have
+    same labels as the ICPMS output!!!!! Once the ICPMS resutls are there, change name to both, otherwise
+    will return NaN!!!!
+
+    *Inputs:
+        .df_data: dataframe containing the cleaned data, to which the correction should be applied. 
+		the isotopes are the index, so all columns are data!
+        .D_f: pandas series containing the dilution factor to apply. Note the labelling is crutial,
+            both inputs should have same labels (remember that you change the name in the exp sheet to
+                                                 match the names that Stefaan used)
+
+    *Outputs:
+        .df with the correction factor (Df) applied
+
+	CAn the [:,:] be removed ?? I would say yes, but check!!!
+        '''
+    
+    
+    ########### 1) Calcs ###########
+    '''Now, I can apply the Dilution factor to both the std and the cps, should be straightforward, same
+    fashion than above. Well, not as simple, since for the multiplication the indexes should be the same
+    so, I redefined (above) the Df indexes so they matched the Df ones, and then that calc is straightforward
+    '''
+    
+    df_corrected = pd.DataFrame(df_data * Df,
+                                columns = df_data.columns, 
+                                index = df_data.index)  #computing the correction
+    
+    
+    ########### 2) Return #############
+    return df_corrected             #return
+
 
 
 
@@ -359,8 +406,7 @@ def ICPMS_Df_corrector (df_data, Df):
 
 
 
-#%%######################################
-########### 1.5) ICPMS Sample blank substraction #############
+#%%######## 1.5) ICPMS Sample blank substraction #############
 #####################################
 
 def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
@@ -459,9 +505,8 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
 
 
 
-#########################################################################
-#%% ############### 1.6) Get isotope number from name ########################
-########################################################################
+#%%######## 1.6) ICPMS: Get Mass number #############
+#####################################
 
 def Get_A_Resol(isotope_name):
     '''
@@ -510,8 +555,7 @@ def Get_A_Resol(isotope_name):
 
 
 
-#%%######################################
-########### 1.7) ICPMS IS sens calculation #############
+#%%######## 1.7) ICPMS IS sens calculation/plotter #############
 #####################################
 
 def IS_sens_calculator_plotter(df_cps_ppb, df_std,
@@ -669,16 +713,16 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
             axM.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],'-o' ,label = df_IS_sens.index[i])  
     
     #Final styling of the plot
-    axL.legend()
-    axM.legend()
+    axL.legend(fontsize = Font)
+    axM.legend(fontsize = Font)
     axL.grid(True)
     axM.grid(True)
-    axL.set_xlabel('Sample number', size = 14)
-    axM.set_xlabel('Sample number', size = 14)
-    axL.set_ylabel("cps/ppb", size = 14)
-    axM.set_ylabel("cps/ppb", size = 14)   
-    axL.tick_params(axis='both', labelsize=14)              #size of axis
-    axM.tick_params(axis='both', labelsize=14)              #size of axis
+    axL.set_xlabel('Sample number', size = Font)
+    axM.set_xlabel('Sample number', size = Font)
+    axL.set_ylabel("cps/ppb", size = Font)
+    axM.set_ylabel("cps/ppb", size = Font)   
+    axL.tick_params(axis='both', labelsize= Font)              #size of axis
+    axM.tick_params(axis='both', labelsize= Font)              #size of axis
     pltL.savefig(name_IS_sens_LR_plot + '.png', format='png', bbox_inches='tight')    #note I call plt, not ax!
     pltM.savefig(name_IS_sens_MR_plot + '.png', format='png', bbox_inches='tight')
     
@@ -689,7 +733,7 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
 
 
 #%%######################################
-########### 1.8) ICPMS IS sens correction #############
+#%% ########## 1.8) ICPMS IS sens correction #############
 #####################################
 
 def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
@@ -1074,8 +1118,7 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
 
 
 
-#%% ######################################
-########### 1.9) ICPMS Blank correction #############
+#%%########### 1.8) ICPMS Blank correction #############
 #####################################
 
 def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
@@ -1199,8 +1242,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
 
 
 
-#%%######################################
-########### 1.10) ICPMS data processing automatized #############
+#%%######## 1.9) ICPMS data processing automatized #############
 #####################################
 
 def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns, 
@@ -1787,8 +1829,7 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, ret_Co
 
 
 
-#%%######################################
-########### 1.14) Mean/std of replicates calculaor #############
+#%%####### 1.10) Mean/std of replicates calculator #############
 #####################################
 
 
@@ -1932,7 +1973,7 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 
 
 #%%######################################
-########### 1.15) ICPMS Bar plotter #############
+#%% ########## 1.11) ICPMS Bar plotter #############
 #####################################
 
 def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
@@ -2031,9 +2072,9 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
             a = plt.bar(X_axis - w/2, df_1.loc[df_1.index[i]], width = w, edgecolor="black", 
                         label = ylabel_1, align='center') 
             #-2 not to plot the blank!! Remove it to plot it!
-            plt.ylabel(ylabel_1, fontsize=14)              #ylabel
-            plt.xlabel('Sample', fontsize = 14)
-            plt.tick_params(axis='both', labelsize=14)              #size of axis
+            plt.ylabel(ylabel_1, fontsize= Font)              #ylabel
+            plt.xlabel('Sample', fontsize = Font )
+            plt.tick_params(axis='both', labelsize= Font)              #size of axis
             if Logs ==1 or Logs == 3:           #put log scale
                 plt.yscale('log') 
             plt.grid(True)
@@ -2049,7 +2090,7 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
                 #
             if Logs == 2 or Logs == 3:                  #put scale
                 plt.yscale('log')  
-            plt.ylabel(ylabel_2, fontsize=14)              #ylabel
+            plt.ylabel(ylabel_2, fontsize= Font)              #ylabel
             #
             aaa = [a, aa]
             plt.legend(aaa, [p_.get_label() for p_ in aaa])
@@ -2081,8 +2122,7 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
     
     
 
-#%%######################################
-########### 1.16) ICPMS plotter #############
+#%%######## 1.12) ICPMS plotter #############
 #####################################
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', 
@@ -2176,12 +2216,12 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x[int(len(x)/2):], row[int(len(x)/2) :], 'ro--', 
                      MarkerSize = 5, label = 'Repl_2') 
-                plt.ylabel(y_label, fontsize=14)              #ylabel
-                plt.xlabel(x_label, fontsize = 14)
-                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                plt.ylabel(y_label, fontsize= Font)              #ylabel
+                plt.xlabel(x_label, fontsize = Font)
+                plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()
+                plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_' + index[:-4] + '.png', format='png', bbox_inches='tight')
             #
@@ -2194,12 +2234,12 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                          MarkerSize = 5, label = 'Repl_1') 
                     plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
                          MarkerSize = 5, label = 'Repl_2') 
-                    plt.ylabel(y_label, fontsize=14)              #ylabel
-                    plt.xlabel(x_label, fontsize = 14)
-                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    plt.ylabel(y_label, fontsize= Font)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     #plt.yscale('log') 
                     plt.grid(True)
-                    plt.legend()            
+                    plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_' + index[:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
@@ -2227,12 +2267,12 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                      MarkerSize = 5, label = 'Repl_2') 
                 plt.plot(x[2* int(len(x)/3):], row[2* int(len(x)/3) :], 'go--', 
                      MarkerSize = 5, label = 'Repl_3') 
-                plt.ylabel(y_label, fontsize=14)              #ylabel
-                plt.xlabel(x_label, fontsize = 14)
-                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                plt.ylabel(y_label, fontsize= Font)              #ylabel
+                plt.xlabel(x_label, fontsize = Font)
+                plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()
+                plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_' + index[:-4] + '.png', format='png', bbox_inches='tight')
             #
@@ -2248,12 +2288,12 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                      MarkerSize = 5, label = 'Repl_2') 
                     plt.plot(x[2* int(len(x)/3):], row[2* int(len(x)/3) :], 'go--', 
                      MarkerSize = 5, label = 'Repl_3') 
-                    plt.ylabel(y_label, fontsize=14)              #ylabel
-                    plt.xlabel(x_label, fontsize = 14)
-                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    plt.ylabel(y_label, fontsize= Font)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     #plt.yscale('log') 
                     plt.grid(True)
-                    plt.legend()            
+                    plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_' + index[:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
@@ -2280,12 +2320,11 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
     THe time when the loop was with iloc and moving a variable i, was 2 times faster! 10s vs 20!
     '''
     
-    
-    
+
  
 
 #%%######################################
-########### 1.17) ICPMS plotter 3 bentonites #############
+#%% ########## 1.13) ICPMS plotter 3 bentonites #############
 #####################################
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False,
@@ -2388,12 +2427,12 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
                     #+1 needed since the df contain a row with the column names!
             plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[df_cps['Sard'].index[i] ][int(len(x['BK'])/2 ):], 'o--', color = Bent_color['BK'],
                      MarkerSize = 5, label = 'Repl_2 BK') 
-            plt.ylabel(y_label, fontsize=14)              #ylabel
-            plt.xlabel(x_label, fontsize = 14)
-            plt.tick_params(axis='both', labelsize=14)              #size of axis
+            plt.ylabel(y_label, fontsize= Font)              #ylabel
+            plt.xlabel(x_label, fontsize = Font)
+            plt.tick_params(axis='both', labelsize= Font)              #size of axis
             #plt.yscale('log') 
             plt.grid(True)
-            plt.legend()
+            plt.legend(fontsize = Font)
             plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps['Sard'].index[i][:-4]+ '.png', format='png', bbox_inches='tight')
             #
@@ -2420,12 +2459,12 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[df_cps['Sard'].index[i] ][int(len(x['BK'])/2 ):], 'o--', color = Bent_color['BK'],
                      MarkerSize = 5, label = 'Repl_2 BK') 
-                plt.ylabel(y_label, fontsize=14)              #ylabel
-                plt.xlabel(x_label, fontsize = 14)
-                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                plt.ylabel(y_label, fontsize= Font)              #ylabel
+                plt.xlabel(x_label, fontsize = Font)
+                plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()
+                plt.legend(fontsize = Font)
                 plt.savefig(folder_name +'/' +  
                         pre_save_name + '_' + df_cps['Sard'].index[i][:-4] +'.png', format='png', bbox_inches='tight')   #To save plot in folder
         
@@ -2446,13 +2485,12 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
 
     
     
-#%%######################################
-########### 1.18) ICPMS plotter blank appart #############
+#%%######### 1.14) ICPMS plotter blank appart #############
 #####################################
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False, 
                        pre_title_plt = "Concentration of ", pre_save_name = 'Conc', Nrepl = 2,
-                       Blank_here = False, Elem_rel = Isot_rel ):
+                       Blank_here = False, Elem_rel = Isot_rel, Logs = 0 ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
@@ -2476,7 +2514,11 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
             in a specific folder. Default value: (see above in the script)      
          .Blank_here: True if the df contain the blank. Default: False
-                                    
+        .Logs: value defining if applying log scale to x axis, y axis or both:
+            0: no log scale
+            1: log scale on x axis
+            2: log scale on y axis
+            3: log scale on both axis
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
     
@@ -2582,12 +2624,19 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                                  MarkerSize = 5, label = 'Repl_1')          #repl 1
                         plt.plot(x_2, y_2.loc[y_2.index[i] ], 'ro--', 
                                  MarkerSize = 5, label = 'Repl_2')          #repl 2
-                    plt.ylabel(y_label, fontsize=14)              #ylabel
-                    plt.xlabel(x_label, fontsize = 14)
-                    plt.tick_params(axis='both', labelsize=14)              #size of axis
-                    #plt.yscale('log') 
+                    plt.ylabel(y_label, fontsize= Font)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                    if Logs == 3:                               #x and y in log scale
+                        plt.xscale('log')
+                        plt.yscale('log')
+                    elif Logs == 2:                             #yscale in log
+                        plt.yscale('log') 
+                    elif Logs == 1:                             #xscale in log
+                        plt.xscale('log') 
+                        #
                     plt.grid(True)
-                    plt.legend()
+                    plt.legend(fontsize = Font)
                     plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')      
         elif Nrepl ==3:                     #3 replicates
@@ -2612,12 +2661,19 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                                  MarkerSize = 5, label = 'Repl_2')          #repl 2
                         plt.plot(x_3, y_3.loc[y_2.index[i] ], 'go--', 
                                  MarkerSize = 5, label = 'Repl_3')          #repl 3 
-                    plt.ylabel(y_label, fontsize=14)              #ylabel
-                    plt.xlabel(x_label, fontsize = 14)
-                    plt.tick_params(axis='both', labelsize=14)              #size of axis
-                    #plt.yscale('log') 
+                    plt.ylabel(y_label, fontsize= Font)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                    if Logs == 3:                               #x and y in log scale
+                        plt.xscale('log')
+                        plt.yscale('log')
+                    elif Logs == 2:                             #yscale in log
+                        plt.yscale('log') 
+                    elif Logs == 1:                             #xscale in log
+                        plt.xscale('log') 
+                        #
                     plt.grid(True)
-                    plt.legend()
+                    plt.legend(fontsize = Font)
                     plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')          
     #
@@ -2641,12 +2697,19 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                                  MarkerSize = 5, label = 'Repl_1')          #repl 1
                         plt.plot(x_2.loc[x_2.index[i]], y_2.loc[y_2.index[i] ], 'ro--', 
                                  MarkerSize = 5, label = 'Repl_2')          #repl 2
-                    plt.ylabel(y_label, fontsize=14)              #ylabel
-                    plt.xlabel(x_label, fontsize = 14)
-                    plt.tick_params(axis='both', labelsize=14)              #size of axis
-                    #plt.yscale('log') 
+                    plt.ylabel(y_label, fontsize= Font)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                    if Logs == 3:                               #x and y in log scale
+                        plt.xscale('log')
+                        plt.yscale('log')
+                    elif Logs == 2:                             #yscale in log
+                        plt.yscale('log') 
+                    elif Logs == 1:                             #xscale in log
+                        plt.xscale('log') 
+                        #
                     plt.grid(True)
-                    plt.legend()
+                    plt.legend(fontsize = Font)
                     plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')            
         if Nrepl == 3:               #2 replicates, standard case (x is time for ex)    
@@ -2675,16 +2738,23 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                                  MarkerSize = 5, label = 'Repl_2')          #repl 2                                           
                         plt.plot(x_3.loc[x_3.index[i]], y_3.loc[y_3.index[i] ], 'go--', 
                                  MarkerSize = 5, label = 'Repl_3')          #repl 3       
-                    plt.ylabel(y_label, fontsize=14)              #ylabel
-                    plt.xlabel(x_label, fontsize = 14)
-                    plt.tick_params(axis='both', labelsize=14)              #size of axis
-                    #plt.yscale('log') 
+                    plt.ylabel(y_label, fontsize= Font)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                    if Logs == 3:                               #x and y in log scale
+                        plt.xscale('log')
+                        plt.yscale('log')
+                    elif Logs == 2:                             #yscale in log
+                        plt.yscale('log') 
+                    elif Logs == 1:                             #xscale in log
+                        plt.xscale('log') 
+                        #
                     plt.grid(True)
                     #Mods to compare, comment!!
                     #plt.xlim(0,3500)
                     #plt.ylim(0, 700000)
                     #####
-                    plt.legend()
+                    plt.legend(fontsize = Font)
                     plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')           
         
@@ -2709,7 +2779,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     
     
 #%%######################################
-########### 1.19) ICPMS plotter blank appart Average of replicates #############
+#%%########## 1.15) ICPMS plotter blank appart Average of replicates #############
 #####################################
 
 def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps, 
@@ -2814,13 +2884,13 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                     plt.errorbar(x, df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
                                      std_x, 'o--', color = Color, markersize = 5, label = '<Samples>') 
                     #Like that you can plot the blank
-                plt.ylabel(y_label, fontsize=14)              #ylabel
-                plt.xlabel(x_label, fontsize = 14)
-                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                plt.ylabel(y_label, fontsize= Font)              #ylabel
+                plt.xlabel(x_label, fontsize = Font)
+                plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 if LogScale:                                                     ####LOG SCALE?
                     plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()
+                plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')       
             else:                                                       #if the element is not relevant
@@ -2837,14 +2907,14 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                         plt.errorbar(x, df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
                                      std_x, 'o--', color = Color, markersize = 5, label = '<Samples>') 
                     #Like that you can plot the blank
-                    plt.ylabel(y_label, fontsize=14)              #ylabel
-                    plt.xlabel(x_label, fontsize = 14)
-                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    plt.ylabel(y_label, fontsize= Font)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if LogScale:                                                  ####LOG SCALE?
                         plt.yscale('log') 
                 
                     plt.grid(True)
-                    plt.legend()            
+                    plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
@@ -2866,14 +2936,14 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                     plt.errorbar(x.loc[x.index[i]], df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
                                      std_x.loc[std_x.index[i]], 'o--', color = Color, markersize = 5, label = '<Samples>') 
                     #Like that you can plot the blank
-                plt.ylabel(y_label, fontsize=14)              #ylabel
-                plt.xlabel(x_label, fontsize = 14)
-                plt.tick_params(axis='both', labelsize=14)              #size of axis
+                plt.ylabel(y_label, fontsize= Font)              #ylabel
+                plt.xlabel(x_label, fontsize = Font)
+                plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 if LogScale:                                                     ####LOG SCALE?
                     plt.yscale('log') 
                     plt.xscale('log') 
                 plt.grid(True)
-                plt.legend()
+                plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')       
             else:                                                       #if the element is not relevant
@@ -2890,15 +2960,15 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                         plt.errorbar(x.loc[x.index[i]], df_mean_cps.loc[df_mean_cps.index[i] ], df_std_cps.loc[df_mean_cps.index[i] ],
                                      std_x.loc[std_x.index[i]], 'o--', color = Color, markersize = 5, label = '<Samples>') 
                     #Like that you can plot the blank
-                    plt.ylabel(y_label, fontsize=14)              #ylabel
-                    plt.xlabel(x_label, fontsize = 14)
-                    plt.tick_params(axis='both', labelsize=14)              #size of axis
+                    plt.ylabel(y_label, fontsize= Font)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if LogScale:                                                  ####LOG SCALE?
                         plt.yscale('log') 
                         plt.xscale('log') 
                 
                     plt.grid(True)
-                    plt.legend()            
+                    plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
@@ -2928,16 +2998,15 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
 
 
 
-#%%######################################
-########### 1.20) ICPMS plotter blank appart Average of replicates, 3 bentonites! #############
+#%%########## 1.16) ICPMS plotter blank appart Average of replicates, 3 bentonites! #############
 #####################################
 
 def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                               x_BK, std_x_BK, df_mean_cps_BK, df_std_cps_BK,
                               x_S, std_x_S, df_mean_cps_S, df_std_cps_S,
-                           x_label, y_label, folder_name = 'Plots', plot_everything = False, 
-                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                       Elem_rel = Isot_rel ):
+                           x_label, y_label, folder_name = 'Plots', Logscale = False,
+                           plot_everything = False, pre_title_plt = "Concentration of ", 
+                           pre_save_name = 'Conc', Elem_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd, for the 3 bentonites, plotting the average values ideally (output of average computer).
@@ -2960,6 +3029,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
             in a specific folder. Default value: (see above in the script)   
+        .Logscale: string to say if you want the y axis in logscale or not. Default: False
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!
@@ -3016,12 +3086,13 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                          std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
                 #[1:] not to plot sample 1, the blank, which will be a horizontal line!
             #
-            plt.ylabel(y_label, fontsize=14)              #ylabel
-            plt.xlabel(x_label, fontsize = 14)
-            plt.tick_params(axis='both', labelsize=14)              #size of axis
-            #plt.yscale('log') 
+            plt.ylabel(y_label, fontsize= Font)              #ylabel
+            plt.xlabel(x_label, fontsize = Font)
+            plt.tick_params(axis='both', labelsize= Font)              #size of axis
+            if Logscale:            #if True
+                plt.yscale('log') 
             plt.grid(True)
-            plt.legend()
+            plt.legend(fontsize = Font)
             plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] + '.png', format='png', bbox_inches='tight')
             #
@@ -3036,12 +3107,13 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                          std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
                 plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i] ], df_std_cps_S.loc[df_mean_cps_S.index[i] ],
                          std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
-                plt.ylabel(y_label, fontsize=14)                #ylabel
-                plt.xlabel(x_label, fontsize = 14)
-                plt.tick_params(axis='both', labelsize=14)              #size of axis
-                #plt.yscale('log') 
+                plt.ylabel(y_label, fontsize= Font)                #ylabel
+                plt.xlabel(x_label, fontsize = Font)
+                plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                if Logscale:        #if True, do it
+                    plt.yscale('log') 
                 plt.grid(True)
-                plt.legend()            
+                plt.legend(fontsize = Font)            
                 plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +'.png', format='png', bbox_inches='tight')
                     #To save plot in folder
@@ -3074,7 +3146,8 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
 ####################################################
 #%% ######### 2) PSO fit #############################
 ###################################################
-def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
+def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
+            y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
     '''
     Function to do and compute some variables relevant to the PSO (pseudo second order) kinetic model. THis model
     comes from
@@ -3103,8 +3176,8 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', y_
     
     
     *Outputs
-        .df series with all the relevant info, from the fit and computed quantities, errors (quadratic propagation) included
-            The input units define those units!! Remember saltpepper!
+        .df series with all the relevant info, from the fit and computed quantities, errors 
+        (quadratic propagation) included The input units define those units!! Remember saltpepper!
     
     
     '''    
@@ -3153,11 +3226,10 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', y_
     return fit
     
 
-####################################################
-#%% ######### 2) PFO fit #############################
+#%% ######### 3) PFO fit #############################
 ###################################################
-def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_label = 'x', y_label = 'y', Color = 'b', 
-            save_name = '', post_title = ' ', npo=100):    
+def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_label = 'x',
+            y_label = 'y', Color = 'b', save_name = '', post_title = ' ', npo=100):   
     '''
     Function to do and compute some variables relevant to the PFO (pseudo first order) kinetic model. THis model
     comes from
@@ -3249,11 +3321,11 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
             #.2f to show 2 decimals on the coefficients!
             #2e for scientific notation with 2 significative digits
     ax.set_title('PFO fit ' + post_title, fontsize=22)          #title
-    ax.set_xlabel(x_label, fontsize=14)                                    #xlabel
-    ax.set_ylabel(y_label, fontsize=14)                                    #ylabel
-    ax.tick_params(axis='both', labelsize=14)            #size of tick labels  
+    ax.set_xlabel(x_label, fontsize= Font)                                    #xlabel
+    ax.set_ylabel(y_label, fontsize= Font)                                    #ylabel
+    ax.tick_params(axis='both', labelsize= Font)            #size of tick labels  
     ax.grid(True)                                              #show grid
-    ax.legend()             #legend
+    ax.legend(fontsize = Font)             #legend
                     #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
     plt.savefig(folder_name +'/' + save_name +'.png', format='png', bbox_inches='tight')                
                     ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
@@ -3264,8 +3336,7 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
     return Ser_values
 
     
-#%% ###############################################
-################### 4) TGA reader ##################### 
+#%% ######### 4) TGA reader ##################### 
 ##################################################
 
 
@@ -3311,8 +3382,7 @@ def Read_TGA (name):
     
     
  
-#%%##################################################
-##################### 5) XRD reader #################### 
+#%% ######### 5) XRD reader #################### 
 ######################################################
  
 def Read_XRD_WB (name):

@@ -298,7 +298,8 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     
     return D_f            #return
 
-#%%##### 1.4) ICPMS Dilution factor corrector #############
+
+#%% ##### 1.4) ICPMS Dilution factor corrector #############
 #####################################
 
 def ICPMS_Df_corrector (df_data, Df):
@@ -351,62 +352,7 @@ def ICPMS_Df_corrector (df_data, Df):
 
 
 
-
-#%%######################################
-########### 1.4) ICPMS Dilution factor corrector #############
-#####################################
-
-def ICPMS_Df_corrector (df_data, Df):
-    '''
-    Function that will apply the correction for the dilution factor to the ICPMS results.
-    Note There is 2 dilution factors involved:
-            1) Dlution factor for the ICPMS sample preparation (simeq 50). In this case you add 
-                                    .8.8mL HNO3 1M
-                                    .1mL IS (2IS; 0.5mL each)
-                                    .0.2mL sample
-            2) Dilution factor for the sample you use for the ICPMS sample prep (simeq 1). 
-                    In this case you add some HNO3 conc (65% w/w)to the sample, to stabilize it.
-                                                                            
-                                                                            
-    The correction is essentially scalatin for that factor, so the results takes into account
-    that only a portion was measuring. So:
-            df_data * Df (Df >=1)
-    
-    Its fundamental the labelling is appropiate! The data_exp sheet AND Sample_prep sheet must have
-    same labels as the ICPMS output!!!!! Once the ICPMS resutls are there, change name to both, otherwise
-    will return NaN!!!!
-
-    *Inputs:
-        .df_data: dataframe containing the cleaned data, to which the correction should be applied. 
-		the isotopes are the index, so all columns are data!
-        .D_f: pandas series containing the dilution factor to apply. Note the labelling is crutial,
-            both inputs should have same labels (remember that you change the name in the exp sheet to
-                                                 match the names that Stefaan used)
-
-    *Outputs:
-        .df with the correction factor (Df) applied
-
-	CAn the [:,:] be removed ?? I would say yes, but check!!!
-        '''
-    
-    
-    ########### 1) Calcs ###########
-    '''Now, I can apply the Dilution factor to both the std and the cps, should be straightforward, same
-    fashion than above. Well, not as simple, since for the multiplication the indexes should be the same
-    so, I redefined (above) the Df indexes so they matched the Df ones, and then that calc is straightforward
-    '''
-    
-    df_corrected = pd.DataFrame(df_data * Df,
-                                columns = df_data.columns, 
-                                index = df_data.index)  #computing the correction
-    
-    
-    ########### 2) Return #############
-    return df_corrected             #return
-
-
-
-#%%######## 1.5) ICPMS Sample blank substraction #############
+#%% ######## 1.5) ICPMS Sample blank substraction #############
 #####################################
 
 def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
@@ -1667,13 +1613,14 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
 #%%######################################
 ########### 1.13) Kd calculaor, Adsorption version #############
 #####################################
-def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, ret_Co__Ceq = False):
+def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_liq = False, ret_Co__Ceq = False):
     '''
     Function that will compute the distribution constant Kd and the adsorption quantity
     q_e from the ppb data obtained with ICPMS. Note that data must be corrected
     for the dilutions factors. 
     
-    Based on the blk corrector function. 
+    Based on the blk corrector function. The sorbed quantity Q_e is:
+        Q_e = (C_0 - C_e) * V/m
     
     THe distribution constant Kd is:
         K_d = (C_0 - C_eq)/C_eq * V/m = Q_e / C_eq;
@@ -1685,7 +1632,18 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, ret_Co
         Q_e = absorbed quantity in equil [g soluto / g bent]
         
     In our case, that we measure C in ppb = ng soluto /g disol, we need to mutiply by g tot / m bent, to
-    achieve the same units in Q_e!! And we do not have equilibirum since its kinetic, so Qe, Ke ==> Q(t), K(t)
+    achieve the same units in Q_e!! Then our equations are:
+        Q_e = (C_0 - C_e) * m_tot /m
+        K_d = Q_e / C_e
+        
+    Improvement made thanks to Espe (3/2024). Note that after the solid liquid sepparation, you retrieve a bit
+    less of liquid, since the bentonite adsorbs some. This means that the concentration you measure with the ICP-MS
+    is the concentration of this liquid, with mass m_liq_e <= m_liq_0. Then the Q_e should be calculated like this, 
+    ASSUMING no change in bentonite mass, which is reasonable:
+        Q_e = C_0 * (m + m_liq_0) /m - C_e * (m + m_liq_e) /m
+    
+    
+    Note that in the cas eof no equilibrium (eg Kinetics exp), Q_e, Kd ==> Q_e(t), K(t). 
     
     Here we have different omther solutions, whihc is the main different
     from th eother funciton, where all the samples had a common mother solution (C_0). Here we have several C_0
@@ -1723,6 +1681,9 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, ret_Co
     
     df_samples.replace(0, np.nan, inplace=True)                    #replace 0 values with NaN, to avoid Div0 error!
     
+    if df_m_liq== False:    #if no data for the volume of the liquid provided, then set the mass of the liquid initially
+        df_m_liq = df_VoM_disol - df_m_be 
+    
     
     ########### 1) Calcs ###########
     '''
@@ -1744,6 +1705,16 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, ret_Co
 
     I shuold then remove those columns
     from there, and replace negatives values for 0, for a good plot
+    
+    
+    WELL, I MUST MODIFY EVERYTHING. I should do now
+    1) C_0 * V/m
+    2) C_eq * V_eq /m
+    3) 1) - 2)
+    4) 3) / C_e
+                                                                                                      
+                                                            
+    
     '''
     
     #So, lets split into the 2 replicates!

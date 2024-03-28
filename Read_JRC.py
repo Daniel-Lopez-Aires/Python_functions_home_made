@@ -1639,8 +1639,7 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
     Improvement made thanks to Espe (3/2024). Note that after the solid liquid sepparation, you retrieve a bit
     less of liquid, since the bentonite adsorbs some. This means that the concentration you measure with the ICP-MS
     is the concentration of this liquid, with mass m_liq_e <= m_liq_0. Then the Q_e should be calculated like this, 
-    ASSUMING no change in bentonite mass, which is reasonable:
-        Q_e = C_0 * (m + m_liq_0) /m - C_e * (m + m_liq_e) /m
+    using that final mass!.
     
     
     Note that in the cas eof no equilibrium (eg Kinetics exp), Q_e, Kd ==> Q_e(t), K(t). 

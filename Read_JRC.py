@@ -1650,7 +1650,10 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
     Necessary that the data contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
     
     Note this requires a df series with the volume, that you were not measuring in the first exp
-    (up to 8/23). Note ten that units are involved!. If measuring mass ing and volumes in L, Q
+    (up to 8/23). Note ten that units are involved!. If measuring mass ing and volumes in L, Q.
+    
+    Note as well that the 1st sample/replicate is the procedural blank, not used here!!!!!!
+    beware if first sample is not procedural blank!!!!!!!
 
 
     *Inputs:
@@ -3007,7 +3010,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
         .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
             in a specific folder. Default value: (see above in the script)   
-        .Logscale: string to say if you want the y axis in logscale or not. Default: False
+        .Logscale: string to say if you want the x and y axis in logscale or not. Default: False
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!
@@ -3073,6 +3076,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 if Logscale:            #if True
                     plt.yscale('log') 
+                    plt.xscale('log') 
                 plt.grid(True)
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -3094,6 +3098,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if Logscale:        #if True, do it
                         plt.yscale('log') 
+                        plt.xscale('log') 
                     plt.grid(True)
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
@@ -3123,6 +3128,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 if Logscale:            #if True
                     plt.yscale('log') 
+                    plt.xscale('log') 
                 plt.grid(True)
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -3145,6 +3151,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if Logscale:        #if True, do it
                         plt.yscale('log') 
+                        plt.xscale('log') 
                     plt.grid(True)
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  

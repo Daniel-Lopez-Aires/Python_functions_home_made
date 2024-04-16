@@ -677,8 +677,6 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     return df_IS_sens, df_IS_sens_std            #mass is an string!
 
 
-
-#%%######################################
 #%% ########## 1.8) ICPMS IS sens correction #############
 #####################################
 
@@ -1064,7 +1062,7 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
 
 
 
-#%%########### 1.8) ICPMS Blank correction #############
+#%%########### 1.9) ICPMS Blank correction #############
 #####################################
 
 def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
@@ -1188,7 +1186,7 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
 
 
 
-#%%######## 1.9) ICPMS data processing automatized #############
+#%%######## 1.10) ICPMS data processing automatized #############
 #####################################
 
 def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns, 
@@ -1343,8 +1341,7 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
 
 
 
-#%%######################################
-########### 1.11) ICPMS Isotope selector #############
+#%%######## 1.11) ICPMS Isotope selector #############
 #####################################
 def ICPMS_Isotope_selector(df_cps, Isotopes):
     '''
@@ -1397,8 +1394,7 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 
 
 
-#%%######################################
-########### 1.12) Kd calculaor #############
+#%%############ 1.12) Kd calculaor #############
 #####################################
 
 def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = False):
@@ -1611,7 +1607,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
 
 
 #%%######################################
-########### 1.13) Kd calculaor, Adsorption version #############
+#%% ########## 1.13) Kd calculaor, Adsorption version #############
 #####################################
 def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_liq = False, ret_Co__Ceq = False):
     '''
@@ -1802,7 +1798,7 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
 
 
 
-#%%####### 1.10) Mean/std of replicates calculator #############
+#%%####### 1.14) Mean/std of replicates calculator #############
 #####################################
 
 
@@ -1909,9 +1905,9 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
         
         elif Nrepl == 3:            #3 replicates
         #Gathering the replicates sepparately    
-            df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
-            df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
-            df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
+            df_1 = df_data.iloc[: round(df_data.shape[0] / 3)]
+            df_2 = df_data.iloc[round(df_data.shape[0] / 3): 2*round(df_data.shape[0] / 3)]
+            df_3 = df_data.iloc[ 2*round(df_data.shape[0] / 3) :]
             
             for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
                 df_temp = df_data.iloc[ [i, i+ df_1.shape[0], i+ 2 * df_1.shape[0] ] ]        
@@ -1952,7 +1948,6 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 
 
 
-#%%######################################
 #%% ########## 1.11) ICPMS Bar plotter #############
 #####################################
 

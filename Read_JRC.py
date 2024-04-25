@@ -3422,7 +3422,7 @@ def Read_TGA (name):
     
     
  
-#%% ######### 5) XRD reader #################### 
+#%% ######### 5) XRD reader F141 (Cold lab) #################### 
 ######################################################
  
 def Read_XRD_WB (name):
@@ -3482,3 +3482,58 @@ def Read_XRD_WB (name):
         #
         #Finally return the df:
         return df
+
+
+#%% ######### 6) XRD reader, F130 (hot XRD) #################### 
+######################################################
+
+def Read_XRD_F130 (name, t_paso, Skip_rows = 266):
+    '''
+    Function that reads the .ras file from the XRD in F130 (Olaf Walter), returning a df
+    with the relevant info.
+    
+    The .ras file contain lot of text at the beginning (1st 266 lines), then 3 variables:
+            2Theta, Counts, Unknown
+        The unknown seem to be always 1, so I delete it.
+        
+    Some of the text I skip contian relevant info. Eg:
+            *MEAS_SCAN_START_TIME "04/10/24 15:21:09" (near the last lines of text)
+    
+    *Inputs:
+        .name: name of the file. Ej: 'file.ras'
+        .t_paso: time per step, in seconds. Ej: 10 [s]. Thi assumes the operation mode in step, the usual
+        .Skip_rows: number of rows of the .ras file to skip. Default: 266. Spotted from opening the file
+        
+    *Output
+        .df with the 2Theta, Counts and cps
+    
+    '''
+    
+    #Reading was not trivial, but I came up with the way of doing it:
+    aux = pd.read_csv(name, skiprows = Skip_rows, sep = ' ', names = ['2Theta[°]', 'Counts', 'npi'], 
+                      encoding='latin')
+    
+    '''That worked, but 2 last columns are text, that I can delete easily. Also I have 3 column, 
+    being the 3rd always 1, so I will also delte it:'''
+    
+    df = aux.iloc[:-2,:-1]        #Removing 3rd column, and last 2 rows
+    
+    #Since the 2theta data is not numeric because of these 2 rows, I need to make them numeric:
+    df = df.apply(pd.to_numeric)  
+    
+    #The cps are easy to get, since I define the time measuring each step:
+        
+    df['CPS'] = df['Counts']/t_paso         #Computing Counts Per Secons (CPS)
+
+
+    '''
+    I will also return the cps nromalized, min value 0 and max 1. This can be accomplished
+    by appling the operation:
+            (x-min(x)) /(max(x)-min(x))         para todo x
+    '''
+    
+    df['CPS_norm'] = ( df['CPS'] -df['CPS'].min() ) / (df['CPS'].max() - df['CPS'].min())
+                        #normalized cps, min value 0, and max 1
+    
+    #Finally, return the df:
+    return df

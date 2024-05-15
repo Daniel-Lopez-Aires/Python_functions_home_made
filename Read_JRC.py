@@ -1605,8 +1605,6 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
         return df_Kd, df_Qe, df_C0__Ceq
 
 
-
-#%%######################################
 #%% ########## 1.13) Kd calculaor, Adsorption version #############
 #####################################
 def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_liq = False, ret_Co__Ceq = False):
@@ -1948,7 +1946,7 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 
 
 
-#%% ########## 1.11) ICPMS Bar plotter #############
+#%% ########## 1.15) ICPMS Bar plotter #############
 #####################################
 
 def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
@@ -2097,7 +2095,7 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
     
     
 
-#%%######## 1.12) ICPMS plotter #############
+#%%######## 1.16) ICPMS plotter #############
 #####################################
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', 
@@ -2297,9 +2295,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
     
 
  
-
-#%%######################################
-#%% ########## 1.13) ICPMS plotter 3 bentonites #############
+#%% ########## 1.17) ICPMS plotter 3 bentonites #############
 #####################################
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False,
@@ -2460,7 +2456,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
 
     
     
-#%%######### 1.14) ICPMS plotter blank appart #############
+#%%######### 1.18) ICPMS plotter blank appart #############
 #####################################
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False, 
@@ -2753,8 +2749,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     
     
     
-#%%######################################
-#%%########## 1.15) ICPMS plotter blank appart Average of replicates #############
+#%%########## 1.19) ICPMS plotter blank appart Average of replicates #############
 #####################################
 
 def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps, 
@@ -2974,7 +2969,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
 
 
 
-#%%########## 1.16) ICPMS plotter blank appart Average of replicates, 3 bentonites! #############
+#%%########## 1.20) ICPMS plotter blank appart Average of replicates, 3 bentonites! #############
 #####################################
 
 def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
@@ -3422,7 +3417,7 @@ def Read_TGA (name):
     
     
  
-#%% ######### 5) XRD reader F141 (Cold lab) #################### 
+#%% ######### 5.1) XRD reader F141 (Cold lab) #################### 
 ######################################################
  
 def Read_XRD_WB (name):
@@ -3484,7 +3479,7 @@ def Read_XRD_WB (name):
         return df
 
 
-#%% ######### 6) XRD reader, F130 (hot XRD) #################### 
+#%% ######### 5.2) XRD reader, F130 (hot XRD) #################### 
 ######################################################
 
 def Read_XRD_F130 (name, t_paso, Skip_rows = 266):
@@ -3537,3 +3532,71 @@ def Read_XRD_F130 (name, t_paso, Skip_rows = 266):
     
     #Finally, return the df:
     return df
+
+
+#%% ######### 5.3) XRD, Get interlaminar space bentonites #################### 
+######################################################
+
+def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
+    '''
+    Function that will get the interlaminar space of the bentonites, based on the first basal
+    refelction 001, which will satisfy:
+            lambda = 2d sin (theta)    n = 1
+            
+    For this, we need:
+        1. Perform the gaussian fit of the peak
+        2. Compute the interlaminar space d
+    
+    The .ras file contain lot of text at the beginning (1st 266 lines), then 3 variables:
+            2Theta, Counts, Unknown
+        The unknown seem to be always 1, so I delete it.
+        
+    Some of the text I skip contian relevant info. Eg:
+            *MEAS_SCAN_START_TIME "04/10/24 15:21:09" (near the last lines of text)
+    
+    *Inputs:
+        .XRD_df: df containing the info from the XRD. Important the names, must have
+            '2Theta[°]' and 'CPS_norm' (I refer to those
+        .DosTheta_inter: array with min and maximum values of the 2Theta variable from the XRD df,
+        to do the fit. Ej: [5,30]
+        .kalpha: Wavelength of the Kalpha1 radiation of the Cu, the element of the XRD
+        .name: name of the file. Ej: 'file.ras'
+
+    *Output
+        .df with the interlaminar space!
+    
+    '''
+    
+    
+    ####### 1. Gaussian fit #########
+    #We need to get the desired interval to perform the fit, eye spotted from the XRD diagram
+    
+    inter_x =XRD_df['2Theta[°]'].loc[ (XRD_df['2Theta[°]'] < DosTheta_inter[1]) & 
+                                        (XRD_df['2Theta[°]'] > DosTheta_inter[0]) ]
+        #getting desired interval
+    #Now I need the cps values (y) of those x values. Since the index is preserve, I could use it
+    inter_y = XRD_df['CPS_norm'][inter_x.index]
+    
+    Fit = Fits.Gaussian_fit(inter_x.values, inter_y.values)            #Gaussian fit
+
+    ########## 2. Interlaminas space calc
+    #Note that np.sin works in radian, so I convert the angle from degree to radians
+    
+    d = Kalpha / (2*np.sin(np.deg2rad(Fit['mean'][0] / 2) ) )      #[Ams]
+    Delta_d = d * np.cos(np.deg2rad(Fit['mean'][0] / 2) ) * Fit['\Delta(mean)'][0]/2/ np.sin(
+                                                np.deg2rad(Fit['mean'][0] / 2) ) #[Ams]
+
+    aux = {'d[A]' : d, '\Delta(d)[A]' : Delta_d }     #variable containing everyting
+        
+        #Let´s print that so it appears in the command line:
+    print('\n#######################\n')
+    print('Interlaminar space:')
+    print(aux)
+    print('\n ###############')
+        
+    values = pd.DataFrame([aux])  #dataframe creation
+    
+    #Finally, return d and its error in a df
+    return values
+
+

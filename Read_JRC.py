@@ -3485,7 +3485,7 @@ def Read_XRD_WB (name):
 def Read_XRD_F130 (name, t_paso, Skip_rows = 266):
     '''
     Function that reads the .ras file from the XRD in F130 (Olaf Walter), returning a df
-    with the relevant info.
+    with the relevant info. It will also plot it and save it, in the same folder!
     
     The .ras file contain lot of text at the beginning (1st 266 lines), then 3 variables:
             2Theta, Counts, Unknown
@@ -3496,17 +3496,20 @@ def Read_XRD_F130 (name, t_paso, Skip_rows = 266):
     
     *Inputs:
         .name: name of the file. Ej: 'file.ras'
-        .t_paso: time per step, in seconds. Ej: 10 [s]. Thi assumes the operation mode in step, the usual
-        .Skip_rows: number of rows of the .ras file to skip. Default: 266. Spotted from opening the file
+        .t_paso: time per step, in seconds. Ej: 10 [s]. Thi assumes the operation 
+        mode in step, the usual
+        .Skip_rows: number of rows of the .ras file to skip. Default: 266. Spotted 
+        from opening the file
         
     *Output
         .df with the 2Theta, Counts and cps
     
     '''
     
+    ##### 1. Reading #########
     #Reading was not trivial, but I came up with the way of doing it:
-    aux = pd.read_csv(name, skiprows = Skip_rows, sep = ' ', names = ['2Theta[°]', 'Counts', 'npi'], 
-                      encoding='latin')
+    aux = pd.read_csv(name, skiprows = Skip_rows, sep = ' ', 
+                      names = ['2Theta[°]', 'Counts', 'npi'], encoding='latin')
     
     '''That worked, but 2 last columns are text, that I can delete easily. Also I have 3 column, 
     being the 3rd always 1, so I will also delte it:'''
@@ -3530,6 +3533,30 @@ def Read_XRD_F130 (name, t_paso, Skip_rows = 266):
     df['CPS_norm'] = ( df['CPS'] -df['CPS'].min() ) / (df['CPS'].max() - df['CPS'].min())
                         #normalized cps, min value 0, and max 1
     
+    
+    ##Prints useful for command line sytling (also for interlaminar space)
+    print('\n##############')
+    print('Currently working with:\n') 
+    print( name[:-4])
+    
+    ########### 2. Plotting ##
+    plt.figure(figsize=(11, 8))  # width, heigh 6.4*4.8 inches by default (11,8)
+    # I need to enlarge since because of the title is big, I think
+    plt.title('XRD: ' + name[:-4], fontsize=22,
+              wrap=True, loc='center')  # title
+    plt.plot(df['2Theta[°]'], df['CPS_norm'], label='data')
+    plt.xlabel(" $2 \Theta [°]$", fontsize=18)  # ylabel
+    plt.ylabel('cps', fontsize=18)
+    plt.tick_params(axis='both', labelsize=18)  # size of axis
+    plt.minorticks_on()             #enabling minor grid lines
+    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+    plt.grid(which = 'major')
+    #plt.legend(fontsize=18)
+    plt.savefig( name[:-4]+ '.png', format='png',
+                bbox_inches='tight')  # To save plot, same name as file, change extensio
+    plt.show()
+    
+    
     #Finally, return the df:
     return df
 
@@ -3544,7 +3571,7 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
             lambda = 2d sin (theta)    n = 1
             
     For this, we need:
-        1. Perform the gaussian fit of the peak
+        1. Perform the gaussian fit of the peak (Fits module used!)
         2. Compute the interlaminar space d
     
     The .ras file contain lot of text at the beginning (1st 266 lines), then 3 variables:
@@ -3590,7 +3617,7 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
         
         #Let´s print that so it appears in the command line:
     print('\n#######################\n')
-    print('Interlaminar space:')
+    print('Interlaminar space of  (see above)')
     print(aux)
     print('\n ###############')
         

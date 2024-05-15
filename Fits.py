@@ -7,18 +7,18 @@ Created on Wed Jul  7 09:09:07 2021
 """
 
 
-#######0) General packages useful#############33
+####### 0) General packages useful#############33
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.optimize
 from statsmodels.formula.api import ols 
 
-#%%  ###############################################################
-############### 1) Linear fit function ############################
+
+#%% ###### 1) Linear fit function ############################
 ####################################################################
 
-def LinearRegression(x, y, npo = 100, x_label = 'x', y_label = 'y', post_title = '',
+def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_label = 'y', post_title = '',
                      Color = 'b', save_name = ''):
     '''
     Function that makes a linear regression of the 2 list (numpy preferred) X, Y
@@ -28,6 +28,7 @@ def LinearRegression(x, y, npo = 100, x_label = 'x', y_label = 'y', post_title =
 
     *Inputs:
         .x, y = 1D numpy arrays containing the data to fit/ pd Series, with maching indexes!
+        .delta_x/y = 0: error of y and x, in case you want to plot the fit with it.
         .npo = 'number of points of the linspace for the fit plotting. Default value = 100
         .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
         .post_title = '' : title to add after 'Linear fit '
@@ -53,25 +54,35 @@ def LinearRegression(x, y, npo = 100, x_label = 'x', y_label = 'y', post_title =
     a = fit.params[1]                         #slope
     b = fit.params[0]                     #intercept with the X axis
     r = fit.rsquared                             #correlation coefficient R
+    delta_a = fit.bse[1]                   #std(a) = delta(a)
+    delta_b = fit.bse[0]                    
+    
+    '''
+    Note those error values are very similar to the excel values (19/9/23), the ones
+    from my formulas were different, we keep with this!
+    '''
+    #print(fit.summary())
+    
     
     ################## 2) Error calculation ##############
-
-    delta_a = 3 * np.sqrt(a**2/(N-2) * (1/r**2 - 1))
-    delta_b = 3 * np.sqrt( sum(x**2) * delta_a**2 / N)
+    #This cformulas come from 1st course physics, so I better use the ones from the model xD
+    #delta_aa = 3 * np.sqrt(a**2/(N-2) * (1/r**2 - 1))
+    #delta_bb = 3 * np.sqrt( sum(x**2) * delta_aa**2 / N)
   
+    
     ################ 3) Storing #########################
-    values = {'a' : a, 'b' : b, 'r' : r, 
-              '\Delta(a)' : delta_a, 
-              '\Delta(b)' : delta_b}
+    values = {'a' : a, '\Delta(a)' : delta_a,
+              'b' : b, '\Delta(b)' : delta_b, 'r' : r }
     Ser_values = pd.Series(values, name = post_title)      #gathering output in a df Series
             #naming the column like the post_title variable, since this variable is an isotope: U238
+    
     
     ############# 4) Plot of the fit##########
     x_vector = np.linspace(min(x),max(x),npo)         #for the fit plotting
     
-    fig = plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
+    fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
     ax = fig.add_subplot(111)
-    ax.plot(x,y, 'o', color = Color, markersize = 5, label = 'Data')
+    ax.errorbar(x, y, delta_y, delta_x, 'o', color = Color, markersize = 5, label = 'Data')
     ax.plot(x_vector, linear(x_vector, a, b),'--', color = Color,
             label= 'Fit: ' + y_label + f' = {a:.1e} ' + x_label + f'+{b:.1e}' + ', r= ' + f'{r:.5f}')      #fit
             #.2f to show 2 decimals on the coefficients!
@@ -87,7 +98,7 @@ def LinearRegression(x, y, npo = 100, x_label = 'x', y_label = 'y', post_title =
                     ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
     
     
-    #################4) Return of values############
+    ################# 5) Return of values############
         #the values will be returned in a dictionary indicating what is each
         #value
 
@@ -129,8 +140,7 @@ def linear(x, a, b):       #Definition of the function to use to fit the data
 '''
     
 
-#%%  ###############################################################
-############### 2) Quadratic fit function ############################
+#%%  #### 2) Quadratic fit function ############################
 ####################################################################
 
 
@@ -245,8 +255,7 @@ def r_square(x, y, degree):
     return results
 
 
-#%%  ###############################################################
-############### 3) Gaussian fit function ############################
+#%%  ###### 3) Gaussian fit function ############################
 ####################################################################
     
 def Gaussian_fit(x, y, index_df = 0, N = 100):
@@ -263,7 +272,7 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
 
     *Inputs:
         .x, y = 1D numpy arrays containing the data to fit
-        .index_df = index of the dataframe containing the outputs
+        .index_df = index name of the dataframe containing the outputs
         .N = 'number of points of the linspace for the fit plotting. Default value = 100
         
     *Outputs:
@@ -319,8 +328,8 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
     Delta_FWHM = 2 * np.sqrt(2 * np.log(2)) * Delta_sigma     #error of the FWHM
     #print('FWHM: ' + str(FWHM) + ' +/- ' + str(Delta_FWHM) + ' MeV')
 
-    R = 100 * FWHM / mean                               #Resolution [%]
-    Delta_R = R * np.sqrt( (Delta_FWHM / FWHM)**2 + (Delta_mean / mean)**2 )
+    Res = 100 * FWHM / mean                               #Resolution [%]
+    Delta_Res = Res * np.sqrt( (Delta_FWHM / FWHM)**2 + (Delta_mean / mean)**2 )
                                                     #Error of the resolution [%]
 
 
@@ -328,13 +337,17 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
     x_vector = np.linspace(min(x),max(x),N)         #for the fit plotting
     
     plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
-    plt.plot(x, y, 'b.')                         #original data
-    plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'r--')           #fit
-    plt.title('Gaussian fit of the data', fontsize=20)                      #title
-    plt.xlabel("X", fontsize=10)                                    #xlabel
-    plt.ylabel("Y", fontsize=10)                                    #ylabel
-    plt.legend(['data', 'gaussian fit'], fontsize=10) 
-    plt.tick_params(axis='both', labelsize=10)                  #size of tick labels  
+    plt.plot(x, y, 'b.', label = 'data')                         #original data
+    plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'r--', 
+             label= 'Fit: y = ' + f' = {heigh:.2f} * exp('  + f' (x-{mean:.2f})^2 / 2*{sigma:.2f}^2)' + '\nRes= ' + f'{Res:.2f}')      #fit
+             #.2f to show 2 decimals on the coefficients!
+             #2e for scientific notation with 2 significative digits)           #fit
+    plt.legend()
+    plt.title('Gaussian fit of the data', fontsize=22)                      #title
+    plt.xlabel("X", fontsize=18)                                    #xlabel
+    plt.ylabel("Y", fontsize=18)                                    #ylabel
+    plt.legend(['data', 'gaussian fit'], fontsize=18) 
+    plt.tick_params(axis='both', labelsize=18)                  #size of tick labels  
     plt.grid(True)                                              #show grid
     #plt.xlim(5.35,5.55)                                         #limits of x axis
     
@@ -347,8 +360,15 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
               'mean' : mean, '\Delta(mean)' : Delta_mean,  
               'sigma' : sigma, '\Delta(sigma)' : Delta_sigma, 
               'FWHM' : FWHM, '\Delta(FWHM)' : Delta_FWHM,
-              'R[%]' : R, '\Delta(R[%])' : Delta_R
+              'Res[%]' : Res, '\Delta(Res[%])' : Delta_Res
               }     #variable containing everyting
+    
+    #Let´s print that so it appears in the command line:
+    print('\n#######################\n')
+    print('Gaussian fit parameters ########\n')
+    print(aux)
+    print('\n ###############')
+    
     values = pd.DataFrame(aux, index = [index_df])  #dataframe creation
     return values
 

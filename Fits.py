@@ -339,14 +339,13 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
     plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
     plt.plot(x, y, 'b.', label = 'data')                         #original data
     plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'r--', 
-             label= 'Fit: y = ' + f' = {heigh:.2f} * exp('  + f' (x-{mean:.2f})^2 / 2*{sigma:.2f}^2)' + '\nRes= ' + f'{Res:.2f}')      #fit
+             label= 'Fit: y = ' + f' = {heigh:.2f} * exp('  + f' -(x-{mean:.2f})^2 / 2*{sigma:.2f}^2)' + '\nRes= ' + f'{Res:.2f}')      #fit
              #.2f to show 2 decimals on the coefficients!
              #2e for scientific notation with 2 significative digits)           #fit
-    plt.legend()
+    plt.legend(fontsize = 12)
     plt.title('Gaussian fit of the data', fontsize=22)                      #title
     plt.xlabel("X", fontsize=18)                                    #xlabel
     plt.ylabel("Y", fontsize=18)                                    #ylabel
-    plt.legend(['data', 'gaussian fit'], fontsize=18) 
     plt.tick_params(axis='both', labelsize=18)                  #size of tick labels  
     plt.grid(True)                                              #show grid
     #plt.xlim(5.35,5.55)                                         #limits of x axis

@@ -1064,7 +1064,6 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
 
 #%%########### 1.9) ICPMS Blank correction #############
 #####################################
-
 def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
     
     '''
@@ -1597,6 +1596,11 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
       
     ########### 2) Return #############
     #Here the if for returning or not C_0 - C(t) applies
+    #Before returning them, lets convert them into numeric:
+        
+    df_Kd = df_Kd.apply(pd.to_numeric)       #converting it to numeric 
+    df_Qe = df_Qe.apply(pd.to_numeric) 
+    df_C0__Ceq =df_C0__Ceq.apply(pd.to_numeric)        
     
     if ret_Co__Ceq == False:            #do not return it
         return df_Kd, df_Qe             #return
@@ -1741,11 +1745,12 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
     
     dfCeq__C0_1 = pd.DataFrame(df_1.iloc[:,:N].values - df_mother_sol.values,
                                index = df_mother_sol.index, columns = df_1.columns) ##doing the substraction checked!
+
     dfCeq__C0_2 = pd.DataFrame(df_2.iloc[:,:N].values - df_mother_sol.values,
                                index = df_mother_sol.index, columns = df_2.columns) 
     dfCeq__C0_3 = pd.DataFrame(df_3.iloc[:,:N].values - df_mother_sol.values,
                                index = df_mother_sol.index, columns = df_3.columns)
-   
+    
     #Since 1st sample for each replicate is the procedural bllank, that IN PRINCIPLE is not needed, I remove it!!     
     dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
     dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
@@ -1782,7 +1787,12 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
     df_Qe = pd.concat( [df_Qe_1, df_Qe_2, df_Qe_3 ] , axis = 1)  
     df_C0__Ceq = pd.concat( [dfC0__Ceq_1, dfC0__Ceq_2, dfC0__Ceq_3], axis = 1)
     
-                
+    
+   #Lets finally convert those variables into numeric ones, better
+    df_Kd = df_Kd.apply(pd.to_numeric)       #converting it to numeric 
+    df_Qe = df_Qe.apply(pd.to_numeric) 
+    df_C0__Ceq =df_C0__Ceq.apply(pd.to_numeric)        
+         
    ####Checked that the Qe calc is correct, and then Kd must be also :)     
       
     ########### 2) Return #############
@@ -3482,7 +3492,7 @@ def Read_XRD_WB (name):
 #%% ######### 5.2) XRD reader, F130 (hot XRD) #################### 
 ######################################################
 
-def Read_XRD_F130 (name, t_paso, Skip_rows = 266):
+def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266):
     '''
     Function that reads the .ras file from the XRD in F130 (Olaf Walter), returning a df
     with the relevant info. It will also plot it and save it, in the same folder!

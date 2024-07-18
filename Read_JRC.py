@@ -1208,7 +1208,8 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     dimensions!
     
     Important notes:
-        . To do 2), its needed that the ppb data table begins with IS conc [ppb]!
+        . To do 2), its needed that the ppb data table begins with IS conc [ppb]! Befpre there must be only
+                                                the cps data, nothing else, no text nor anything!!
         . To do 3), you define the IS cases (which IS are to be used), so beware, 
                 maybe your case its not (yet) defined!!  
         
@@ -1248,20 +1249,35 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
                 #calculation the IS correction
                 #I define names of the plot, so the other ones have the default name
     
-    
+    print('\n ########################')
+    print('Step 1. done, computed IS sens :) ')
+    print('#############################')
+        #printing that tha step went good, would be good for debuggind!
+        
+        
     ###### 2) IS sens correction and new sens calc ##########
     df_IS_co, df_IS_co_std = IS_sens_correction(df_cps, df_std, df_IS_sens, df_IS_sens_std, IS_meas)
                                #applying the IS correction to the cps data
+    
+    print('\n ########################')
+    print('Step 2.1 done, applyed the IS correction :)) ')
+    print('#############################')    
     
     df_IS_sens_co, df_IS_sens_co_std = IS_sens_calculator_plotter(df_IS_co, df_IS_co_std, IS_meas, 
                 name_IS_sens_LR_plot= name_plot_LR_aft, name_IS_sens_MR_plot= name_plot_MR_aft)    
                                 #getting and plotting new IS sens
     
+    print('\n ########################')
+    print('Step 2.2. donce, copmuted the new IS sens :)) ')
+    print('#############################')
+    
     
     ##### 3)ICPMS Blk correction #########
     df_Blks_co, df_Blks_co_std = ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, ICPblk_columns)    
                                         #correcting for ICPMS blanks
-
+    print('\n ########################')
+    print('Step 3 (final). done, applyed the Blk correction :))) ')
+    print('#############################')
 
     ##### 4) Saving and Output #########
     '''
@@ -3189,7 +3205,7 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
     
  
 ####################################################
-#%% ######### 2) PSO fit #############################
+#%% ######### 2.1) PSO fit #############################
 ###################################################
 def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
             y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
@@ -3253,7 +3269,7 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
                                    Color = Color, save_name = folder_name +'/' + save_name, post_title = post_title)       
                             #Fit (i dont use npo variable, fit variable)
     
-    ################ 2) Model parameters ################
+    ################ 3) Model parameters ################
     '''
     From that I can also get Qe and K easy:
         y = ax + b;
@@ -3266,12 +3282,12 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
     fit['\Delta(K)'] = np.abs(fit['K']) * np.sqrt( 2*(fit['\Delta(a)'] / fit['a'] )**2 + (fit['\Delta(b)'] / fit['b'])**2 )  
                             #Delta(K) np.abs() so its always >0
 
-    ########## 3) Return ###########
+    ########## 4) Return ###########
     
     return fit
     
 
-#%% ######### 3) PFO fit #############################
+#%% ######### 2.2) PFO fit #############################
 ###################################################
 def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_label = 'x',
             y_label = 'y', Color = 'b', save_name = '', post_title = ' ', npo=100):   
@@ -3285,8 +3301,8 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
         
     I could fit the data to that equation. Note that usually that is casted into linear form:
             ln (Qe - Q) = ln Qe - K_1t,
-    And the Qe-Q you compute by using the experimetnal Qe, from the graph, and from the fit you get the other. Bro, WFT? 
-    
+    And the Qe-Q you compute by using the experimetnal Qe, from the graph, and from the fit
+    you get the other. Bro, WFT??????
     
     So I do the fit. You may need to select certain time intervals, and not all of them. 
     Note the units are defined by t and Q!
@@ -3337,12 +3353,6 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
     std = np.sqrt(np.diag(cov))     #std, since a cov amtrix is returned (read in the raw code)
     
     ################ 2) Model parameters ################
-    '''
-    From that I can also get Qe and K easy:
-        y = ax + b;
-         a = 1/Qe ==> Qe = 1/a
-         b = 1/KQe**2 == > K = 1/bQe**2 = a**2 /b
-    '''
     Qe = param[0]
     K1 = param[1]
     Delta_Qe = std[0]
@@ -3379,6 +3389,138 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
     ########## 4) Return ###########
     
     return Ser_values
+
+
+#%% ######### 2.3) Freundlich isot fit #############################
+###################################################
+def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
+            x_label = 'log($C_e [ng/g]$)', y_label = 'log($Q_e [ng/g_{be}]$)',
+            Color = 'b', save_name = '', post_title = ' ', npo=100):   
+    '''
+    Function to do and compute some variables relevant to the Freundlich fit
+    of an adsorption isotherm Q_e = f (C_e), the sorbed quantity as a function
+    of the equilibrium concentration. Its equation is
+    
+        Q_e = K_F * C_e**1/n,           K_F, n constants
+    That can be linearized into (10 log is fine)
+        loq Q_e = log K_F + 1/n log C_e
+    
+    The lineal fit of that is trivial:  y= ax + b
+                y= log Q_e
+                x= Log C_e
+                a = 1/n
+                b= log K_F
+    
+    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe you need to modify it in the future??????
+    
+    *Inputs
+        .Ce, Qe: df series containing C_e and Q_e data. Expected the averaged values
+            . Must have same index as the df columns in order to plot them!!
+        .delta_Ce, delta_Qe: df with their uncertainties. Default value = 0, since I do not use 
+        them!
+        .p_0 = None: initial stimation of the fit parameters. 
+        .x_label, y_label= x and y label, for the plot. Default value: 'log($C_e [ng/g]$)' and 
+                    log($Q_e [ng/g_{be}]$)' respectively!
+        .post_title = '' : title to add after 'Linear fit '
+        .save_name = filename of the fit plot, if it wants to be save. Default value = '' ==> no saving.
+                    this variable is followed by .png for savinf
+        .Color = 'b': color for the plot
+        .Folder_name: folder name, where to store the fit plots
+        .npo=100: number of points for the fit plot
+    
+    
+    *Outputs
+        .df series with all the relevant info, from the fit and computed quantities, 
+        errors (quadratic propagation) included
+            The input units define those units!! Remember saltpepper!
+    
+    
+    '''    
+    ############# 0.1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    
+    ############## 1) Calcs #################
+    #I need to compute the logarithms!
+    logCe = np.log10(Ce)
+    logQe = np.log10(Qe)
+    
+    delta_logCe = delta_Ce / Ce         #error of the log!
+    delta_logQe = delta_Qe / Qe
+
+    ############# 2)Fit ######################
+    
+    fit = Fits.LinearRegression(logCe, logQe, delta_logCe, delta_logQe,
+                                   x_label = x_label, y_label = y_label, 
+                                   x_legend = 'log($C_e$)', y_legend = 'log($Q_e$)',
+                                   Color = Color, 
+                                   save_name = folder_name +'/' + save_name, 
+                                   post_title = post_title)       
+                            #Fit (i dont use npo variable, fit variable)
+                #note that for the legnd I delete the units!!
+    
+    
+    ################ 3) Model parameters ################
+    '''
+    From that I can also get the constants; applying log10 == log, no ln!!! :
+        y= ax + b
+                    y= log Q_e
+                    x= Log C_e
+                    a = 1/n==> n = 1/a
+                    b= log K_F ==> K_F = 10**b
+                    delta_K_F = delta_b * log(10) * K_F
+    delta_n /n = delta_a /a ==> delta_n = n/a * delta_a = 1/a**2 * delta_a
+    
+    And the units?
+    n is adimensional, ofc
+    K_F not, since Q_e = K_F * C_e**1/n ==> K_F = Q_e * C_e*n ==>
+    K_F is ng/g_be * (ng/g_tot)**n = ng**n+1/(g_be * g_tot**n)
+    '''
+    fit['n'] = 1 / fit['a']**2         
+    fit['\Delta(n)'] = fit['\Delta(a)'] /fit['a']**2     
+    fit['K_F[ng^(n+1)/(g_be*g_tot^n)]'] = 10**fit['b']        
+    fit['\Delta(K_F[ng^(n+1)/(g_be*g_tot^n)])'] = fit['K_F[ng^(n+1)/(g_be*g_tot^n)]'] *fit['\Delta(b)'] * np.log10(10)
+    
+    
+    
+    # ############# 4) Plot of the fit##########
+    # logCe_vector = np.linspace( min(logCe),max(logCe),npo )         #for the fit plotting
+    
+    # fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+    # ax = fig.add_subplot(111)
+    # ax.errorbar(logCe, logQe, delta_logCe, delta_logQe, 'o', color = Color, markersize = 5,
+    #             label = 'Data')
+    # ax.plot(logCe_vector, logCe_vector*fit['a'] + *fit['b'],'--', color = Color,
+    #         label= 'Fit: ' + y_label + f' = {Qe:.1e} ' + '$\cdot$ [1- exp(-'+ x_label + '$\cdot$' +f'+{K1:.1e} )]')      #fit
+    #         #.2f to show 2 decimals on the coefficients!
+    #         #2e for scientific notation with 2 significative digits
+    # ax.set_title('Freundlich fit ' + post_title, fontsize=22)          #title
+    # ax.set_xlabel(x_label, fontsize= Font)                                    #xlabel
+    # ax.set_ylabel(y_label, fontsize= Font)                                    #ylabel
+    # ax.tick_params(axis='both', labelsize= Font)            #size of tick labels  
+    # ax.grid(True)                                              #show grid
+    # ax.legend(fontsize = Font)             #legend
+    #                 #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
+    # plt.savefig(folder_name +'/' + save_name +'.png', format='png', bbox_inches='tight')                
+    #                 ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
+    
+    
+    ########## 4) Return ###########
+    
+    return fit
+
+
+
 
     
 #%% ######### 4) TGA reader ##################### 

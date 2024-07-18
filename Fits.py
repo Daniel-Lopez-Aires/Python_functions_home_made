@@ -14,12 +14,14 @@ import matplotlib.pyplot as plt
 import scipy.optimize
 from statsmodels.formula.api import ols 
 
+Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)   
 
 #%% ###### 1) Linear fit function ############################
 ####################################################################
 
-def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_label = 'y', post_title = '',
-                     Color = 'b', save_name = ''):
+def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_label = 'y', 
+                     post_title = '',  Color = 'b', 
+                     x_legend = 'x', y_legend = 'y', save_name = ''):
     '''
     Function that makes a linear regression of the 2 list (numpy preferred) X, Y
     and returns, if the fit equation is y = a x + b:
@@ -31,6 +33,7 @@ def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_l
         .delta_x/y = 0: error of y and x, in case you want to plot the fit with it.
         .npo = 'number of points of the linspace for the fit plotting. Default value = 100
         .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
+        .x_legend, y_legend: y and y label, to appear in the legend. Default: 'x' and 'y'
         .post_title = '' : title to add after 'Linear fit '
         .save_name = filename of the plot, if it wants to be save. Default value = '' ==> no saving.
             this variable is followed by .png for savinf
@@ -84,15 +87,15 @@ def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_l
     ax = fig.add_subplot(111)
     ax.errorbar(x, y, delta_y, delta_x, 'o', color = Color, markersize = 5, label = 'Data')
     ax.plot(x_vector, linear(x_vector, a, b),'--', color = Color,
-            label= 'Fit: ' + y_label + f' = {a:.1e} ' + x_label + f'+{b:.1e}' + ', r= ' + f'{r:.5f}')      #fit
+            label= 'Fit: ' + y_legend + f' = {a:.1e} ' + x_legend + f'+{b:.1e}' + ',\n r= ' + f'{r:.5f}')      #fit
             #.2f to show 2 decimals on the coefficients!
             #2e for scientific notation with 2 significative digits
     ax.set_title('Linear fit ' + post_title, fontsize=22)          #title
-    ax.set_xlabel(x_label, fontsize=14)                                    #xlabel
-    ax.set_ylabel(y_label, fontsize=14)                                    #ylabel
-    ax.tick_params(axis='both', labelsize=14)            #size of tick labels  
+    ax.set_xlabel(x_label, fontsize = Font)                                    #xlabel
+    ax.set_ylabel(y_label, fontsize= Font)                                    #ylabel
+    ax.tick_params(axis='both', labelsize= Font)            #size of tick labels  
     ax.grid(True)                                              #show grid
-    ax.legend()             #legend
+    ax.legend(fontsize = Font)             #legend
                     #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
     plt.savefig(save_name +'.png', format='png', bbox_inches='tight')                
                     ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
@@ -208,11 +211,11 @@ def QuadraticRegression(x, y, npo = 100):
              label=f'Fit: y = {a:.1e}x^2 + {b:.1e}x + {c:.1e}' + ', r= ' + f'{r:.5f}')      #fit
                         #Like that I put the fit eq into the legend plot ;)
     plt.title('Quadratic fit', fontsize=22)          #title
-    plt.xlabel("X ", fontsize=14)                                    #xlabel
-    plt.ylabel('Y', fontsize=14)                                    #ylabel
-    plt.tick_params(axis='both', labelsize=14)            #size of tick labels  
+    plt.xlabel("X ", fontsize= Font )                                    #xlabel
+    plt.ylabel('Y', fontsize= Font)                                    #ylabel
+    plt.tick_params(axis='both', labelsize= Font)            #size of tick labels  
     plt.grid(True)                                              #show grid
-    plt.legend(fontsize=12)             #legend
+    plt.legend(fontsize= Font)             #legend
     #plt.text(2.7,300, 'y(x) = {0:1.3f}x^2 + {1:1.3f}x + {2:1.3f} ; r = {3:1.3f}'
        #  .format(a, b, c,r_cuadratic_fit), fontsize=14) #10 default size
        #plt.xlim(0,15)
@@ -344,9 +347,9 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
              #2e for scientific notation with 2 significative digits)           #fit
     plt.legend(fontsize = 12)
     plt.title('Gaussian fit of the data', fontsize=22)                      #title
-    plt.xlabel("X", fontsize=18)                                    #xlabel
-    plt.ylabel("Y", fontsize=18)                                    #ylabel
-    plt.tick_params(axis='both', labelsize=18)                  #size of tick labels  
+    plt.xlabel("X", fontsize= Font)                                    #xlabel
+    plt.ylabel("Y", fontsize= Font)                                    #ylabel
+    plt.tick_params(axis='both', labelsize= Font)                  #size of tick labels  
     plt.grid(True)                                              #show grid
     #plt.xlim(5.35,5.55)                                         #limits of x axis
     

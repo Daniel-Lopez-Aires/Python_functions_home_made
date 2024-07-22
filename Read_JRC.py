@@ -1627,7 +1627,8 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
 
 #%% ########## 1.13) Kd calculaor, Adsorption version #############
 #####################################
-def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_liq = False, ret_Co__Ceq = False):
+def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_liq = False, 
+                        ret_Co__Ceq = False, rem_sample_1 = True):
     '''
     Function that will compute the distribution constant Kd and the adsorption quantity
     q_e from the ppb data obtained with ICPMS. Note that data must be corrected
@@ -1650,16 +1651,18 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
         Q_e = (C_0 - C_e) * m_tot /m
         K_d = Q_e / C_e
         
-    Improvement made thanks to Espe (3/2024). Note that after the solid liquid sepparation, you retrieve a bit
-    less of liquid, since the bentonite adsorbs some. This means that the concentration you measure with the ICP-MS
-    is the concentration of this liquid, with mass m_liq_e <= m_liq_0. Then the Q_e should be calculated like this, 
+    Improvement made thanks to Espe (3/2024). Note that after the solid liquid sepparation,
+    you retrieve a bit less of liquid, since the bentonite adsorbs some. This means that the 
+    concentration you measure with the ICP-MS is the concentration of this liquid, 
+    with mass m_liq_e <= m_liq_0. Then the Q_e should be calculated like this, 
     using that final mass!.
     
     
-    Note that in the cas eof no equilibrium (eg Kinetics exp), Q_e, Kd ==> Q_e(t), K(t). 
+    Note that in the case of no equilibrium (eg Kinetics exp), Q_e, Kd ==> Q_e(t), K(t). 
     
-    Here we have different omther solutions, whihc is the main different
-    from th eother funciton, where all the samples had a common mother solution (C_0). Here we have several C_0
+    Here we have different moher solutions, whihc is the main different
+    from the other function, where all the samples had a common mother solution (C_0). 
+    Here we have several C_0!
 
     Necessary that the data contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
     
@@ -1672,8 +1675,8 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
 
     *Inputs:
         .df_samples: dataframe containing the data, the full data, with the 3 replicates. Should be Dfs corrected
-            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. Note the 1st sample
-            in each replicate is removed (procedural blank)
+            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 
+            Note the 1st sample in each replicate is removed (procedural blank)
         .df_mother_sol: df containng the mother solution data, C_0
         .df_VoM_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, 
         or whatever. normally 50ml OR the total mass of the solution [g]. If df_samples in ppb, this must be the total mass
@@ -1681,6 +1684,9 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
         .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle (normally 250mg)
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
         ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
+        .rem_sample_1: string to say if you want to remove the 1st sample (number 1) or not 
+            (True means remove),
+            that it is the procedural blank. Default value: True (like I was doing before 7/24!)
     
     *Outputs (in that order):
         .df with the Kd data
@@ -1745,32 +1751,58 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
     df_3 = df_samples.iloc[:, 2*round(df_samples.shape[1] / 3) :]
         
     df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 3 ) ]      #1st replicate
-    df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 3 ): 2* round( ( df_VoM_disol.shape[0] ) / 3 ) ]      
+    df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 3 ): 2* round( 
+                    ( df_VoM_disol.shape[0] ) / 3 ) ]      
     df_VoM_3 = df_VoM_disol.iloc[ 2 *round( ( df_VoM_disol.shape[0] ) / 3 ) : ]      #3rd replicate
         
     df_m_1 = df_m_be.iloc[ : round( ( df_m_be.shape[0] ) / 3 ) ]      #1st replicat
-    df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 3 ) : 2* round( ( df_m_be.shape[0] ) / 3 )]      #2nd replicat
+    df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 3 ) : 2* round( ( df_m_be.shape[0] ) / 3 )] #2nd replicat
     df_m_3 = df_m_be.iloc[ 2 *round( ( df_m_be.shape[0] ) / 3 ) : ]      #3rd replicat
     
     #1) 
     '''
-    Note that I have N different mother solutions, which also means N different samples. i could do that with a for loop, but
-    I found a better version. I can ubstrcat df ignoring their indexes by doing df.values!
+    Note that I have N different mother solutions, which also means N different samples. I could
+    do that with a for loop, but I found a better version. I can ubstrcat df ignoring their indexes
+    by doing df.values!
     '''
     N = df_mother_sol.shape[1]       #number of samples in the mother solution
     
     dfCeq__C0_1 = pd.DataFrame(df_1.iloc[:,:N].values - df_mother_sol.values,
-                               index = df_mother_sol.index, columns = df_1.columns) ##doing the substraction checked!
-
+                               index = df_mother_sol.index, columns = df_1.columns) 
+                                            ##doing the substraction checked!
     dfCeq__C0_2 = pd.DataFrame(df_2.iloc[:,:N].values - df_mother_sol.values,
                                index = df_mother_sol.index, columns = df_2.columns) 
     dfCeq__C0_3 = pd.DataFrame(df_3.iloc[:,:N].values - df_mother_sol.values,
                                index = df_mother_sol.index, columns = df_3.columns)
     
+    if rem_sample_1 == True:
+        '''
+        If this is true, I do not want the 1st sample in each serie, the procedurla blank, so let´s
+        remove it! how? by removing it in:
+            .m/V data
+            .Ceq-C0 data
+            .Ceq data (Fro Kd calc only used)
+        '''
     #Since 1st sample for each replicate is the procedural bllank, that IN PRINCIPLE is not needed, I remove it!!     
-    dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-    dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-    dfCeq__C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column        
+        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        dfCeq__C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        #        
+        df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
+        df_m_2 = df_m_2[1:]
+        df_m_3 = df_m_3[1:]
+        #
+        df_VoM_1 = df_VoM_1[1:]
+        df_VoM_2 = df_VoM_2[1:]
+        df_VoM_3 = df_VoM_3[1:]
+        #
+        df_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)     #removing sample 1 in repl 1
+        df_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
+        df_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)
+        print('####################################')
+        print('Sample 1 in each replicate removed!!!!')
+        print('####################################')
+        #
     
     dfC0__Ceq_1 = - dfCeq__C0_1
     dfC0__Ceq_2 = - dfCeq__C0_2
@@ -1779,12 +1811,7 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
     ######## 2) Apply the V/ m giving q_e (from Df_exp)
     #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
 
-    df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
-    df_m_2 = df_m_2[1:]
-    df_m_3 = df_m_3[1:]
-    df_VoM_1 = df_VoM_1[1:]
-    df_VoM_2 = df_VoM_2[1:]
-    df_VoM_3 = df_VoM_3[1:]
+
         
     #And now I can operate:
         
@@ -1794,9 +1821,9 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
         
         
     ######## 3) Apply 1/C_eq = Kd
-    df_Kd_1 = df_Qe_1 / df_1.drop( [df_1.iloc[:,0].name], axis = 1)   
-    df_Kd_2 = df_Qe_2 / df_2.drop( [df_2.iloc[:,0].name], axis = 1)
-    df_Kd_3 = df_Qe_3 / df_3.drop( [df_3.iloc[:,0].name], axis = 1)
+    df_Kd_1 = df_Qe_1 / df_1  
+    df_Kd_2 = df_Qe_2 / df_2
+    df_Kd_3 = df_Qe_3 / df_3
     
     #Now lets add them together
     df_Kd = pd.concat( [df_Kd_1, df_Kd_2, df_Kd_3], axis = 1)         

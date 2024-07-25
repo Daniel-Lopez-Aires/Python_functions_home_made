@@ -3768,7 +3768,7 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
             '2Theta[°]' and 'CPS_norm' (I refer to those
         .DosTheta_inter: array with min and maximum values of the 2Theta variable from the XRD df,
         to do the fit. Ej: [5,30]
-        .kalpha: Wavelength of the Kalpha1 radiation of the Cu, the element of the XRD
+        .kalpha: Wavelength of the Kalpha1 radiation of the Cu, the element of the XRD = 1.5401Angs
         .name: name of the file. Ej: 'file.ras'
 
     *Output
@@ -3795,7 +3795,7 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
     Delta_d = d * np.cos(np.deg2rad(Fit['mean'][0] / 2) ) * Fit['\Delta(mean)'][0]/2/ np.sin(
                                                 np.deg2rad(Fit['mean'][0] / 2) ) #[Ams]
 
-    aux = {'d[A]' : d, '\Delta(d)[A]' : Delta_d }     #variable containing everyting
+    aux = {'d[A]' : d, '\Delta(d)[A]' : Delta_d }    #variable containing everyting
         
         #Let´s print that so it appears in the command line:
     print('\n#######################\n')
@@ -3803,9 +3803,11 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
     print(aux)
     print('\n ###############')
         
-    values = pd.DataFrame([aux])  #dataframe creation
     
-    #Finally, return d and its error in a df
-    return values
+    #Finally, return d and its error in a df, recycling the one for the fit
+    Fit['d[A]'] = d
+    Fit['\Delta(d)[A]'] = Delta_d
+    
+    return Fit
 
 

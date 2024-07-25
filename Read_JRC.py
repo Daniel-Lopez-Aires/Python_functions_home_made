@@ -3428,17 +3428,19 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
     of an adsorption isotherm Q_e = f (C_e), the sorbed quantity as a function
     of the equilibrium concentration. Its equation is
     
-        Q_e = K_F * C_e**1/n,           K_F, n constants
+        Q_e = K_F * C_e**n,           K_F, n constants
     That can be linearized into (10 log is fine)
-        loq Q_e = log K_F + 1/n log C_e
+        loq Q_e = log K_F + n log C_e
     
     The lineal fit of that is trivial:  y= ax + b
                 y= log Q_e
                 x= Log C_e
-                a = 1/n
+                a = n
                 b= log K_F
+    (easier than if I use 1/n as constant!)
     
-    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe you need to modify it in the future??????
+    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe you need 
+    to modify it in the future??????
     
     *Inputs
         .Ce, Qe: df series containing C_e and Q_e data. Expected the averaged values
@@ -3503,20 +3505,21 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
         y= ax + b
                     y= log Q_e
                     x= Log C_e
-                    a = 1/n==> n = 1/a
+                    a = n
                     b= log K_F ==> K_F = 10**b
-                    delta_K_F = delta_b * log(10) * K_F
-    delta_n /n = delta_a /a ==> delta_n = n/a * delta_a = 1/a**2 * delta_a
+                    delta_K_F = delta_b * ln(10) * K_F
+                    delta_n = delta_a
+                    (partial log(Kf) / partial Kf = 1/ (KF ln(10)) )
     
     And the units?
     n is adimensional, ofc
     K_F not, since Q_e = K_F * C_e**1/n ==> K_F = Q_e * C_e*n ==>
     K_F is ng/g_be * (ng/g_tot)**n = ng**n+1/(g_be * g_tot**n)
     '''
-    fit['n'] = 1 / fit['a']**2         
-    fit['\Delta(n)'] = fit['\Delta(a)'] /fit['a']**2     
-    fit['K_F[ng^(n+1)/(g_be*g_tot^n)]'] = 10**fit['b']        
-    fit['\Delta(K_F[ng^(n+1)/(g_be*g_tot^n)])'] = fit['K_F[ng^(n+1)/(g_be*g_tot^n)]'] *fit['\Delta(b)'] * np.log10(10)
+    fit['n'] = fit['a']         
+    fit['\Delta(n)'] = fit['\Delta(a)'] 
+    fit['K_F[ng^(1-n)*g_tot^n/(g_be)]'] = 10**fit['b']        
+    fit['\Delta(K_F[ng^(1-n)*g_tot^n/(g_be)])'] = fit['K_F[ng^(1-n)*g_tot^n/(g_be)]'] *fit['\Delta(b)'] * np.log(10)
     
     
     

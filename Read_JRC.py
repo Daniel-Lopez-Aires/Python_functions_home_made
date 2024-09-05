@@ -31,7 +31,7 @@ from scipy.optimize import curve_fit             #Fit tool
 Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'} 
     #'Tur' :  '#EEE8AA' is perfect, but not for real visulaiztion xD
 Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23',     #bentonite elements
-            'Sr88', 'Cs133','Eu151' , 'Eu153', 'La139', 'U238']              #CL eleements
+            'Sr88', 'Cs133', 'Eu151', 'La139', 'U238']              #CL eleements
             #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
             
             #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from Baoxides,
@@ -121,9 +121,11 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
     The 1st cleaning is removing the 1st 4 rows, which contain bullshit, so we could do it with the 
     .drop method. Note the index are no longer used, simply erased.
     '''
-    df_cps = Dat.drop(index = [Dat.index[0], Dat.index[1], Dat.index[2],Dat.index[3] ], axis = 0)   
+    #df_cps = Dat.drop(index = [Dat.index[0], Dat.index[1], Dat.index[2],Dat.index[3] ], axis = 0)   
                                                     #Removing rows 0, 1,2,3 (their index)
-                
+                    #that does not work if I load directly the Blk corr, so lets do it simpler:
+    df_cps = Dat.iloc[4:,:] 
+    
     #Another cleaning will be putting the df in numeric format. It is in object format, which gives problems
     #(YeroDivisionerror) with divisions, while for numbers there is no problem.
 

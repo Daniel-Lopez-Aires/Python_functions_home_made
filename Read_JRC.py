@@ -3556,13 +3556,9 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
 #%% ######### 2.4) Langmuir isot fit #############################
 ###################################################
 
-
-####mUST BE TESTED!!!!!!!!!!!!!
-
-
 def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
-             folder_name = 'Fits', x_label = 'log($C_e [ng/g]$)', 
-             y_label = 'log($Q_e [ng/g_{be}]$)',
+             folder_name = 'Fits', x_label = '$C_e [ng/g]$', 
+             y_label = '$C_e/Q_e [g_{be}/g_{tot}]$',
             Color = 'b', save_name = '', post_title = ' ', npo=100):   
     '''
     Function to do and compute some variables relevant to the 
@@ -3643,8 +3639,9 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
             #
+        print("############################/n")
         print("Linearization 1 done, Ce/Qe vs Ce! /n")
-        print("############################")
+        print("############################/n")
                 ####### Parameters obtention #############
         """
         C_e/Q_e = C_e/Q_max + 1/(Q_max *K_L)   
@@ -3678,8 +3675,9 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
             #
+        print("############################/n")
         print("Linearization 2 done, Qe/Ce vs Qe! /n")
-        print("############################")
+        print("############################/n")
     
                 ####### Parameters obtention #############
         """

@@ -558,25 +558,32 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     
     ############ Data finder ################
     '''
-    1st thing to find the ppb data. Should be somehow below the cps data, which has Stefaans format.
+    1st thing to find the ppb data. Should be somehow below the cps data, which 
+    has Stefaans format.
     To do the find in a loop way I define arrays which the elements to find. 
     Given as an input now, easier, KISS!
 
     Note they are associated, you take i element of both arrays, they go in pairs. 
     I ahve seen a way, is to create in the loop the lines, and add them separately. 
     The loop find the elements and perform the division cps/ppb
+    
+    !
+    The dataframes will be out of the for loop, for coding efficiency!
+    https://stackoverflow.com/questions/36489576/why-does-concatenation-of-dataframes-get-exponentially-slower
     '''
 
     df_IS_sens = pd.DataFrame()         #Empty df to store the values
     df_IS_sens_std = pd.DataFrame()        
-
+    list_aux = np.array([])
+    list_aux2 = np.array([])
+    
     for i in range(0, len(IS_meas)):
         value_to_find = IS_meas[i]
         
         ##### Getting the ppb values #########
         '''
-        This will be made from the IS_meas variable. Since each element has a different letter, 
-        I can just read the 1st letter and say:
+        This will be made from the IS_meas variable. Since each element has a 
+        different letter, I can just read the 1st letter and say:
             C ==> Co-59 in ppb
             I ==> In115 in ppb
             etc
@@ -596,19 +603,26 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
 
         #Now the operations, element wise, in array mode to avoid the index problems
         aux = cps_IS.iloc[:,:].values / ppb_IS.iloc[:,:].values
-            #eleement wise operation, like this you dont care about having diferent indexes, since you are
-            #multiplying arrays. I erased the 1st value (Co name), so I needit to add it again
-        #To compute the error of the sens, I assume that Delta(ppb) = 1% ppb ==> Delta(ppb)/ppb = 1/100!!
+            #eleement wise operation, like this you dont care about having diferent 
+            #indexes, since you are multiplying arrays. I erased the 1st
+            #value (Co name), so I needit to add it again
+        
+        #To compute the error of the sens, I assume that Delta(ppb) = 1% ppb ==> 
+                    #Delta(ppb)/ppb = 1/100!!
         aux2 = aux * np.sqrt((std_IS/cps_IS)**2 + (1/100)**2)     #std values
         
-        #TO store temporarily those values I create an auxiliary df
+        #TO store temporarily those values I create an auxiliary list
+        #     #no df, not efficient!
+        # list_aux = np.append(list_aux, aux) #append it (in rows not possible)
+        # list_aux2 = np.append(list_aux2, aux2)
+        
         df_aux = pd.DataFrame(data = aux)
         df_aux2 =pd.DataFrame(data = aux2)
         
         #And I add that to the storing df
-        df_IS_sens = df_IS_sens.append(df_aux, ignore_index= True)
-        df_IS_sens_std = df_IS_sens_std.append(df_aux2, ignore_index= True)
-        
+        df_IS_sens = pd.concat([df_IS_sens,df_aux], ignore_index= True)
+        df_IS_sens_std = pd.concat([df_IS_sens_std, df_aux2], ignore_index= True)
+    
     '''
     Now, to add the isotopes as index, we first add them as a column, and then we set
     the column to index:we need to insert the isotopes column, giving as values the isotopes names or so:
@@ -1345,8 +1359,8 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     excel_sheet2.write_row('B5', ['[cps]'] * len(df_IS_co_std.columns))     #row 5 with a value repeated    
     
     
-    writer.save()                                           #critical step, save the excel xD 
-
+    #writer.save()                                           #critical step, save the excel xD 
+    writer.close()      #save was deprecated bro xD
 
     ################ Return ####################
     '''

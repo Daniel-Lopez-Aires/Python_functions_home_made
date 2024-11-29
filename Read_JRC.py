@@ -4,8 +4,18 @@ Created on Mon Mar 13 10:29:58 2023
 
 @author: lopedan
 
-This script will contain all the functions I create to read files from experimental measurements,
-say TGA, XRD, etc (the ones that needed ofc)
+This script will contain all the functions I create to read files 
+from experimental measurements, say TGA, XRD, etc (the ones that needed ofc)
+
+I will include in all the plots, minor grid lines, for better analysis from the
+plot!
+
+old: plt.grid(True)             #Only major grid
+
+new: plt.minorticks_on()             #enabling minor grid lines
+plt.grid(which = 'minor', linestyle=':', linewidth=0.5) 
+                    #which both to plot major and minor grid lines
+plt.grid(which = 'major')
 """
 
 #%%######### 0) General packages ###########
@@ -1643,8 +1653,9 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
 
 #%% ########## 1.13) Kd calculaor, Adsorption version #############
 #####################################
-def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_liq = False, 
-                        ret_Co__Ceq = False, rem_sample_1 = True):
+def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, 
+                        df_m_liq = False, ret_Co__Ceq = False, 
+                        removed_sample_1 = True):
     '''
     Function that will compute the distribution constant Kd and the adsorption quantity
     q_e from the ppb data obtained with ICPMS. Note that data must be corrected
@@ -1700,7 +1711,7 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
         .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle (normally 250mg)
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
         ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
-        .rem_sample_1: string to say if you want to remove the 1st sample (number 1) or not 
+        .removed_sample_1: string to say if you want to remove the 1st sample (number 1) or not 
             (True means remove),
             that it is the procedural blank. Default value: True (like I was doing before 7/24!)
     
@@ -1712,6 +1723,10 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
     
     
     ########## 0) Precalcs ##########
+    #1st, in case of the data is not numeric, lets convert it to numeric
+    df_VoM_disol =  df_VoM_disol.apply(pd.to_numeric) 
+    df_m_be = df_m_be.apply(pd.to_numeric) 
+
     '''
     To avoid the div0 error, which occurs when I have 0 as a values in the df, which I have for all the elements
     that were not found by ICPMS, I can just put NaN instead, since that will not give the Div0 error when computing Kd
@@ -1791,7 +1806,7 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be, df_m_l
     dfCeq__C0_3 = pd.DataFrame(df_3.iloc[:,:N].values - df_mother_sol.values,
                                index = df_mother_sol.index, columns = df_3.columns)
     
-    if rem_sample_1 == True:
+    if removed_sample_1 == True:
         '''
         If this is true, I do not want the 1st sample in each serie, the procedurla blank, so let´s
         remove it! how? by removing it in:
@@ -2119,7 +2134,9 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
             plt.tick_params(axis='both', labelsize= Font)              #size of axis
             if Logs ==1 or Logs == 3:           #put log scale
                 plt.yscale('log') 
-            plt.grid(True)
+            plt.minorticks_on()             #enabling minor grid lines
+            plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+            plt.grid(which = 'major')
             plt.xticks(X_axis, [ df_1.columns[:][j] for j in range(len(df_1.axes[1]) ) ]
                 , rotation = 90)
             plt.twinx()             #For setting 2 axes
@@ -2262,7 +2279,9 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                 plt.xlabel(x_label, fontsize = Font)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
-                plt.grid(True)
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_' + index[:-4] + '.png', format='png', bbox_inches='tight')
@@ -2280,7 +2299,9 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     #plt.yscale('log') 
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_' + index[:-4] +'.png', format='png', bbox_inches='tight')
@@ -2313,7 +2334,9 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                 plt.xlabel(x_label, fontsize = Font)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
-                plt.grid(True)
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_' + index[:-4] + '.png', format='png', bbox_inches='tight')
@@ -2334,7 +2357,9 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     #plt.yscale('log') 
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_' + index[:-4] +'.png', format='png', bbox_inches='tight')
@@ -2471,7 +2496,9 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
             plt.xlabel(x_label, fontsize = Font)
             plt.tick_params(axis='both', labelsize= Font)              #size of axis
             #plt.yscale('log') 
-            plt.grid(True)
+            plt.minorticks_on()             #enabling minor grid lines
+            plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+            plt.grid(which = 'major')
             plt.legend(fontsize = Font)
             plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps['Sard'].index[i][:-4]+ '.png', format='png', bbox_inches='tight')
@@ -2503,7 +2530,9 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
                 plt.xlabel(x_label, fontsize = Font)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
-                plt.grid(True)
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name +'/' +  
                         pre_save_name + '_' + df_cps['Sard'].index[i][:-4] +'.png', format='png', bbox_inches='tight')   #To save plot in folder
@@ -2675,7 +2704,9 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                     elif Logs == 1:                             #xscale in log
                         plt.xscale('log') 
                         #
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)
                     plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')      
@@ -2712,7 +2743,9 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                     elif Logs == 1:                             #xscale in log
                         plt.xscale('log') 
                         #
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)
                     plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')          
@@ -2748,7 +2781,9 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                     elif Logs == 1:                             #xscale in log
                         plt.xscale('log') 
                         #
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)
                     plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')            
@@ -2789,7 +2824,9 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
                     elif Logs == 1:                             #xscale in log
                         plt.xscale('log') 
                         #
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     #Mods to compare, comment!!
                     #plt.xlim(0,3500)
                     #plt.ylim(0, 700000)
@@ -2929,7 +2966,9 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                 if LogScale:                                                     ####LOG SCALE?
                     plt.yscale('log') 
                     plt.xscale('log') 
-                plt.grid(True)
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')       
@@ -2953,7 +2992,9 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                     if LogScale:                                                  ####LOG SCALE?
                         plt.yscale('log') 
                         plt.xscale('log')                 
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
@@ -2982,7 +3023,9 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                 if LogScale:                                                     ####LOG SCALE?
                     plt.yscale('log') 
                     plt.xscale('log') 
-                plt.grid(True)
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')       
@@ -3007,7 +3050,9 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
                         plt.yscale('log') 
                         plt.xscale('log') 
                 
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps.index[i][:-4] +'.png', format='png', bbox_inches='tight')
@@ -3136,7 +3181,9 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                 if Logscale:            #if True
                     plt.yscale('log') 
                     plt.xscale('log') 
-                plt.grid(True)
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] + '.png', format='png', bbox_inches='tight')
@@ -3158,7 +3205,9 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                     if Logscale:        #if True, do it
                         plt.yscale('log') 
                         plt.xscale('log') 
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +'.png', format='png', bbox_inches='tight')
@@ -3188,7 +3237,9 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                 if Logscale:            #if True
                     plt.yscale('log') 
                     plt.xscale('log') 
-                plt.grid(True)
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
                         pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] + '.png', format='png', bbox_inches='tight')
@@ -3211,7 +3262,9 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                     if Logscale:        #if True, do it
                         plt.yscale('log') 
                         plt.xscale('log') 
-                    plt.grid(True)
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
                         pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +'.png', format='png', bbox_inches='tight')
@@ -3500,8 +3553,8 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
     logCe = np.log10(Ce)
     logQe = np.log10(Qe)
     
-    delta_logCe = delta_Ce / Ce         #error of the log!
-    delta_logQe = delta_Qe / Qe
+    delta_logCe = delta_Ce / np.abs(Ce)         #error of the log!
+    delta_logQe = delta_Qe / np.abs(Qe)
 
     ############# 2)Fit ######################
     

@@ -43,9 +43,12 @@ Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'}
 Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23',     #bentonite elements
             'Sr88', 'Cs133', 'Eu151', 'La139', 'U238']              #CL eleements
             #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            
             #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from Baoxides,
-            #so for low Eu concentrations, Eu151 better!! [Stef]
+            #so for low Eu concentrations, Eu151 better!! [Stef]        
+
+"""
+Isot rele Cs are from the Cs sep
+"""
 Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)           
             
 #############################################################            
@@ -2013,6 +2016,67 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 
 
 
+#%% ######## 1.15 Cs sep, cumulative conc computer ##############
+#################################################################
+
+def ICPMS_Cumulative_conc_calc(df_ppb, V, rho = 1000, MS_here = True, 
+                         ret_Nmass = False ):
+    '''
+    Function that will compute the cumulative concentration of a given nuclide.
+    This assume mass not measured, so needs the volume and density to compute
+    the mass of the sample, to compute the cumulative conc. 
+    
+    This is, imagine I have several samples, with a given [Cs133], this code 
+    will compute the total [Cs133], the concentration if all the samples are 
+    merged into a single one
+    
+    
+    *Input
+        .df_ppb: df with the ppb values of the samples
+        .MS_here: boolean to indicate wether the MS is in the df_ppb
+                or not. Default: True
+        .rho: density, np array or single value. Default: 1000g/mL
+        .V: np.array containing the volumes of the samples, or single value.
+                eg: V+ np.array([100,100,100,100,100]) for 5 samples
+        .ret_Nmass: boolean to indicate weather the df with the nuclide mass
+            should ber etunred or not. Default: False, not return it
+    *Output
+        . df with the cumulative conc, for each sample
+        .df with the nuclide mass, if desired
+    '''
+    
+    ########### 1) Mass of nuclide (Nmass) calc ####################
+    
+    if MS_here:     #exclude 1st column of the ppb df, the MS
+        df_Nmass = df_ppb.iloc[:,1:]*V*rho
+    else:       #MS not here
+        df_Nmass = df_ppb*V*rho
+
+    ############## 2) Cumulative concentration calc ###################
+    
+    df_cum= pd.DataFrame(index = df_Nmass.index, columns = df_Nmass.columns)
+                #empty df creation, with desired column and row names :)
+    '''
+    Now, I should fill that df, with a foor loop, or 2, as needed. Essentially 
+    I need to do:
+    [U238] = sum of df_ppb*m_U238, suming in columns, and that for each row (
+        nuclide). note 1st column does not need to be sum
+    '''
+ 
+    df_cum.iloc[:,0] = df_Nmass.iloc[:,0]/(V[0]*rho)    #1st row, non cumulative
+
+    for i in range(1,df_cum.shape[1]): #loop thourhg all columns of the df
+        df_cum.iloc[:,i] = df_Nmass.iloc[:,0:i+1].sum(axis = 1) /(sum(V[0:i+1])*rho)
+            #sum in columns the mass of the nuclide
+    
+    df_cum = df_cum.apply(pd.to_numeric)        #make it numeric, since it is not
+    ############ 3) Output ########   
+    
+    if ret_Nmass:
+        return df_cum, df_Nmass
+    else:       #Not return it
+        return df_cum
+    
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -2029,31 +2093,302 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 
-
-#%% ########## 1.15) ICPMS Bar plotter #############
+#%% ########## 1.16) ICPMS Single Bar plotter #############
 #####################################
 
-def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
-                      pre_title_plt = "Concentration of ", pre_save_name = 'Conc_rsd',
-                      Elem_rel = Isot_rel, plot_everything = False, Logs = 0 ):
+def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plots',
+                      pre_title_plt = "Concentration of ", 
+                      pre_save_name = 'Conc_rsd', Elem_rel = Isot_rel, 
+                      plot_everything = False, Logs = False ):
     '''
-    Function that will do bar plots of the raw data from the ICPMS, the cps and the rstd. By raw
-    I mean withoutany corrections/calibrations (neither the dilution factor correction). This is a
-    preliminary plot, to check if everything is allright, with the rstd (rstd should be < 20%).
+    Function that will do a single bar plots of ICPMS data, using
+    the 2nd data as the errorbars. By raw I mean withoutany corrections/calibrations (neither the 
+    dilution factor correction). This is a preliminary plot, to check if 
+    everything is allright, with the rstd (rstd should be < 20%).
     
     *Inputs:
-        .df_1, df_2: dataframes to plot. Initially containing the cps and the relative standard deviation. 
+        .df_1, df_2: dataframes to plot. Initially containing the cps and 
+        the std. 
         df_1 is a DataFrame, df_2 could be a DataFrame or a df.Series!
         Note the Isotopes column are the index for the df
         .folder_name: folder name. Default value: 'Bar_plots'
         .ylabel_1,2. Labels to be used for the legend and the y axes. Default: 
             ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]"
-        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
-            Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
-        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex           
-        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: (see above in the script)   
-        .Plot_everything: boolean stating if we plot everything or only the relevant elements (in Elem_rel). 
+        .pre_title_plt : title of the graph, part that appears before the name 
+        of the elements (thats why pre title).
+            Detault value: "Concentration of " (note the space after of, so 
+            the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', 
+        giving Conc_Mg24.png for ex           
+        .Elem_rel: array containing the name of the relevant elemtns, which 
+        are the elements that will be saved in a specific folder. D
+        efault value: (see above in the script)   
+        .Plot_everything: boolean stating if we plot everything or only the 
+        relevant elements (in Elem_rel). 
+            Default: False
+        .logs: value defining if applying log scale to y axis. Default: False
+        
+    *Outputs:
+        .Plots (saving them) of the raw data
+    
+    ######### To DO #########
+    .TInclude option to plot all the elements or only the relevants, since 
+    for all (250) take 140s!
+    
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a 
+    subfolder with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long (2-3mins!).
+    '''
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    ###Plot
+    #Some parameters for the plot
+    X_axis = np.arange( len(df_1.axes[1]))                 #To do the 2 bar plot
+            #choosing the number of columns. [0] for rows
+
+    for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
+                    #df_1.index give the index values, low and high
+                    #
+        if df_1.index[i][:-4] in Elem_rel or plot_everything == True: 
+            #if the element is relevant you plot it!
+        ########### Bar plot ###########################
+            plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+            plt.title(pre_title_plt + df_1.index[i][:-4], fontsize=22, wrap=True)           #title
+            if isinstance(df_2, pd.Series):                         #if df_2 is a pd.Series
+                aa =  plt.bar( X_axis, df_1.loc[df_1.index[i]], yerr = df_2, edgecolor="black", 
+                               align='center') 
+            else:               #df_2 is a DataFrame
+                aa = plt.bar( X_axis, df_1.loc[df_1.index[i]], yerr = df_2.loc[df_1.index[i]], edgecolor="black", 
+                             align='center')  ##df version!! works!
+                #
+            if Logs == True:                  #put scale
+                plt.yscale('log')  
+            #
+            plt.ylabel(ylabel_1, fontsize= Font)              #ylabel
+            plt.xlabel('Sample', fontsize = Font )
+            plt.tick_params(axis='both', labelsize= Font)              #size of axis
+            plt.minorticks_on()             #enabling minor grid lines
+            plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+            plt.grid(which = 'major')
+            plt.xticks(X_axis, [ df_1.columns[:][j] for j in range(len(df_1.axes[1]) ) ]
+                , rotation = 90)
+        
+            #Saving in the folder
+            if df_1.index[i][:-4] in Elem_rel:  #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_' + df_1.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_' + df_1.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+            plt.close()             #to clsoe the plot not to consume too much resources
+    
+    
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
+
+
+#%% ########## 1.17) ICPMS Single Bar plotter #############
+#####################################
+
+def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' , 
+                              folder_name = 'Bar_plots',
+                      pre_title_plt = "Concentration of ", 
+                      pre_save_name = 'Conc_rsd', Elem_rel = Isot_rel, 
+                      plot_everything = False, Logs = False ):
+    '''
+    Function that will do a single bar plots of ICPMS data, using
+    the 2nd data as the errorbars. This function inlcudes a hline plot, with the
+    data from another df, df_3. It will plot the 1st column of that df.
+    
+    Function created for the Cs sep plotting
+    
+    *Inputs:
+        .df_1, df_2: dataframes to plot. Initially containing the cps and 
+        the std. 
+        .df_3: df from the hline
+        df_1 is a DataFrame, df_2 could be a DataFrame or a df.Series!
+        Note the Isotopes column are the index for the df
+        .folder_name: folder name. Default value: 'Bar_plots'
+        .ylabel_1,2. Labels to be used for the legend and the y axes. Default: 
+            ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]"
+        .pre_title_plt : title of the graph, part that appears before the name 
+        of the elements (thats why pre title).
+            Detault value: "Concentration of " (note the space after of, so 
+            the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', 
+        giving Conc_Mg24.png for ex           
+        .Elem_rel: array containing the name of the relevant elemtns, which 
+        are the elements that will be saved in a specific folder. D
+        efault value: (see above in the script)   
+        .Plot_everything: boolean stating if we plot everything or only the 
+        relevant elements (in Elem_rel). 
+            Default: False
+        .logs: value defining if applying log scale to y axis. Default: False
+        
+    *Outputs:
+        .Plots (saving them) of the raw data
+    
+    ######### To DO #########
+    .Generalize it, so it can plot a df series for hline, not only df!!!!!
+    
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a 
+    subfolder with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long (2-3mins!).
+    '''
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    ###Plot
+    #Some parameters for the plot
+    X_axis = np.arange( len(df_1.axes[1]))                 #To do the 2 bar plot
+            #choosing the number of columns. [0] for rows
+
+    for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
+                    #df_1.index give the index values, low and high
+                    #
+        if df_1.index[i][:-4] in Elem_rel or plot_everything == True: 
+            #if the element is relevant you plot it!
+        ########### Bar plot ###########################
+            plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+            plt.title(pre_title_plt + df_1.index[i][:-4], fontsize=22, wrap=True)           #title
+            if isinstance(df_2, pd.Series):                         #if df_2 is a pd.Series
+                aa =  plt.bar( X_axis, df_1.loc[df_1.index[i]], yerr = df_2, edgecolor="black", 
+                               align='center', label = 'Samples') 
+            else:               #df_2 is a DataFrame
+                aa = plt.bar( X_axis, df_1.loc[df_1.index[i]], yerr = df_2.loc[df_1.index[i]], edgecolor="black", 
+                             align='center', label = 'Samples')  ##df version!! works!
+                #
+            plt.hlines(df_3.loc[df_3.index[i]][0], min(X_axis), max(X_axis),
+                       label = "MS", color = 'r')   #PLot the hline!
+            if Logs == True:                  #put scale
+                plt.yscale('log')  
+            #
+            plt.ylabel(ylabel_1, fontsize= Font)              #ylabel
+            plt.xlabel('Sample', fontsize = Font )
+            plt.tick_params(axis='both', labelsize= Font)              #size of axis
+            plt.minorticks_on()             #enabling minor grid lines
+            plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+            plt.grid(which = 'major')
+            plt.xticks(X_axis, [ df_1.columns[:][j] for j in range(len(df_1.axes[1]) ) ]
+                , rotation = 90)
+            plt.legend(fontsize = Font)
+        
+            #Saving in the folder
+            if df_1.index[i][:-4] in Elem_rel:  #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_' + df_1.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_' + df_1.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+            plt.close()             #to clsoe the plot not to consume too much resources
+    
+    
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
+
+
+#%% ########## 1.15) ICPMS 2 Bar plotter #############
+#####################################
+
+def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , 
+                      ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
+                      pre_title_plt = "Concentration of ", 
+                      pre_save_name = 'Conc_rsd', Elem_rel = Isot_rel, 
+                      plot_everything = False, Logs = 0 ):
+    '''
+    Function that will do bar plots of the raw data from the ICPMS, the cps and
+    the rstd. By raw I mean withoutany corrections/calibrations (neither the 
+    dilution factor correction). This is a preliminary plot, to check if 
+    everything is allright, with the rstd (rstd should be < 20%).
+    
+    *Inputs:
+        .df_1, df_2: dataframes to plot. Initially containing the cps and 
+        the relative standard deviation. 
+        df_1 is a DataFrame, df_2 could be a DataFrame or a df.Series!
+        Note the Isotopes column are the index for the df
+        .folder_name: folder name. Default value: 'Bar_plots'
+        .ylabel_1,2. Labels to be used for the legend and the y axes. Default: 
+            ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{rel}$ [%]"
+        .pre_title_plt : title of the graph, part that appears before the name 
+        of the elements (thats why pre title).
+            Detault value: "Concentration of " (note the space after of, so 
+            the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', 
+        giving Conc_Mg24.png for ex           
+        .Elem_rel: array containing the name of the relevant elemtns, which 
+        are the elements that will be saved in a specific folder. D
+        efault value: (see above in the script)   
+        .Plot_everything: boolean stating if we plot everything or only the 
+        relevant elements (in Elem_rel). 
             Default: False
         .logs: value defining if applying log scale to 1, 2, or both. 
             0: no apply
@@ -2065,15 +2400,16 @@ def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , ylabel_2 = "$\sigma_{re
         .Plots (saving them) of the raw data
     
     ######### To DO #########
-    .TInclude option to plot all the elements or only the relevants, since for all (250) take 140s!
+    .TInclude option to plot all the elements or only the relevants, since 
+    for all (250) take 140s!
     
     '''
     
     
     ############# 1) Folder creation ###############
     '''
-    First the folder to store the plots will be created. IN the main folder a subfolder
-    with the relevant elements, to be given, will be created
+    First the folder to store the plots will be created. IN the main folder a 
+    subfolder with the relevant elements, to be given, will be created
     '''
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
@@ -2104,7 +2440,8 @@ blank space between values (value is x value) is b<1, is:
         centroid (right of value) = value + w/2
         2w + b = 1 ==> w = (1-b)/2
         
-Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2,..) are:
+Setting b gives w. In fact the general equations for 2n bars per
+ X tick (n = 1,2,..) are:
     w = (1-b)/2n
     value - w/2*n <= centroid <= value + w/2*n, in steps of w (of course)
     
@@ -2122,7 +2459,8 @@ Setting b gives w. In fact the general equations for 2n bars per X tick (n = 1,2
     for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
                     #df_1.index give the index values, low and high
                     #
-        if df_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant you plot it!
+        if df_1.index[i][:-4] in Elem_rel or plot_everything == True: 
+            #if the element is relevant you plot it!
         ########### Bar plot ###########################
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
             plt.title(pre_title_plt + df_1.index[i][:-4], fontsize=22, wrap=True)           #title
@@ -2189,28 +2527,32 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                    Elem_rel = Isot_rel, 
                    plot_everything = False, Nrepl = 2 ):
     '''
-    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
-    time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
-    Stimated running time around 80s.
+    Function that will plots of the data from the ICPMS (cps) vs another variable,
+    initially time, the cps and the rstd. This assume we have 2 replicates, 
+    1 series after the other. Stimated running time around 80s.
     
     *Inputs:
         .x: x axis variable in the plot. This should be a df series
         .df_cps: dataframes containing the cps. Those are
-        outputs for the Read_ICPMS_excel function. Note the 1st column must be the one
-        with the isotopes (like in the excel)
+        outputs for the Read_ICPMS_excel function. Note the 1st column must be 
+        the one with the isotopes (like in the excel)
         .x_label: string that will be the x label for the plot (for math stuff, 
                                     use $$. eg: '$\Delta t[h]$')
         .y_label: string that will be the y label for the plot
-        .folder_name: string defining the name of the folder to create to store the plots
-            default value: 'Plots'
-        . plot_everything: string defining if you want to plot all the elements or only the
-            relevant ones. Default value: False (only plot relevants)
-        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
-            Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
-        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        .folder_name: string defining the name of the folder to create to store
+        the plots. default value: 'Plots'
+        . plot_everything: string defining if you want to plot all the elements 
+        or only the relevant ones. Default value: False (only plot relevants)
+        .pre_title_plt : title of the graph, part that appears before the name 
+        of the elements (thats why pre title).
+            Detault value: "Concentration of " (note the space after of, so 
+                the element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', 
+        giving Conc_Mg24.png for ex    
         . Nrepl: number of replicates. Default value: 2. 3 also accepted
-        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: (see above in the script)     
+        .Elem_rel: array containing the name of the relevant elemtns, which 
+            are the elements that will be saved in a specific folder. 
+            Default value: (see above in the script)     
                                     
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
@@ -2226,7 +2568,8 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
     
     ############# 1) Folder creation ###############
     '''
-    First the folder to store the plots will be created. IN the main folder a subfolder
+    First the folder to store the plots will be created. IN the main folder a
+    subfolder
     with the relevant elements, to be given, will be created
     '''
     
@@ -2247,14 +2590,14 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
     
     ######### 2) plotting ###############
     '''
-    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
-    THe best way is loop with python style
+    This is a loop plot, so beware, will take long if you plot all the elements 
+    (280) (2-3mins!). THe best way is loop with python style
     '''
     t_start = tr.time()       #[s] start time of the plot execution
     
     '''
-    Before plotting, I need to see whether I have 2 or 3 replicates, to divide the df in one or another way.
-    That will be with an if loop, as usual
+    Before plotting, I need to see whether I have 2 or 3 replicates, to divide 
+    the df in one or another way. That will be with an if loop, as usual
     '''
     
     if Nrepl == 2:          #2 replicates, standard case
@@ -2392,31 +2735,39 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
 #%% ########## 1.17) ICPMS plotter 3 bentonites #############
 #####################################
 
-def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False,
-                    pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                    Elem_rel = Isot_rel ):
+def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', 
+                    plot_everything = False, pre_title_plt = "Concentration of ", 
+                    pre_save_name = 'Conc', Elem_rel = Isot_rel ):
     '''
-    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
-    time, for the 3 bentonites. This assume we have 2 replicates, 1 series after the other.
-    Stimated running time around 80s.
+    Function that will plots of the data from the ICPMS (cps) vs another variable,
+    initially time, for the 3 bentonites. This assume we have 2 replicates, 
+    1 series after the other. Stimated running time around 80s.
     
     *Inputs:
-        .x: x axis variable in the plot. dictionary, contaning the 3 df series with the keys: Sard, Tur, BK
-        .df_cps: dataframes containing the cps. dictionary containing the 3 df series, same order as x. Those are
-        outputs for the Read_ICPMS_excel function. Note the 1st column must be the one
+        .x: x axis variable in the plot. dictionary, contaning the 3 df series 
+        with the keys: Sard, Tur, BK
+        .df_cps: dataframes containing the cps. dictionary containing the 3 df
+        series, same order as x. Those are
+        outputs for the Read_ICPMS_excel function. Note the 1st column must be
+        the one
         with the isotopes (like in the excel)
         .x_label: string that will be the x label for the plot (for math stuff, 
                                     use $$. eg: '$\Delta t[h]$')
         .y_label: string that will be the y label for the plot
-        .folder_name: string defining the name of the folder to create to store the plots
+        .folder_name: string defining the name of the folder to create to store
+        the plots
             default value: 'Plots'
-        . plot_everything: string defining if you want to plot all the elements or only the
-            relevant ones. Default value: False (only plot relevants)
-        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
-            Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
-        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
-        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: (see above in the script)       
+        . plot_everything: string defining if you want to plot all the elements
+        or only the relevant ones. Default value: False (only plot relevants)
+        .pre_title_plt : title of the graph, part that appears before the name 
+        of the elements (thats why pre title).
+            Detault value: "Concentration of " (note the space after of, so the
+                    element is not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', 
+        giving Conc_Mg24.png for ex    
+        .Elem_rel: array containing the name of the relevant elemtns, which
+        are the elements that will be saved in a specific folder. 
+        Default value: (see above in the script)       
                                     
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
@@ -2426,14 +2777,16 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	.Implement error plotting (in an errorbar pyplot)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    .Improve it, not soo god, averaging replicates and plotting average and its error would be better!
+    .Improve it, not soo god, averaging replicates and plotting average and 
+    its error would be better!
     . TO include 3 replicates version!
     '''
     
     
     ############# 1) Folder creation ###############
     '''
-    First the folder to store the plots will be created. IN the main folder a subfolder
+    First the folder to store the plots will be created. IN the main folder a 
+    subfolder
     with the relevant elements, to be given, will be created
     '''
     
@@ -2454,7 +2807,8 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
     
     ######### 2) plotting ###############
     '''
-    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
+    This is a loop plot, so beware, will take long if you plot all the elements
+    (280) (2-3mins!).
     
     '''
     Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#EEE8AA', 'BK' : 'grey'} 
@@ -2557,31 +2911,39 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_eve
 #%%######### 1.18) ICPMS plotter blank appart #############
 #####################################
 
-def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_everything = False, 
-                       pre_title_plt = "Concentration of ", pre_save_name = 'Conc', Nrepl = 2,
-                       Blank_here = False, Elem_rel = Isot_rel, Logs = 0 ):
+def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', 
+            plot_everything = False, pre_title_plt = "Concentration of ", 
+            pre_save_name = 'Conc', Nrepl = 2, Blank_here = False, 
+            Elem_rel = Isot_rel, Logs = 0 ):
     '''
-    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
-    time, the cps and the rstd. This assume we have 2 replicates, 1 series after the other.
-    Blank is plotted sepparately, so the data must include a blank, which should be 1st, the number 1
+    Function that will plots of the data from the ICPMS (cps) vs another variable,
+    initially time, the cps and the rstd. This assume we have 2 replicates, 
+    1 series after the other. Blank is plotted sepparately, so the data must 
+    include a blank, which should be 1st, the number 1
     
     *Inputs:
-        .x: x axis variable in the plot. This could be a pd.Series or pd.DataFrame
+        .x: x axis variable in the plot. This could be a pd.Series or 
+        pd.DataFrame
         .df_cps: dataframes containing the cps. Those are
-        outputs for the Read_ICPMS_excel function. Note the isotopes are the index, so 1st column is 1_1!
+        outputs for the Read_ICPMS_excel function. Note the isotopes are the 
+        index, so 1st column is 1_1!
         .x_label: string that will be the x label for the plot (for math stuff, 
                                     use $$. eg: '$\Delta t[h]$')
         .y_label: string that will be the y label for the plot
-        .folder_name: string defining the name of the folder to create to store the plots
-            default value: 'Plots'
-        . plot_everything: string defining if you want to plot all the elements or only the
-            relevant ones. Default value: False (only plot relevants)
-        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
-                Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
-        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
+        .folder_name: string defining the name of the folder to create to 
+        store the plots default value: 'Plots'
+        . plot_everything: string defining if you want to plot all the elements
+        or only the relevant ones. Default value: False (only plot relevants)
+        .pre_title_plt : title of the graph, part that appears before the name 
+        of the elements (thats why pre title). Detault value: 
+            "Concentration of " (note the space after of, so the element is 
+            not together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', 
+        giving Conc_Mg24.png for ex    
         .Nrepl : number of replicates. Default value : 2. 3 value also accepted
-        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: (see above in the script)      
+        .Elem_rel: array containing the name of the relevant elemtns, which 
+        are the elements that will be saved in a specific folder. 
+        Default value: (see above in the script)      
          .Blank_here: True if the df contain the blank. Default: False
         .Logs: value defining if applying log scale to x axis, y axis or both:
             0: no log scale
@@ -2591,19 +2953,21 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     *Outputs:
         .Plots (saving them) of the x and df_cps data, cps vs x!
     
-    Note as since I included the option to have or not the blank, this makes the old funciton ICPMS_Plotter unnecesary. But I
+    Note as since I included the option to have or not the blank, this 
+    makes the old funciton ICPMS_Plotter unnecesary. But I
     will not remove it, since does not make any harm there :)
     
     ### TO DO: ####
 	.Implement error plotting (in an errorbar pyplot)
-    .Implement variable for modifying tittle (eg adding bentonite name, as a input)
+    .Implement variable for modifying tittle (eg adding bentonite name, 
+                                             as a input)
     '''
     
     
     ############# 1) Folder creation ###############
     '''
-    First the folder to store the plots will be created. IN the main folder a subfolder
-    with the relevant elements, to be given, will be created
+    First the folder to store the plots will be created. IN the main folder 
+    a subfolder with the relevant elements, to be given, will be created
     '''
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
@@ -2623,8 +2987,8 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     
     ############ 2) Data cleaning. pre-process #############
     '''
-    Here I will clean everything a bit, getting the replicates and so. This depends whether the x data
-    is a df.Series or a df.DataFrame
+    Here I will clean everything a bit, getting the replicates and so. 
+    This depends whether the x data is a df.Series or a df.DataFrame
     '''
     if isinstance(x, pd.Series) :             #x is a pd.Series. y (df_cps) is always pd.DataFrame
         if Nrepl ==2:           #2 replc    
@@ -2665,12 +3029,15 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', plot_
     '''
     ######### 3) plotting ###############
     '''
-    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
+    This is a loop plot, so beware, will take long if you plot all the elements
+    (280) (2-3mins!).
     I inlcude in if statement the numer of replicates, currently only 2 and 3!
     
-    I plot only the relevant elements (they are in a list, or all if plot all included)
+    I plot only the relevant elements (they are in a list, or all if plot all 
+                                       included)
     
-    Now it is generalized to be able to be used with pd series and pd df, so another if statement needed!
+    Now it is generalized to be able to be used with pd series and pd df, so 
+    another if statement needed!
 
     '''
     t_start = tr.time()       #[s] start time of the plot execution
@@ -2898,7 +3265,6 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
     ### TO DO: ####
 	.Plot 2 blk lines, <>+- std?
     '''
-    
     
     ############# 1) Folder creation ###############
     '''

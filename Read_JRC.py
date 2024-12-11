@@ -2019,7 +2019,8 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 #%% ######## 1.15 Cs sep, cumulative conc computer ##############
 #################################################################
 
-def ICPMS_Cumulative_conc_calc(df_ppb, V, rho = 1000, MS_here = True, 
+def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
+                               rho = 1000, delta_rho = 1, MS_here = True, 
                          ret_Nmass = False ):
     '''
     Function that will compute the cumulative concentration of a given nuclide.
@@ -2033,29 +2034,52 @@ def ICPMS_Cumulative_conc_calc(df_ppb, V, rho = 1000, MS_here = True,
     
     *Input
         .df_ppb: df with the ppb values of the samples
+        .df_ppb_std: df with the std of the ppb values
         .MS_here: boolean to indicate wether the MS is in the df_ppb
                 or not. Default: True
         .rho: density, np array or single value. Default: 1000g/mL
+        .delta_rho: np array with rho uncertainty. Default: 5g/mL
         .V: np.array containing the volumes of the samples, or single value.
                 eg: V+ np.array([100,100,100,100,100]) for 5 samples
+        .delta_V: np array or single value, for the uncertainty of V. 
+                Default: 5mL
+        
         .ret_Nmass: boolean to indicate weather the df with the nuclide mass
             should ber etunred or not. Default: False, not return it
     *Output
         . df with the cumulative conc, for each sample
+        .df with the std of the cumulative conc
         .df with the nuclide mass, if desired
+        .df with the std of the nuclide mass, if desired
+        
     '''
+    
+    ########### 0) Pre work ###############
+    """
+    The uncertainty of the volume was a number, but should be an array, but
+    we can do it easily
+    """
+    delta_V = delta_V * np.ones(len(V))         #array creation
     
     ########### 1) Mass of nuclide (Nmass) calc ####################
     
     if MS_here:     #exclude 1st column of the ppb df, the MS
         df_Nmass = df_ppb.iloc[:,1:]*V*rho
+        df_Nmass_std = df_Nmass * np.sqrt((delta_V/V)**2 + (delta_rho/rho)**2 +
+                            (df_ppb_std.iloc[:,1:]/df_ppb.iloc[:,1:])**2)
+                #Uncertainty of Nmass
     else:       #MS not here
         df_Nmass = df_ppb*V*rho
-
+        df_Nmass_std = df_Nmass * np.sqrt((delta_V/V)**2 + (delta_rho/rho)**2 +
+                            (df_ppb_std/df_ppb)**2) 
+    
     ############## 2) Cumulative concentration calc ###################
     
-    df_cum= pd.DataFrame(index = df_Nmass.index, columns = df_Nmass.columns)
+    df_cum = pd.DataFrame(index = df_Nmass.index, columns = df_Nmass.columns)
                 #empty df creation, with desired column and row names :)
+    df_cum_std = pd.DataFrame(index = df_Nmass.index, columns = df_Nmass.columns)
+            #empty df, for the uncertainties!
+            
     '''
     Now, I should fill that df, with a foor loop, or 2, as needed. Essentially 
     I need to do:
@@ -2064,18 +2088,33 @@ def ICPMS_Cumulative_conc_calc(df_ppb, V, rho = 1000, MS_here = True,
     '''
  
     df_cum.iloc[:,0] = df_Nmass.iloc[:,0]/(V[0]*rho)    #1st row, non cumulative
-
+    df_cum_std.iloc[:,0] = df_cum.iloc[:,0] * np.sqrt(
+                (delta_V[0]/V[0])**2 + (delta_rho/rho)**2 )
+                    #quadratic error prop, as always
+    
+    df_Nmass_std2 = df_Nmass_std**2         #square, will be needed for cum error
+    
     for i in range(1,df_cum.shape[1]): #loop thourhg all columns of the df
         df_cum.iloc[:,i] = df_Nmass.iloc[:,0:i+1].sum(axis = 1) /(sum(V[0:i+1])*rho)
             #sum in columns the mass of the nuclide
-    
+        df_cum_std.iloc[:,i] = df_cum.iloc[:,i] * np.sqrt(
+         (df_Nmass_std2.iloc[:,0:i+1].sum(axis = 1) /
+          df_Nmass.iloc[:,0:i+1].sum(axis = 1)**2) + 
+         sum(rho*V[0:i+1]* ((delta_rho/rho)**2 + (delta_V[0:i+1]/V[0:i+1])**2) ) / 
+             ((sum(V[0:i+1])*rho)**2)
+             ) 
+                #Note that sum(V*rho)  =sum(V)*rho, since rho is a scalar!
+                #Bro, fuck, what a mess to write that xD
+                
     df_cum = df_cum.apply(pd.to_numeric)        #make it numeric, since it is not
+    df_cum_std = df_cum_std.apply(pd.to_numeric) 
+    
     ############ 3) Output ########   
     
-    if ret_Nmass:
-        return df_cum, df_Nmass
+    if ret_Nmass:           #also returns the std!
+        return df_cum, df_cum_std, df_Nmass, df_Nmass_std
     else:       #Not return it
-        return df_cum
+        return df_cum, df_cum_std
     
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@

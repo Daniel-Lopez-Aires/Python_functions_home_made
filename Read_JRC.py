@@ -2020,7 +2020,7 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
 #################################################################
 
 def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
-                               rho = 1000, delta_rho = 1, MS_here = True, 
+                               rho = 1, delta_rho = .001, MS_here = True, 
                          ret_Nmass = False ):
     '''
     Function that will compute the cumulative concentration of a given nuclide.
@@ -2037,8 +2037,8 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
         .df_ppb_std: df with the std of the ppb values
         .MS_here: boolean to indicate wether the MS is in the df_ppb
                 or not. Default: True
-        .rho: density, np array or single value. Default: 1000g/mL
-        .delta_rho: np array with rho uncertainty. Default: 5g/mL
+        .rho: density, np array or single value. Default: 1g/mL
+        .delta_rho: np array with rho uncertainty. Default: .001g/mL
         .V: np.array containing the volumes of the samples, or single value.
                 eg: V+ np.array([100,100,100,100,100]) for 5 samples
         .delta_V: np array or single value, for the uncertainty of V. 

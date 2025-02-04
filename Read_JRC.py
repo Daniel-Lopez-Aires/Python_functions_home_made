@@ -3976,7 +3976,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
     ################ 3) Model parameters ################
     '''
     From that I can also get the constants; applying log10 == log, no ln!!! :
-        y= ax + b
+        y= ax + b : loq Qe = n log Ce + log KF
                     y= log Q_e
                     x= Log C_e
                     a = n
@@ -4130,8 +4130,8 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
          
         """          
         fit["Q_max[ng/g_be]"] = 1/ fit["a"]
-        fit["\Delta(Q_max[ng/g_be])"] = 1/fit['\Delta(a)']**2
-        fit["K_L[g/ng]"] = 1/(fit["b"] * fit["Q_max[ng/g_be]"] )
+        fit["\Delta(Q_max[ng/g_be])"] = fit['\Delta(a)']/fit['a']**2
+        fit["K_L[g/ng]"] = 1/ (fit["b"] * fit["Q_max[ng/g_be]"] )
         fit["/Delta(K_L[g/ng])"] = fit["K_L[g/ng]"] * np.sqrt(
              (fit["\Delta(Q_max[ng/g_be])"]/fit["Q_max[ng/g_be]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
@@ -4158,21 +4158,22 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
      
         then:
             a = - K_L
-            b = Qmax*K_L ==> K_L = b/Qmax
+            b = Qmax*K_L ==> Qmax = b/K_L
      
         and their uncertainty:
-            delta Qmax = delta a
-            delta KL /KL = sqrt( (delta b/b)**2 + (delta Qmax/Qmax)**2 ) ==>
-            delta KL = Kl * sqrt( (delta b/b)**2 + (delta Qmax/Qmax)**2 )
+            delta K_L = delta a
+            delta Qm /Qm = sqrt( (delta b/b)**2 + (delta KL/KL)**2 ) ==>
+            delta Qm = Qm * sqrt( (delta b/b)**2 + (delta KL/KL)**2 )
          
      """          
-        fit["Q_max[ng/g_be]"] = -fit["a"]
-        fit["\Delta(Q_max[ng/g_be])"] = fit['\Delta(a)']
-        fit["K_L[g/ng]"] = 1/(fit["b"] * fit["Q_max[ng/g_be]"] )
-        fit["/Delta(K_L[g/ng])"] = fit["K_L[g/ng]"] * np.sqrt(
-             (fit["\Delta(Q_max[ng/g_be])"]/fit["Q_max[ng/g_be]"])**2 + 
+        fit["K_L[g/ng]"] = -fit["a"]
+        fit["Q_max[ng/g_be]"] = fit["b"] / fit["K_L[g/ng]"]
+        
+        fit["/Delta(K_L[g/ng])"] = fit['\Delta(a)']        
+        fit["\Delta(Q_max[ng/g_be])"] = fit["Q_max[ng/g_be]"] * np.sqrt(
+             (fit["/Delta(K_L[g/ng])"]/fit["K_L[g/ng]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
-    
+
     
     # ############# 4) Plot of the fit##########
     # logCe_vector = np.linspace( min(logCe),max(logCe),npo )         #for the fit plotting

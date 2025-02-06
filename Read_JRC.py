@@ -29,7 +29,8 @@ import numpy as np
     #np contain linspaces as np.linspace(a,b,N)
 import pandas as pd
 import os, sys                   #to import functions from other folders!!
-sys.path.insert(0, '//net1.cec.eu.int/jrc-services/KRU-Users/lopedan/Desktop/PhD_Residuos_nucleares/Python/Functions')   
+sys.path.insert(0, 
+ '//net1.cec.eu.int/jrc-services/KRU-Users/lopedan/Desktop/PhD_Residuos_nucleares/Python/Functions')   
                                     #path where I have the functions
 import Fits, Peak_analyis_spectra
 import time as tr                                #to measure the running time
@@ -40,11 +41,11 @@ from scipy.optimize import curve_fit             #Fit tool
 #Useful stuff
 Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'} 
     #'Tur' :  '#EEE8AA' is perfect, but not for real visulaiztion xD
-Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23',     #bentonite elements
-            'Sr88', 'Cs133', 'Eu151', 'La139', 'U238']              #CL eleements
+Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23', #bentonite elements
+            'Sr88', 'Cs133', 'Eu151', 'La139', 'U238']     #CL eleements
             #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
-            #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from Baoxides,
-            #so for low Eu concentrations, Eu151 better!! [Stef]        
+            #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from
+            #Ba oxides,so for low Eu concentrations, Eu151 better!! [Stef]        
 
 """
 Isot rele Cs are from the Cs sep
@@ -57,27 +58,29 @@ Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)
 
 def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = False):
     '''
-    Function that will read the excel file from ICPMS and will return a df with the relevant
-    information, for easier handling /plotting. Note the excel should be a bit preprocessed:
+    Function that will read the excel file from ICPMS and will return a df with 
+    the relevant information, for easier handling /plotting. Note the excel 
+    should be a bit preprocessed:
             
-        1) Clean sheet where only the relevant data(cps, ppb, whatever) is, to load it. 
-                .You can remove ICPMS blanks (std 0, etc). THe Isotopes column in COlumn A in excel
-                THe 1st isotope, Co59(LR) in row 7 in excel). Sample names in row 2 in excel
+        1) Clean sheet where only the relevant data(cps, ppb, whatever) is, 
+        to load it. You can remove ICPMS blanks (std 0, etc). THe Isotopes column
+        in COlumn A in excel THe 1st isotope, Co59(LR) in row 7 in excel). 
+        Sample names in row 2 in excel
             
-    
     You could use this function to get the raw data (output from ICPMS) or to correct 
     them for the ICPMS dilution factor.     
 
-    Note sometimes some random NaN data from excel can be added. Easy solution, go to the excel sheet,
-    and delete those rows/columns. No clue why this happens, but that solves it (:   
+    Note sometimes some random NaN data from excel can be added. Easy solution, 
+    go to the excel sheet, and delete those rows/columns. No clue why this 
+    happens, but that solves it (:   
                                                                                  
     Recommended to delete the "wash" sample, will only bring problems in analyis xD
 
     
     *Inputs:
-        .excel_name: string with the name of the excel, with the .xlsx. note if you select the file
-        on the FIle viewer and do copy paste, the name will be there. But dont forget the '', it must
-        be an string! Eg: 'Excel.xlsx'
+        .excel_name: string with the name of the excel, with the .xlsx. note if 
+        you select the file on the FIle viewer and do copy paste, the name will 
+        be there. But dont forget the '', it must be an string! Eg: 'Excel.xlsx'
         .cps_sheet_name: string with the name of the sheet with the data to read 
             future maybe also concentration values?). Default value: 'To_read' 
         (from acid vs no acid test)
@@ -86,11 +89,12 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
 
         
     *Outputs:
-        .several df with the cps/%rsd or whatver it is reading. Depending whether you want the debug you may 
-            have 1 or 2 outputs. THe isotopes are the index of the df, so the columns are the sample data!
-            the column names are the sample names
+        .several df with the cps/%rsd or whatver it is reading. Depending whether
+        you want the debug you may  have 1 or 2 outputs. THe isotopes are the 
+        index of the df, so the columns are the sample data! the column names
+        are the sample names
             
-            
+    
     Note that if you have N outputs, if you want to obtain a variable per output, 
     in the script I should call X variables, like:
             a, b, ..n = Read_ICPMS_excel(name)
@@ -98,8 +102,8 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
             
             
     ######## TO DO ########
-        . Arbitrary inputs (type *arb_arguments, with other stuff like, variable1, *aribtrary_arg)
-            so you choose if you want rsd or no, to save some time?
+        . Arbitrary inputs (type *arb_arguments, with other stuff like, variable1,
+            *aribtrary_arg) so you choose if you want rsd or no, to save some time?
             
     #######################
         '''
@@ -107,8 +111,9 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
     
     ########### 1) Raw load ###########
     '''
-    Can be done easily with pandas. Since th excel sheet containing the cps and the excel file only
-    differs in the .xlsx we can define the excel sheet name with the name given as input:
+    Can be done easily with pandas. Since th excel sheet containing the cps and
+    the excel file only differs in the .xlsx we can define the excel sheet name 
+    with the name given as input:
     '''    
     #Load
     Dat = pd.read_excel(excel_name, cps_sheet_name, header = [1], index_col=0)
@@ -116,27 +121,29 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
         #That contains the cps and cps*dil factor
         #index col = 0 to use first column as index!
     '''
-    Note once I suffered that the dimesions of those were not similar, and in one sheet they
-    were loadingn NaN values. I just erase those empty stuff in excel (selecting and delete)
-    and after it worked!
+    Note once I suffered that the dimesions of those were not similar, and in 
+    one sheet they were loadingn NaN values. I just erase those empty stuff in
+    excel (selecting and delete) and after it worked!
     '''
     
     ############### 2) Clean df ############
     
     '''
-    After the raw load, we can clean that a bit, creating a handful df, not the preovious, which
-    are literally the excel in a df. That is, only collecting the relevant columns and putting them
-    in a df, for further analysis (plotting, etc).
+    After the raw load, we can clean that a bit, creating a handful df, not the
+    preovious, which are literally the excel in a df. That is, only collecting 
+    the relevant columns and putting them in a df, for further analysis 
+    (plotting, etc).
     
-    Nevertheless, here could be relevant the fact of removing the blank or not, and for that you should
-    say if you have a blank and if you want to delete it.
+    Nevertheless, here could be relevant the fact of removing the blank or not, 
+    and for that you should say if you have a blank and if you want to delete it.
     
-    The 1st cleaning is removing the 1st 4 rows, which contain bullshit, so we could do it with the 
-    .drop method. Note the index are no longer used, simply erased.
+    The 1st cleaning is removing the 1st 4 rows, which contain bullshit, so we 
+    could do it with the  .drop method. Note the index are no longer used, simply 
+    erased.
     '''
     #df_cps = Dat.drop(index = [Dat.index[0], Dat.index[1], Dat.index[2],Dat.index[3] ], axis = 0)   
-                                                    #Removing rows 0, 1,2,3 (their index)
-                    #that does not work if I load directly the Blk corr, so lets do it simpler:
+         #Removing rows 0, 1,2,3 (their index)
+         #that does not work if I load directly the Blk corr, so lets do it simpler:
     df_cps = Dat.iloc[4:,:] 
     
     #Another cleaning will be putting the df in numeric format. It is in object format, which gives problems
@@ -187,8 +194,8 @@ def ICPMS_std_calculator (df_cps, df_rsd):
     have already been read with the reader function.
     
     *Inputs:
-        .df_cps: df containing the cps/ppb data. Isotopes are indexes, each row a measurement, 1st 1st repl, then
-		2nd replicate, etc
+        .df_cps: df containing the cps/ppb data. Isotopes are indexes, each 
+        row a measurement, 1st 1st repl, then 2nd replicate, etc
 	.df_rsd: df containing the rsd data, same format as the other
 
         
@@ -203,8 +210,9 @@ def ICPMS_std_calculator (df_cps, df_rsd):
     If you write less, say 1, 2, some variable will contain more data, in a dictionary
     
     ############ To Do ############
-        Not tested, but was copied literally from a function that worked (the reader was bigger), 
-        so it should work, right? not even changed the names xD
+        Not tested, but was copied literally from a function that worked 
+        (the reader was bigger), so it should work, right? not even changed 
+        the names xD
     
     ##################
             
@@ -213,18 +221,19 @@ def ICPMS_std_calculator (df_cps, df_rsd):
     
     ########### 1) Calc ###########
     '''
-    Note the sig is RSD = relative standard deviation. I should compute sigma (std dev),
-    which could be plotted in the temporal plots for ex as error bar. Thats easy:
+    Note the sig is RSD = relative standard deviation. I should compute sigma 
+    (std dev), which could be plotted in the temporal plots for ex as error bar.
+    Thats easy:
             RSD = sigma / <x> * 100 ==> sigma = RSD * <x> /100
     
-    Note RSD I have in 1 df (for each measurement (column) I have lot of elements (rows) ),
-    and 1 df is for RSD; the other is for the mean values, so I need to do operations between 
-    them. 
+    Note RSD I have in 1 df (for each measurement (column) I have lot of elements 
+    (rows) ), and 1 df is for RSD; the other is for the mean values, so I need 
+    to do operations between them. 
         
-    Still, note the cps are multiplied by the dilution factor Df and applied some corrections
-    (blanks, IS). i will forget about the 2nd things, more or less minor, and will consider the
-    Df correction, which is essentially multiplying by it. So, I should multiply the RSD by the Df,
-    and then apply that
+    Still, note the cps are multiplied by the dilution factor Df and applied 
+    some corrections (blanks, IS). i will forget about the 2nd things, more or
+    less minor, and will consider the Df correction, which is essentially
+    multiplying by it. So, I should multiply the RSD by the Df, and then apply that
     
     '''
     df_std= pd.DataFrame(df_cps * df_rsd / 100, 
@@ -246,8 +255,8 @@ def ICPMS_std_calculator (df_cps, df_rsd):
 
 def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep'):
     '''
-    Function that will find the ICPMS dilution factor from the excel containing the ICPMS sample
-    preparation info.
+    Function that will find the ICPMS dilution factor from the excel containing
+    the ICPMS sample preparation info.
     Note There is 2 dilution factors involved:
             1) Dlution actor for the ICPMS sample preparation (simeq 50). In this case you add 
                                     .8.8mL HNO3 1M
@@ -302,7 +311,8 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     
     ######## 3) cleaning ###############
     '''
-    Since its object type, I will make it numeric, since everything will be easier with it (and strictly its true)
+    Since its object type, I will make it numeric, since everything will be easier
+    with it (and strictly its true)
     '''
     D_f = D_f.apply(pd.to_numeric)                    #conversion to numeric data type
     
@@ -520,9 +530,9 @@ def Get_A_Resol(isotope_name):
 #####################################
 
 def IS_sens_calculator_plotter(df_cps_ppb, df_std,
-                               IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
-                               name_IS_sens_LR_plot = 'IS_sensLR_plot', 
-                               name_IS_sens_MR_plot = 'IS_sensMR_plot'):
+        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
+        name_IS_sens_LR_plot = 'IS_sensLR_plot', 
+        name_IS_sens_MR_plot = 'IS_sensMR_plot'):
     '''
     Function part of the ICPMS Data processing! Function that will compute the IS sens (cps/ppb) 
     for a df containing the cps and ppb, and another df with its std. The format is like
@@ -1441,11 +1451,12 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 #%%############ 1.12) Kd calculaor #############
 #####################################
 
-def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = False):
+def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, 
+                     ret_Co__Ceq = False):
     '''
-    Function that will compute the distribution constant Kd and the adsorption quantity
-    q_e from the ppb data obtained with ICPMS. Note that data must be corrected
-    for the dilutions factors. 
+    Function that will compute the distribution constant Kd and the adsorption 
+    quantity Q_e from the ppb data obtained with ICPMS. Note that data must be 
+    corrected for the dilutions factors. 
     
     Based on the blk corrector function.
     
@@ -1458,23 +1469,31 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
         V = volume of the solution [L]
         Q_e = absorbed quantity in equil [g soluto / g bent]
         
-    In our case, that we measure C in ppb = ng soluto /g disol, we need to mutiply by g tot / m bent, to
-    achieve the same units in Q_e!! And we do not have equilibirum since its kinetic, so Qe, Ke ==> Q(t), K(t)
+    In our case, that we measure C in ppb = ng soluto /g disol, we need to mutiply
+    by g tot / m bent, to achieve the same units in Q_e!! And we do not have
+    equilibirum since its kinetic, so Qe, Ke ==> Q(t), K(t)
 
-    Necessary that the data contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
+    Necessary that the data contain no Div0, ensure in the excel by using the 
+    iferror(operation, 0) function!
     
-    Note this requires a df series with the volume, that you were not measuring in the first exp
-    (up to 8/23). Note ten that units are involved!. If measuring mass ing and volumes in L, Q
+    Note this requires a df series with the volume, that you were not measuring
+    in the first exp
+    (up to 8/23). Note ten that units are involved!. If measuring mass ing and 
+    volumes in L, Q
 
 
     *Inputs:
-        .df_data: dataframe containing the data, the full data, with the 2 or 3 replicates. Should be Dfs corrected
-            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. Note the 1st sample
-            in each replicate must be the sample blank!
-        .df_VoM_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, 
-        or whatever. normally 50ml OR the total mass of the solution [g]. If df_data in ppb, this must be the total mass
-            so that Q_e is in g/g !
-        .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle (normally 250mg)
+        .df_data: dataframe containing the ICPMS data, the full data, with the 2 or 3 
+            replicates. Should be Dfs corrected. Format: isotopes as index, 
+            columns the samples, 1st 1st replicate, then 2nd replicate. Note 
+            the 1st sample in each replicate must be the sample blank! This
+            samples will be removed from the Qe and Kd df!
+        .df_VoM_disol: pd series containing the volume [mL] added to the bottle
+            of the solution, BIC, or whatever. normally 50ml or the total 
+            mass of the solution [g]. If df_data in ppb, this must be the total
+            mass so that Q_e is in g/g !
+        .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle
+        (normally 250mg)
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
         ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
     
@@ -1487,11 +1506,13 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
     
     ########## 0) Precalcs ##########
     '''
-    To avoid the div0 error, which occurs when I have 0 as a values in the df, which I have for all the elements
-    that were not found by ICPMS, I can just put NaN instead, since that will not give the Div0 error when computing Kd
+    To avoid the div0 error, which occurs when I have 0 as a values in the df, 
+    which I have for all the elements that were not found by ICPMS, I can just 
+    put NaN instead, since that will not give the Div0 error when computing Kd
     '''
     
-    df_data.replace(0, np.nan, inplace=True)                    #replace 0 values with NaN, to avoid Div0 error!
+    df_data.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
+                                              #to avoid Div0 error!
     
     
     ########### 1) Calcs ###########
@@ -1501,16 +1522,16 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
         2) 1) * V/m = q_e
         3) 2)	1/C_eq = Kd
     
-    I must treat the 2 experiments are different, I should substract the blank 1 to the 1st emasurements
-    and the 2 to the others. Since I ordered it in the right way (1st replicacte 1, then replicate 2, 
-    I could) split it easily :D
+    I must treat the 2 experiments are different, I should substract the blank 1 
+    to the 1st emasurements and the 2 to the others. Since I ordered it in the 
+    right way (1st replicacte 1, then replicate 2, I could) split it easily :D
             df.shape gives the shape of the df, n_rows, n_columns
     
     Note the df have number of samples * 2 replicates columns.
     
-    Then, I will create a new dataframe substracting that data. To do so, I need to get rid
-    of the isotopes column, since is text, and then add it again. Watch, the substraction is 
-    easy with a pandas mehotd.
+    Then, I will create a new dataframe substracting that data. To do so, I 
+    need to get rid of the isotopes column, since is text, and then add it again.
+    Watch, the substraction is easy with a pandas mehotd.
 
     I shuold then remove those columns
     from there, and replace negatives values for 0, for a good plot
@@ -1518,33 +1539,33 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
     
     #So, lets split into the 2 replicates!
     '''
-    For 2 replicates its easy, for 3 it could be more tricky. Beware! TO create a function you should say
-    the number of replicates and so!
+    For 2 replicates its easy, for 3 it could be more tricky. Beware! TO create
+    a function you should say the number of replicates and so!
     '''
     
     if Nrepl == 2:          #Standard case, 2 replicates
-        df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
-        df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
+        df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ] #1st replicate
+        df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ] #replicate 2
     
         df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 2 ) ]      #1st replicate
         df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 2 ) :  ]       #replicate 2
             #Achtung! In shape I put 0, because they are series, so 1D!!!!
             #VoM = Volume or Mass!
-        df_m_1 = df_m_be.iloc[ 0: round( ( df_m_be.shape[0] ) / 2 ) ]      #1st replicat
-        df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 2 ) :  ]       #replicate 2    
+        df_m_1 = df_m_be.iloc[ 0: round( ( df_m_be.shape[0] ) / 2 ) ] #1st replicat
+        df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 2 ) :  ] #replicate 2    
     
-    #######Future note: here you see the automatization to N-replicates, doing this with a function.
-        #Then the operations you can done them, grouping the df in an array, and for element in array, perform
-        #them!
+    #######Future note: here you see the automatization to N-replicates, doing 
+        #this with a function. Then the operations you can done them, grouping 
+        #the df in an array, and for element in array, perform them!
     
     ###### 1) C_0 - C_eq = - (C_eq - C0)
     #I will do C_eq - C0, and then invert that, since its easier. C0 is the blank data, 
     #thats why is easier, so I can copy paste the blank substraction
     
-        dfCeq__C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
-        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+        dfCeq__C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 ) #doing the substraction
+        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True) #drop blank column
         #
-        dfCeq__C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )               #Replicate 2
+        dfCeq__C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 ) #Replicate 2
         dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
     
         #Now lets invert the sign:
@@ -1552,10 +1573,11 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
         dfC0__Ceq_2 = - dfCeq__C0_2
 
     ######## 2) Apply the V/ m giving q_e (from Df_exp)
-    #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
+    #For this I ned to remove the blank columns to both m and V, since from 
+    #C0-Ceq they are removed!
 
-        df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
-                        #new_series = data.drop(data.index[0]) also work, from Chatgpt
+        df_m_1 = df_m_1[1:]  #fast way to delete 1st elemen (blank) in a series
+                #new_series = data.drop(data.index[0]) also work, from Chatgpt
         df_m_2 = df_m_2[1:]
         df_VoM_1 = df_VoM_1[1:]
         df_VoM_2 = df_VoM_2[1:]
@@ -1567,13 +1589,14 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
     
     ######## 3) Apply 1/C_eq = Kd
         df_Kd_1 = df_Qe_1 / df_1.drop( [df_1.iloc[:,0].name], axis = 1)   
-                        #Not df_1 contains blk (1st column), so I remove it for the operation!    
-                        #This also works: df_Qe_1.div(df_1.drop( [df_1.iloc[:,0].name], axis = 1) )
+         #Not df_1 contains blk (1st column), so I remove it for the operation!    
+         #This also works: df_Qe_1.div(df_1.drop( [df_1.iloc[:,0].name], axis = 1) )
         df_Kd_2 = df_Qe_2 / df_2.drop( [df_2.iloc[:,0].name], axis = 1)
     
     #Now lets add them together
         
-        df_C0__Ceq = pd.concat( [dfC0__Ceq_1, dfC0__Ceq_2], axis = 1)     #merging the 2 df (replicates) in a hugeone 
+        df_C0__Ceq = pd.concat( [dfC0__Ceq_1, dfC0__Ceq_2], axis = 1) 
+                        #merging the 2 df (replicates) in a hugeone 
         df_Kd = pd.concat( [df_Kd_1, df_Kd_2], axis = 1)         
         df_Qe = pd.concat( [df_Qe_1, df_Qe_2 ] , axis = 1)
 
@@ -1583,31 +1606,35 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
         df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
         df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
         
-        df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 3 ) ]      #1st replicate
+        df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 3 ) ]      
+                                                #1st replicate
         df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 3 ): 2* round( ( df_VoM_disol.shape[0] ) / 3 ) ]      
-        df_VoM_3 = df_VoM_disol.iloc[ 2 *round( ( df_VoM_disol.shape[0] ) / 3 ) : ]      #3rd replicate
+        df_VoM_3 = df_VoM_disol.iloc[ 2 *round( ( df_VoM_disol.shape[0] ) / 3 ) : ]      
+                                            #3rd replicate
         
-        df_m_1 = df_m_be.iloc[ : round( ( df_m_be.shape[0] ) / 3 ) ]      #1st replicat
-        df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 3 ) : 2* round( ( df_m_be.shape[0] ) / 3 )]      #2nd replicat
-        df_m_3 = df_m_be.iloc[ 2 *round( ( df_m_be.shape[0] ) / 3 ) : ]      #3rd replicat
+        df_m_1 = df_m_be.iloc[ : round( ( df_m_be.shape[0] ) / 3 ) ] 
+        df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 3 ) : 2* round( ( df_m_be.shape[0] ) / 3 )]
+        df_m_3 = df_m_be.iloc[ 2 *round( ( df_m_be.shape[0] ) / 3 ) : ]  
     
         #1) 
-        dfCeq__C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )       #doing the substraction
-        dfCeq__C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )       #doing the substraction        
-        dfCeq__C0_3 = df_3.subtract(df_3.iloc[:,0], axis = 0 )       #doing the substraction
+        dfCeq__C0_1 = df_1.subtract(df_1.iloc[:,0], axis = 0 )#doing the substraction
+        dfCeq__C0_2 = df_2.subtract(df_2.iloc[:,0], axis = 0 )           
+        dfCeq__C0_3 = df_3.subtract(df_3.iloc[:,0], axis = 0 )       
         
-        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-        dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-        dfCeq__C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column        
+        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   
+                                    #drop blank column
+        dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
+        dfCeq__C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)     
     
         dfC0__Ceq_1 = - dfCeq__C0_1
         dfC0__Ceq_2 = - dfCeq__C0_2
         dfC0__Ceq_3 = - dfCeq__C0_3
     
     ######## 2) Apply the V/ m giving q_e (from Df_exp)
-    #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
+    #For this I ned to remove the blank columns to both m and V, since from 
+    #C0-Ceq they are removed!
 
-        df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
+        df_m_1 = df_m_1[1:]  #fast way to delete 1st elemen (blank) in a series
         df_m_2 = df_m_2[1:]
         df_m_3 = df_m_3[1:]
         df_VoM_1 = df_VoM_1[1:]
@@ -1632,7 +1659,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2, ret_Co__Ceq = Fa
         df_C0__Ceq = pd.concat( [dfC0__Ceq_1, dfC0__Ceq_2, dfC0__Ceq_3], axis = 1)
     
     else:               #Error case
-        print('Erro case, wrong Nrepl introduced!')    
+        print('Error case, wrong Nrepl introduced!')    
         df_Kd = 0
         df_Qe =0
                 
@@ -1811,8 +1838,8 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
     
     if removed_sample_1 == True:
         '''
-        If this is true, I do not want the 1st sample in each serie, the procedurla blank, so let´s
-        remove it! how? by removing it in:
+        If this is true, I do not want the 1st sample in each serie, the procedurla
+        blank, so let´s remove it! how? by removing it in:
             .m/V data
             .Ceq-C0 data
             .Ceq data (Fro Kd calc only used)
@@ -3488,38 +3515,50 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
 
 
 
-#%%########## 1.20) ICPMS plotter blank appart Average of replicates, 3 bentonites! #############
+#%%### 1.20) ICPMS plotter blank Average of replicates, 3 bentonites! #############
 #####################################
 
-def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
-                              x_BK, std_x_BK, df_mean_cps_BK, df_std_cps_BK,
-                              x_S, std_x_S, df_mean_cps_S, df_std_cps_S,
-                           x_label, y_label, folder_name = 'Plots', Logscale = False,
-                           plot_everything = False, pre_title_plt = "Concentration of ", 
-                           pre_save_name = 'Conc', Elem_rel = Isot_rel ):
+def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
+        x_BK, std_x_BK, df_mean_cps_BK, df_std_cps_BK,
+        x_S, std_x_S, df_mean_cps_S, df_std_cps_S,
+        x_label, y_label, folder_name = 'Plots', Logscale = False,
+        Blank_here = False, plot_everything = False, 
+        pre_title_plt = "Concentration of ", 
+        pre_save_name = 'Conc', Elem_rel = Isot_rel ):
     '''
-    Function that will plots of the data from the ICPMS (cps) vs another variable, initially
-    time, the cps and the rstd, for the 3 bentonites, plotting the average values ideally (output of average computer).
+    Function that will plots of the data from the ICPMS (cps) vs another variable, 
+    initially time, the cps and the rstd, for the 3 bentonites, plotting the average 
+    values ideally (output of average computer). It will also allow to plot the 
+    blank as a horizontal line, if desired.
     
     *Inputs:
-        .x_S/BK/T: x axis variable in the plot (mean values) for each bentonite. This should be a df series
+        .x_S/BK/T: x axis variable in the plot (mean values) for each bentonite. 
+        This should be a df series
         .std_x_T/BK/S: df Series with the std of the x variable for each bentonite
-        .df_mean_cps_T/BK/S: dataframes containing the cps, but average values (1,2,3,4, etc) for the 3 benotnites
+        .df_mean_cps_T/BK/S: dataframes containing the cps, but average values 
+            (1,2,3,4, etc) for the 3 benotnites
             .From run of the mean and std calc
-        .df_std_cps_T/BK/S: df containing the std of the mean values of the cps of the 3 benotnites
+        .df_std_cps_T/BK/S: df containing the std of the mean values of the cps 
+            of the 3 benotnites
         .x_label: string that will be the x label for the plot (for math stuff, 
                                     use $$. eg: '$\Delta t[h]$')
         .y_label: string that will be the y label for the plot
-        .folder_name: string defining the name of the folder to create to store the plots
-            default value: 'Plots'
-        . plot_everything: string defining if you want to plot all the elements or only the
-            relevant ones. Default value: False (only plot relevants)
-        .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
-                Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
-        . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
-        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
-            in a specific folder. Default value: (see above in the script)   
-        .Logscale: string to say if you want the x and y axis in logscale or not. Default: False
+        .folder_name: string defining the name of the folder to create to store 
+            the plots default value: 'Plots'
+        .Blank_here: True if the df contain the blank, to plot it. Default: False
+        . plot_everything: string defining if you want to plot all the elements 
+            or only the relevant ones. Default value: False (only plot relevants)
+        .pre_title_plt : title of the graph, part that appears before the name 
+            of the elements (thats why pre title). Detault value: 
+            "Concentration of " (note the space after of, so the element is not
+            together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', 
+            giving Conc_Mg24.png for ex    
+        .Elem_rel: array containing the name of the relevant elemtns, which are
+            the elements that will be saved in a specific folder. Default 
+            value: (see above in the script)   
+        .Logscale: string to say if you want the x and y axis in logscale or not.
+            Default: False
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!
@@ -3553,97 +3592,194 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
     
     ######### 2) plotting ###############
     '''
-    This is a loop plot, so beware, will take long if you plot all the elements (280) (2-3mins!).
-    I inlcude in if statement the numer of replicates, currently only 2 and 3!
-    I need to do a for loop with an index, since I have several df here!
+    This is a loop plot, so beware, will take long if you plot all the elements 
+    (280) (2-3mins!).I inlcude in if statement the numer of replicates, currently
+    only 2 and 3!I need to do a for loop with an index, since I have several df here!
 
-    28/3/24 I generalize this making x variable (and std) a df df, not only a df.series
+    28/3/24 I generalize this making x variable (and std) a df df, not only a 
+    df.series
     '''
     t_start = tr.time()       #[s] start time of the plot execution
     
     ######if all x and std are pd.series
     if isinstance(x_T, pd.Series):          #if x, std_x are df.series (base case)
             #Note I check only one, but I assume the 3 are the same type
-        for i in list( range(df_mean_cps_T.shape[0] ) ):       #Loop thorugh all rows (elements)
+        for i in list( range(df_mean_cps_T.shape[0] ) ): 
+                            #Loop thorugh all rows (elements)
 
-            if df_mean_cps_T.index[i][:-4] in Elem_rel:                      #if the element is relevant
-            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
-            #in order to check with the list!
-                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22, wrap=True)     #title
-            #
-                plt.errorbar(x_T, df_mean_cps_T.loc[df_mean_cps_T.index[i] ], df_std_cps_T.loc[df_mean_cps_T.index[i] ],
-                         std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
-                plt.errorbar(x_BK, df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
-                         std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
-                plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i] ], df_std_cps_S.loc[df_mean_cps_S.index[i] ],
-                         std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
+            if df_mean_cps_T.index[i][:-4] in Elem_rel: #if the element is relevant
+            #note the -4 is so that that element contain only name and number, 
+            #like Mg26, not Mg26 (MR), in order to check with the list!
+                plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22,
+                          wrap=True)     #title
+                if Blank_here:  #If Blank is here, to plot it
+                    plt.hlines(df_mean_cps_T.loc[df_mean_cps_T.index[i]][0],
+                               min(x_T), max(x_T), color = Bent_color['Tur'],
+                               label = 'MS Tur')
+                    plt.errorbar(x_T[1:], df_mean_cps_T.loc[df_mean_cps_T.index[i]][1:], 
+                             df_std_cps_T.loc[df_mean_cps_T.index[i] ][1:],
+                         std_x_T[1:], 'o--', markersize = 5, color = Bent_color['Tur'],
+                         label = '<Tur>')    #Tur bentonite
+                    plt.hlines(df_mean_cps_BK.loc[df_mean_cps_T.index[i]][0],
+                               min(x_BK), max(x_BK), color = Bent_color['BK'],
+                               label = 'MS BK')
+                    plt.errorbar(x_BK[1:], df_mean_cps_BK.loc[df_mean_cps_BK.index[i]][1:], 
+                             df_std_cps_BK.loc[df_mean_cps_BK.index[i] ][1:],
+                         std_x_BK[1:], 'ro--', markersize = 5, color = Bent_color['BK'],
+                         label = '<BK>')    #BK bentonite
+                    plt.hlines(df_mean_cps_S.loc[df_mean_cps_S.index[i]][0],
+                               min(x_T), max(x_T), color = Bent_color['Sard'],
+                               label = 'MS Sar')
+                    plt.errorbar(x_S[1:], df_mean_cps_S.loc[df_mean_cps_S.index[i]][1:], 
+                             df_std_cps_S.loc[df_mean_cps_S.index[i] ][1:],
+                         std_x_S[1:], 'ro--', markersize = 5, color = Bent_color['Sard'],
+                         label = '<Sar>')    #Sar bentonite
+                else:               #no blank plot
+                    plt.errorbar(x_T, df_mean_cps_T.loc[df_mean_cps_T.index[i]], 
+                             df_std_cps_T.loc[df_mean_cps_T.index[i] ],
+                         std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'],
+                         label = '<Tur>')    #Tur bentonite
+                    plt.errorbar(x_BK, df_mean_cps_BK.loc[df_mean_cps_BK.index[i]], 
+                             df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
+                         std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'],
+                         label = '<BK>')    #BK bentonite
+                    plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i]], 
+                             df_std_cps_S.loc[df_mean_cps_S.index[i] ],
+                         std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'],
+                         label = '<Sar>')    #Sar bentonite
                 #[1:] not to plot sample 1, the blank, which will be a horizontal line!
             #
                 plt.ylabel(y_label, fontsize= Font)              #ylabel
                 plt.xlabel(x_label, fontsize = Font)
-                plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                plt.tick_params(axis='both', labelsize= Font)    #size of axis
                 if Logscale:            #if True
                     plt.yscale('log') 
                     plt.xscale('log') 
                 plt.minorticks_on()             #enabling minor grid lines
-                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5) 
+                        #which both to plot major and minor grid lines
                 plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +
+                        '.png', format='png', bbox_inches='tight')
             #
             else:        #if the element is not relevant
                 if plot_everything == True :     #if you want to plot all the elements (may be desired?)
                 #    
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22, wrap=True)     #title
-                    plt.errorbar(x_T, df_mean_cps_T.loc[df_mean_cps_T.index[i] ], df_std_cps_T.loc[df_mean_cps_T.index[i] ],
-                         std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
-                    plt.errorbar(x_BK, df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
-                         std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
-                    plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i] ], df_std_cps_S.loc[df_mean_cps_S.index[i] ],
-                         std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
-                    plt.ylabel(y_label, fontsize= Font)                #ylabel
+                    if Blank_here:  #If Blank is here, to plot it
+                        plt.hlines(df_mean_cps_T.loc[df_mean_cps_T.index[i]][0],
+                                   min(x_T), max(x_T), color = Bent_color['Tur'],
+                                   label = 'MS Tur')
+                        plt.errorbar(x_T[1:], df_mean_cps_T.loc[df_mean_cps_T.index[i]][1:], 
+                                 df_std_cps_T.loc[df_mean_cps_T.index[i] ][1:],
+                             std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'],
+                             label = '<Tur>')    #Tur bentonite
+                        plt.hlines(df_mean_cps_BK.loc[df_mean_cps_T.index[i]][0],
+                                   min(x_BK), max(x_BK), color = Bent_color['BK'],
+                                   label = 'MS BK')
+                        plt.errorbar(x_BK[1:], df_mean_cps_BK.loc[df_mean_cps_BK.index[i]][1:], 
+                                 df_std_cps_BK.loc[df_mean_cps_BK.index[i] ][1:],
+                             std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'],
+                             label = '<BK>')    #BK bentonite
+                        plt.hlines(df_mean_cps_S.loc[df_mean_cps_S.index[i]][0],
+                                   min(x_T), max(x_T), color = Bent_color['Sard'],
+                                   label = 'MS Sar')
+                        plt.errorbar(x_S[1:], df_mean_cps_S.loc[df_mean_cps_S.index[i]][1:], 
+                                 df_std_cps_S.loc[df_mean_cps_S.index[i] ][1:],
+                             std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'],
+                             label = '<Sar>')    #Sar bentonite
+                    else:               #no blank plot
+                        plt.errorbar(x_T, df_mean_cps_T.loc[df_mean_cps_T.index[i]], 
+                                 df_std_cps_T.loc[df_mean_cps_T.index[i] ],
+                             std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'],
+                             label = '<Tur>')    #Tur bentonite
+                        plt.errorbar(x_BK, df_mean_cps_BK.loc[df_mean_cps_BK.index[i]], 
+                                 df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
+                             std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'],
+                             label = '<BK>')    #BK bentonite
+                        plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i]], 
+                                 df_std_cps_S.loc[df_mean_cps_S.index[i] ],
+                             std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'],
+                             label = '<Sar>')    #Sar bentoniteplt.ylabel(y_label, fontsize= Font)                #ylabel
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if Logscale:        #if True, do it
                         plt.yscale('log') 
                         plt.xscale('log') 
                     plt.minorticks_on()             #enabling minor grid lines
-                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
                     plt.grid(which = 'major')
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
-                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +
+                        '.png', format='png', bbox_inches='tight')
                     #To save plot in folder
         
             plt.close()             #to clsoe the plot not to consume too much resources
             
     elif isinstance(x_T, pd.DataFrame):       #######if x, std_x are df DF!!
-        for i in list( range(df_mean_cps_T.shape[0] ) ):       #Loop thorugh all rows (elements)
+        for i in list( range(df_mean_cps_T.shape[0] ) ): #Loop thorugh all rows (elements)
 
-            if df_mean_cps_T.index[i][:-4] in Elem_rel:                      #if the element is relevant
+            if df_mean_cps_T.index[i][:-4] in Elem_rel: #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22, wrap=True)     #title
-            #
-                plt.errorbar(x_T.loc[x_T.index[i]], df_mean_cps_T.loc[df_mean_cps_T.index[i] ], df_std_cps_T.loc[df_mean_cps_T.index[i] ],
-                         std_x_T.loc[std_x_T.index[i]], 'o--', markersize = 5, color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
-                plt.errorbar(x_BK.loc[x_BK.index[i]], df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
-                         std_x_BK.loc[std_x_BK.index[i]], 'o--', markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
-                plt.errorbar(x_S.loc[x_S.index[i]], df_mean_cps_S.loc[df_mean_cps_S.index[i] ], df_std_cps_S.loc[df_mean_cps_S.index[i] ],
-                         std_x_S.loc[std_x_S.index[i]], 'o--', markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
+                plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], 
+                          fontsize=22, wrap=True)     #title
+                if Blank_here:      #To plot the blank
+                    plt.errorbar(x_T.loc[x_T.index[i]][1:], 
+                             df_mean_cps_T.loc[df_mean_cps_T.index[i]][1:], 
+                             df_std_cps_T.loc[df_mean_cps_T.index[i]][1:],
+                         std_x_T.loc[std_x_T.index[i]][1:], 'o--', markersize = 5, 
+                         color = Bent_color['Tur'], label = '<Tur>') 
+                    plt.hlines(df_mean_cps_T.loc[df_mean_cps_T.index[i]][0],
+                               min(x_T.loc[x_T.index[i]]), max(x_T.loc[x_T.index[i]]),
+                               color = Bent_color['Tur'], label = 'MS Tur')
+                    plt.errorbar(x_BK.loc[x_BK.index[i]][1:], 
+                             df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ][1:], 
+                             df_std_cps_BK.loc[df_mean_cps_BK.index[i] ][1:],
+                         std_x_BK.loc[std_x_BK.index[i]][1:], 'o--', markersize = 5, 
+                         color = Bent_color['BK'], label = '<BK>')    #BK bentonite
+                    plt.hlines(df_mean_cps_BK.loc[df_mean_cps_BK.index[i]][0],
+                               min(x_BK.loc[x_BK.index[i]]), max(x_BK.loc[x_BK.index[i]])
+                               ,color = Bent_color['BK'], label = 'MS BK')
+                    plt.errorbar(x_S.loc[x_S.index[i]][1:], 
+                             df_mean_cps_S.loc[df_mean_cps_S.index[i] ][1:], 
+                             df_std_cps_S.loc[df_mean_cps_S.index[i] ][1:],
+                         std_x_S.loc[std_x_S.index[i]][1:], 'o--', 
+                         markersize = 5, color = Bent_color['Sard'], label = '<Sar>')
+                    plt.hlines(df_mean_cps_S.loc[df_mean_cps_S.index[i]][0],
+                               min(x_S.loc[x_S.index[i]]), max(x_S.loc[x_S.index[i]])
+                               ,color = Bent_color['Sard'], label = 'MS S')
+                else:       #no blank plot
+                    plt.errorbar(x_T.loc[x_T.index[i]], 
+                             df_mean_cps_T.loc[df_mean_cps_T.index[i] ], 
+                             df_std_cps_T.loc[df_mean_cps_T.index[i] ],
+                         std_x_T.loc[std_x_T.index[i]], 'o--', markersize = 5, 
+                         color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
+                    plt.errorbar(x_BK.loc[x_BK.index[i]], 
+                             df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], 
+                             df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
+                         std_x_BK.loc[std_x_BK.index[i]], 'o--', markersize = 5, 
+                         color = Bent_color['BK'], label = '<BK>')    #BK bentonite
+                    plt.errorbar(x_S.loc[x_S.index[i]], 
+                             df_mean_cps_S.loc[df_mean_cps_S.index[i] ], 
+                             df_std_cps_S.loc[df_mean_cps_S.index[i] ],
+                         std_x_S.loc[std_x_S.index[i]], 'o--', 
+                         markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
             #
                 plt.ylabel(y_label, fontsize= Font)              #ylabel
                 plt.xlabel(x_label, fontsize = Font)
-                plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                plt.tick_params(axis='both', labelsize= Font)   #size of axis
                 if Logscale:            #if True
                     plt.yscale('log') 
                     plt.xscale('log') 
                 plt.minorticks_on()             #enabling minor grid lines
-                plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5) #which both to plot major and minor grid lines
                 plt.grid(which = 'major')
                 plt.legend(fontsize = Font)
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -3653,29 +3789,40 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
                 if plot_everything == True :     #if you want to plot all the elements (may be desired?)
                 #    
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                    plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22, wrap=True)     #title
-                    plt.errorbar(x_T.loc[x_T.index[i]], df_mean_cps_T.loc[df_mean_cps_T.index[i] ], df_std_cps_T.loc[df_mean_cps_T.index[i] ],
-                         std_x_T.loc[std_x_T.index[i]], 'o--', markersize = 5, color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
-                    plt.errorbar(x_BK.loc[x_BK.index[i]], df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
-                         std_x_BK.loc[std_x_BK.index[i]], 'o--', markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
-                    plt.errorbar(x_S.loc[x_S.index[i]], df_mean_cps_S.loc[df_mean_cps_S.index[i] ], df_std_cps_S.loc[df_mean_cps_S.index[i] ],
-                         std_x_S.loc[std_x_S.index[i]], 'o--', markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
+                    plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], 
+                              fontsize=22, wrap=True)     #title
+                    plt.errorbar(x_T.loc[x_T.index[i]], 
+                                 df_mean_cps_T.loc[df_mean_cps_T.index[i] ], 
+                                 df_std_cps_T.loc[df_mean_cps_T.index[i] ],
+                         std_x_T.loc[std_x_T.index[i]], 'o--', markersize = 5, 
+                         color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
+                    plt.errorbar(x_BK.loc[x_BK.index[i]], 
+                                 df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], 
+                                 df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
+                         std_x_BK.loc[std_x_BK.index[i]], 'o--', 
+                         markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
+                    plt.errorbar(x_S.loc[x_S.index[i]], 
+                                 df_mean_cps_S.loc[df_mean_cps_S.index[i] ], 
+                                 df_std_cps_S.loc[df_mean_cps_S.index[i] ],
+                         std_x_S.loc[std_x_S.index[i]], 'o--', markersize = 5,
+                         color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
                     #
                     plt.ylabel(y_label, fontsize= Font)                #ylabel
                     plt.xlabel(x_label, fontsize = Font)
-                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                    plt.tick_params(axis='both', labelsize= Font)  #size of axis
                     if Logscale:        #if True, do it
                         plt.yscale('log') 
                         plt.xscale('log') 
                     plt.minorticks_on()             #enabling minor grid lines
-                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5) #which both to plot major and minor grid lines
                     plt.grid(which = 'major')
                     plt.legend(fontsize = Font)            
                     plt.savefig(folder_name +'/' +  
-                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +'.png', format='png', bbox_inches='tight')
+                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +
+                        '.png', format='png', bbox_inches='tight')
                     #To save plot in folder
         
-            plt.close()             #to clsoe the plot not to consume too much resources
+            plt.close()     #to clsoe the plot not to consume too much resources
             
         
 
@@ -3696,6 +3843,8 @@ def ICPMS_Plotter_mean_3 (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
 
     
         
+
+    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@

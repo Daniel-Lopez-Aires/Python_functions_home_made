@@ -371,6 +371,10 @@ def ICPMS_Df_corrector (df_data, Df):
                                 columns = df_data.columns, 
                                 index = df_data.index)  #computing the correction
     
+    #Just in case that df is not numeric (depends on Df mostly), I will convert
+    #it to numeric
+    
+    df_corrected = df_corrected.apply(pd.to_numeric)
     
     ########### 2) Return #############
     return df_corrected             #return
@@ -1509,9 +1513,18 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2,
     To avoid the div0 error, which occurs when I have 0 as a values in the df, 
     which I have for all the elements that were not found by ICPMS, I can just 
     put NaN instead, since that will not give the Div0 error when computing Kd
+    
+    13/2/25, To do this, I was doing:
+        df_data.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
+                                                  #to avoid Div0 error!
+        
+    But that introduced a problem, NaN in the ppb values, since I do inplace =
+    True. I want to do that mod only for this calcs, so I should create a new
+    variable.
     '''
     
-    df_data.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
+    df_data_aux = df_data.copy()
+    df_data_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
                                               #to avoid Div0 error!
     
     
@@ -1544,8 +1557,8 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2,
     '''
     
     if Nrepl == 2:          #Standard case, 2 replicates
-        df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ] #1st replicate
-        df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ] #replicate 2
+        df_1 = df_data_aux.iloc[ :, 0: round( ( df_data_aux.shape[1] ) / 2 ) ] #1st replicate
+        df_2 = df_data_aux.iloc[ :, round( ( df_data_aux.shape[1] ) / 2 ) :  ] #replicate 2
     
         df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 2 ) ]      #1st replicate
         df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 2 ) :  ]       #replicate 2
@@ -1602,9 +1615,9 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2,
 
     elif Nrepl == 3:            #3 replicates
     #Gathering the replicates sepparately    
-        df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
-        df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
-        df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
+        df_1 = df_data_aux.iloc[:, : round(df_data_aux.shape[1] / 3)]
+        df_2 = df_data_aux.iloc[:, round(df_data_aux.shape[1] / 3): 2*round(df_data_aux.shape[1] / 3)]
+        df_3 = df_data_aux.iloc[:, 2*round(df_data_aux.shape[1] / 3) :]
         
         df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 3 ) ]      
                                                 #1st replicate
@@ -1758,13 +1771,16 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
     df_m_be = df_m_be.apply(pd.to_numeric) 
 
     '''
-    To avoid the div0 error, which occurs when I have 0 as a values in the df, which I have for all the elements
-    that were not found by ICPMS, I can just put NaN instead, since that will not give the Div0 error when computing Kd
+    To avoid the div0 error, which occurs when I have 0 as a values in the df, 
+    which I have for all the elements that were not found by ICPMS, I can just
+    put NaN instead, since that will not give the Div0 error when computing Kd
     '''
     
-    df_samples.replace(0, np.nan, inplace=True)                    #replace 0 values with NaN, to avoid Div0 error!
+    df_samples.replace(0, np.nan, inplace=True) 
+                #replace 0 values with NaN, to avoid Div0 error!
     
-    if df_m_liq== False:    #if no data for the volume of the liquid provided, then set the mass of the liquid initially
+    if df_m_liq== False:    #if no data for the volume of the liquid provided, 
+                            #then set the mass of the liquid initially
         df_m_liq = df_VoM_disol - df_m_be 
     
     
@@ -3860,42 +3876,48 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
 def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
             y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
     '''
-    Function to do and compute some variables relevant to the PSO (pseudo second order) kinetic model. THis model
-    comes from
+    Function to do and compute some variables relevant to the PSO (pseudo second 
+    order) kinetic model. THis model comes from
     d(Q(t))7dt = K * (Q_e - Q(t))**2,
     
-    where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. THe solution of that can be casted in linear form:
+    where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. THe solution of 
+    that can be casted in linear form:
         t/Q(t) = 1/KQ_e**2 + t/Q_e
         
-    so, plotting t/Q(t) vs t is linear (y = ax + b), being 1/Q_e the slope, and 1/KQ_e**2 the intercept. 
+    so, plotting t/Q(t) vs t is linear (y = ax + b), being 1/Q_e the slope, 
+    and 1/KQ_e**2 the intercept. 
     For the fit I will use my fit function.
     
-    You may need to select certain time intervals, and not all of them. Note the units are defined by t and t/Qt!
+    You may need to select certain time intervals, and not all of them. Note 
+    the units are defined by t and t/Qt!
     
-    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe you need to modify it in the future??????
+    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe 
+    you need to modify it in the future??????
     
     *Inputs
-        .t, Q: df series containing the time and Q(t) data. Expected the averaged values
-            . Must have same index as the df columns in order to plot them!!
-        .delta_t/Q: df with the errors of t and Q. Default value = 0, since I do not use them!
+        .t, Q: df series containing the time and Q(t) data. Expected the averaged 
+        values. They Must have same index as the df columns in order to plot them!!
+        .delta_t/Q: df with the errors of t and Q. Default value = 0, since I do
+        not use them!
         .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
         .post_title = '' : title to add after 'Linear fit '
-        .save_name = filename of the fit plot, if it wants to be save. Default value = '' ==> no saving.
-                    this variable is followed by .png for savinf
+        .save_name = filename of the fit plot, if it wants to be save. Default 
+        value = '' ==> no saving.this variable is followed by .png for savinf
         .Color = 'b': color for the plot
         .Folder_name: folder name, where to store the fit plots
     
     
     *Outputs
-        .df series with all the relevant info, from the fit and computed quantities, errors 
-        (quadratic propagation) included The input units define those units!! Remember saltpepper!
+        .df series with all the relevant info, from the fit and computed 
+        quantities, errors (quadratic propagation) included The input units 
+        define those units!! Remember saltpepper!
     
     
     '''    
     ############# 0) Folder creation ###############
     '''
-    First the folder to store the plots will be created. IN the main folder a subfolder
-    with the relevant elements, to be given, will be created
+    First the folder to store the plots will be created. IN the main folder 
+    a subfolder with the relevant elements, to be given, will be created
     '''
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
@@ -3910,13 +3932,15 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
     #I need to compute t/Q(t) to do the PSO fit!
     
     t__Q = t / Q          #t/Q(t) for S
-    Delta_t__Q = t__Q * np.sqrt((delta_Q / Q )**2 + (delta_t /t )**2 )      #error, unused!!
+    Delta_t__Q = np.abs(t__Q) * np.sqrt((delta_Q / Q )**2 + (delta_t /t )**2 )  
+                #error, unused!!
     
     ############# 2)Fit ######################
     
     fit = Fits.LinearRegression(t, t__Q, delta_t, Delta_t__Q,
                                    x_label = x_label, y_label = y_label, 
-                                   Color = Color, save_name = folder_name +'/' + save_name, post_title = post_title)       
+                                   Color = Color, 
+                save_name = folder_name +'/' + save_name, post_title = post_title)       
                             #Fit (i dont use npo variable, fit variable)
     
     ################ 3) Model parameters ################

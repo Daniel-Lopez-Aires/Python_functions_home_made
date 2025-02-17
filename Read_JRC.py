@@ -1700,9 +1700,9 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
                         df_m_liq = False, ret_Co__Ceq = False, 
                         removed_sample_1 = True):
     '''
-    Function that will compute the distribution constant Kd and the adsorption quantity
-    q_e from the ppb data obtained with ICPMS. Note that data must be corrected
-    for the dilutions factors. 
+    Function that will compute the distribution constant Kd and the adsorption 
+    quantity Q_e from the ppb data obtained with ICPMS. Note that data must be
+    corrected for the dilutions factors. 
     
     Based on the blk corrector function. The sorbed quantity Q_e is:
         Q_e = (C_0 - C_e) * V/m
@@ -1716,47 +1716,57 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
         V = volume of the solution [L]
         Q_e = absorbed quantity in equil [g soluto / g bent]
         
-    In our case, that we measure C in ppb = ng soluto /g disol, we need to mutiply by g tot / m bent, to
-    achieve the same units in Q_e!! Then our equations are:
+    In our case, that we measure C in ppb = ng soluto /g disol, we need to 
+    mutiply by g tot / m bent, to achieve the same units in Q_e!! Then our 
+    equations are:
         Q_e = (C_0 - C_e) * m_tot /m
         K_d = Q_e / C_e
         
-    Improvement made thanks to Espe (3/2024). Note that after the solid liquid sepparation,
-    you retrieve a bit less of liquid, since the bentonite adsorbs some. This means that the 
-    concentration you measure with the ICP-MS is the concentration of this liquid, 
-    with mass m_liq_e <= m_liq_0. Then the Q_e should be calculated like this, 
-    using that final mass!.
+    Improvement made thanks to Espe (3/2024). Note that after the solid liquid 
+    sepparation,
+    you retrieve a bit less of liquid, since the bentonite adsorbs some. This
+    means that the concentration you measure with the ICP-MS is the concentration
+    of this liquid, with mass m_liq_e <= m_liq_0. Then the Q_e should be 
+    calculated like this, using that final mass!.
     
     
-    Note that in the case of no equilibrium (eg Kinetics exp), Q_e, Kd ==> Q_e(t), K(t). 
+    Note that in the case of no equilibrium (eg Kinetics exp), Q_e, Kd ==> 
+    Q_e(t), K(t). 
     
     Here we have different moher solutions, whihc is the main different
-    from the other function, where all the samples had a common mother solution (C_0). 
-    Here we have several C_0!
+    from the other function, where all the samples had a common mother solution 
+    (C_0). Here we have several C_0!
 
-    Necessary that the data contain no Div0, ensure in the excel by using the iferror(operation, 0) function!
+    Necessary that the data contain no Div0, ensure in the excel by using the 
+    iferror(operation, 0) function!
     
-    Note this requires a df series with the volume, that you were not measuring in the first exp
-    (up to 8/23). Note ten that units are involved!. If measuring mass ing and volumes in L, Q.
+    Note this requires a df series with the volume, that you were not measuring
+    in the first exp (up to 8/23). Note ten that units are involved!. If 
+    measuring mass ing and volumes in L, Q.
     
-    Note as well that the 1st sample/replicate is the procedural blank, not used here!!!!!!
+    Note as well that the 1st sample/replicate is the procedural blank, 
+    not used here!!
     beware if first sample is not procedural blank!!!!!!!
 
 
     *Inputs:
-        .df_samples: dataframe containing the data, the full data, with the 3 replicates. Should be Dfs corrected
-            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 
-            Note the 1st sample in each replicate is removed (procedural blank)
+        .df_samples: dataframe containing the data, the full data, with the 3 
+        replicates. Should be Dfs corrected
+            Format: isotopes as index, columns the samples, 1st 1st replicate, 
+            then 2nd replicate.
         .df_mother_sol: df containng the mother solution data, C_0
-        .df_VoM_disol: pd series containing the volume [mL] added to the bottle of the solution, BIC, 
-        or whatever. normally 50ml OR the total mass of the solution [g]. If df_samples in ppb, this must be the total mass
-            so that Q_e is in g/g !
-        .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle (normally 250mg)
+        .df_VoM_disol: pd series containing the volume [mL] added to the bottle 
+        of the solution, BIC, or whatever. normally 50ml OR the total mass of 
+        the solution [g]. If df_samples in ppb, this must be the total mass
+        so that Q_e is in g/g !
+        .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle 
+        (normally 250mg)
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
         ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
-        .removed_sample_1: string to say if you want to remove the 1st sample (number 1) or not 
-            (True means remove),
-            that it is the procedural blank. Default value: True (like I was doing before 7/24!)
+        .removed_sample_1: string to say if you want to remove the 1st sample 
+        (number 1) or not (True means remove),
+            that it is the procedural blank. Default value: True (like I was 
+                                                    doing before 7/24!)
     
     *Outputs (in that order):
         .df with the Kd data
@@ -1776,8 +1786,9 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
     put NaN instead, since that will not give the Div0 error when computing Kd
     '''
     
-    df_samples.replace(0, np.nan, inplace=True) 
-                #replace 0 values with NaN, to avoid Div0 error!
+    df_samples_aux = df_samples.copy()
+    df_samples_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
+                                              #to avoid Div0 error!    
     
     if df_m_liq== False:    #if no data for the volume of the liquid provided, 
                             #then set the mass of the liquid initially
@@ -1791,16 +1802,16 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
         2) 1) * V/m = q_e
         3) 2)	1/C_eq = Kd
     
-    I must treat the 2 experiments are different, I should substract the blank 1 to the 1st emasurements
-    and the 2 to the others. Since I ordered it in the right way (1st replicacte 1, then replicate 2, 
-    I could) split it easily :D
+    I must treat the 2 experiments are different, I should substract the blank 1
+    to the 1st emasurements and the 2 to the others. Since I ordered it in the 
+    right way (1st replicacte 1, then replicate 2, I could) split it easily :D
             df.shape gives the shape of the df, n_rows, n_columns
     
     Note the df have number of samples * 2 replicates columns.
     
-    Then, I will create a new dataframe substracting that data. To do so, I need to get rid
-    of the isotopes column, since is text, and then add it again. Watch, the substraction is 
-    easy with a pandas mehotd.
+    Then, I will create a new dataframe substracting that data. To do so, I 
+    need to get rid of the isotopes column, since is text, and then add it again.
+    Watch, the substraction is easy with a pandas mehotd.
 
     I shuold then remove those columns
     from there, and replace negatives values for 0, for a good plot
@@ -1818,29 +1829,30 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
     
     #So, lets split into the 2 replicates!
     '''
-    For 2 replicates its easy, for 3 it could be more tricky. Beware! TO create a function you should say
-    the number of replicates and so!
+    For 2 replicates its easy, for 3 it could be more tricky. Beware! TO create 
+    a function you should say the number of replicates and so!
     '''
     
     #Gathering the replicates sepparately    
-    df_1 = df_samples.iloc[:, : round(df_samples.shape[1] / 3)]
-    df_2 = df_samples.iloc[:, round(df_samples.shape[1] / 3): 2*round(df_samples.shape[1] / 3)]
-    df_3 = df_samples.iloc[:, 2*round(df_samples.shape[1] / 3) :]
+    df_1 = df_samples_aux.iloc[:, : round(df_samples_aux.shape[1] / 3)]
+            #1st replicate
+    df_2 = df_samples_aux.iloc[:, round(df_samples_aux.shape[1] / 3): 2*round(df_samples_aux.shape[1] / 3)]
+    df_3 = df_samples_aux.iloc[:, 2*round(df_samples_aux.shape[1] / 3) :]
         
-    df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 3 ) ]      #1st replicate
+    df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 3 ) ]     
     df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 3 ): 2* round( 
                     ( df_VoM_disol.shape[0] ) / 3 ) ]      
-    df_VoM_3 = df_VoM_disol.iloc[ 2 *round( ( df_VoM_disol.shape[0] ) / 3 ) : ]      #3rd replicate
+    df_VoM_3 = df_VoM_disol.iloc[ 2 *round( ( df_VoM_disol.shape[0] ) / 3 ) : ]      
         
-    df_m_1 = df_m_be.iloc[ : round( ( df_m_be.shape[0] ) / 3 ) ]      #1st replicat
-    df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 3 ) : 2* round( ( df_m_be.shape[0] ) / 3 )] #2nd replicat
-    df_m_3 = df_m_be.iloc[ 2 *round( ( df_m_be.shape[0] ) / 3 ) : ]      #3rd replicat
+    df_m_1 = df_m_be.iloc[ : round( ( df_m_be.shape[0] ) / 3 ) ]     
+    df_m_2 = df_m_be.iloc[ round( ( df_m_be.shape[0] ) / 3 ) : 2* round( ( df_m_be.shape[0] ) / 3 )] 
+    df_m_3 = df_m_be.iloc[ 2 *round( ( df_m_be.shape[0] ) / 3 ) : ]     
     
     #1) 
     '''
-    Note that I have N different mother solutions, which also means N different samples. I could
-    do that with a for loop, but I found a better version. I can ubstrcat df ignoring their indexes
-    by doing df.values!
+    Note that I have N different mother solutions, which also means N different
+    samples. I could do that with a for loop, but I found a better version. 
+    I can ubstrcat df ignoring their indexes by doing df.values!
     '''
     N = df_mother_sol.shape[1]       #number of samples in the mother solution
     
@@ -1860,12 +1872,14 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
             .Ceq-C0 data
             .Ceq data (Fro Kd calc only used)
         '''
-    #Since 1st sample for each replicate is the procedural bllank, that IN PRINCIPLE is not needed, I remove it!!     
-        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-        dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
-        dfCeq__C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   #drop blank column
+    #Since 1st sample for each replicate is the procedural bllank, that 
+    #IN PRINCIPLE is not needed, I remove it!!     
+        dfCeq__C0_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)   
+                #drop blank column
+        dfCeq__C0_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)   
+        dfCeq__C0_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)   
         #        
-        df_m_1 = df_m_1[1:]         #fast way to delete 1st elemen (blank) in a series
+        df_m_1 = df_m_1[1:]  #fast way to delete 1st elemen (blank) in a series
         df_m_2 = df_m_2[1:]
         df_m_3 = df_m_3[1:]
         #
@@ -1873,7 +1887,8 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
         df_VoM_2 = df_VoM_2[1:]
         df_VoM_3 = df_VoM_3[1:]
         #
-        df_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)     #removing sample 1 in repl 1
+        df_1.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)     
+                            #removing sample 1 in repl 1
         df_2.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
         df_3.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)
         print('####################################')
@@ -1886,9 +1901,8 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
     dfC0__Ceq_3 = - dfCeq__C0_3
     
     ######## 2) Apply the V/ m giving q_e (from Df_exp)
-    #For this I ned to remove the blank columns to both m and V, since from C0-Ceq they are removed!
-
-
+    #For this I ned to remove the blank columns to both m and V, since from 
+    #C0-Ceq they are removed!
         
     #And now I can operate:
         

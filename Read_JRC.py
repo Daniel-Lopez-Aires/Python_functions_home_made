@@ -16,6 +16,8 @@ new: plt.minorticks_on()             #enabling minor grid lines
 plt.grid(which = 'minor', linestyle=':', linewidth=0.5) 
                     #which both to plot major and minor grid lines
 plt.grid(which = 'major')
+
+For printing a break of line, \n goes at the end of the print, not at the beginning!
 """
 
 #%%######### 0) General packages ###########
@@ -35,17 +37,28 @@ sys.path.insert(0,
 import Fits, Peak_analyis_spectra
 import time as tr                                #to measure the running time
 from scipy.optimize import curve_fit             #Fit tool
+import warnings
+warnings.filterwarnings('ignore')       #To ignore and not print warning
+warnings.simplefilter("ignore")         #to ignore all warnings
 
 #############################################################
 
 #Useful stuff
 Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'} 
     #'Tur' :  '#EEE8AA' is perfect, but not for real visulaiztion xD
-Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23', #bentonite elements
-            'Sr88', 'Cs133', 'Eu151', 'La139', 'U238']     #CL eleements
+# Isot_rel = ['Si28', 'Al27', 'Mg24', 'Mn55', 'Fe56', 'Ca44', 'Na23', #bentonite elements
+#             'Sr88', 'Cs133', 'Eu151', 'La139', 'U238']     #CL eleements
+#             #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
+#             #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from
+#             #Ba oxides,so for low Eu concentrations, Eu151 better!! [Stef]        
+
+Isot_rel = ['Si28(MR)', 'Al27(MR)', 'Mg24(MR)', 'Mn55(MR)', 'Fe56(MR)', 
+            'Ca44(MR)', 'Na23(MR)', #bentonite elements
+            'Sr88(LR)', 'Cs133(LR)', 'Eu151(LR)', 'Eu153(LR)',
+            'La139(LR)', 'U238(LR)']     #CL eleements
             #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
             #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from
-            #Ba oxides,so for low Eu concentrations, Eu151 better!! [Stef]        
+            #Ba oxides,so for low Eu concentrations, Eu151 better!! [Stef]   
 
 """
 Isot rele Cs are from the Cs sep
@@ -1961,30 +1974,38 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
     
 
     *Inputs:
-        .df_data: dataframe containing the data, the full data, with the 2 replicates. Should be Dfs corrected
-            Format: isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
-            this function!!!!
+        .df_data: dataframe containing the data, the full data, with the 2 
+        or 3 replicates. Should be Dfs corrected
+            Format: isotopes as index, columns the samples, 1st 1st replicate, 
+            then 2nd replicate.
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
     
     *Outputs (in that order):
         .df with the < >
         .df with the std
-        Both df have same column names: Data + number. Data and not sample, not to mix it, since the Data 1 may be from
-        replicates 2 for ex, in case of Qe, kd. But could be from replicates 1 for variables like Conc for ex
+        Both df have same column names: Data + number. Data and not sample, 
+        not to mix it, since the Data 1 may be from replicates 2 for ex, in 
+        case of Qe, kd. But could be from replicates 1 for variables like 
+        Conc for ex
+        
+    **TO Do:
+        .Simplify, removing unncesary variables! There are many!!!!
         '''
     
-    #df_data.replace(0, np.nan, inplace=True)                    #replace 0 values with NaN, to avoid Div0 error!
+    #df_data.replace(0, np.nan, inplace=True)     
+                #replace 0 values with NaN, to avoid Div0 error!
     
     
     ########### 1) Calcs ###########
     '''
     The operations to perform are:
         1) < > of each sample number (1,2,..) 
-        2) std if each sample number (Divideb by N-1, as excel do when suing STDEV() function! )
+        2) std if each sample number (Divideb by N-1, as excel do when suing
+            STDEV() function! )
     
-    Those cals are really easy since they are implemented in pandas. I just need to sort the proper way
-    of sepparating the df and getting the results, see below.
-    I need to discriminate whether the data is a df or a Series.
+    Those cals are really easy since they are implemented in pandas. I just 
+    need to sort the proper way of sepparating the df and getting the results, 
+    see below. I need to discriminate whether the data is a df or a Series.
     
     '''
     
@@ -1994,11 +2015,15 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
         df_std = pd.DataFrame()        #Empty df to store the std
     
         if Nrepl == 2:          #Standard case, 2 replicates
-             df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
-             df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
+             df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      
+                         #1st replicate
+             df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       
+                         #replicate 2
         #
-             for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
-                 df_temp = df_data.iloc[:, [i, i+ df_1.shape[1] ] ]        #df containing the 2 replicates of the number i
+             for i in range(df_1.shape[1]):   
+                 #loop thorugh all elements, but with index to work with 2 df
+                 df_temp = df_data.iloc[:, [i, i+ df_1.shape[1] ] ]        
+                         #df containing the 2 replicates of the number i
             
                 #TO store temporarily those values I create an auxiliary df
                  df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )
@@ -2084,10 +2109,22 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
     This assume mass not measured, so needs the volume and density to compute
     the mass of the sample, to compute the cumulative conc. 
     
-    This is, imagine I have several samples, with a given [Cs133], this code 
+    This is, imagine I have several samples, with a given [Cs133]. This code 
     will compute the total [Cs133], the concentration if all the samples are 
-    merged into a single one
+    merged into a single one. IN a succesive way, so:
+        .sample 2 cumulative = sample 1 + smaple 2
+        .sample 3 cumulative = sample 1 + sample 2 + sample 3
+    Until the last one, which will contain the total cumulative concentration.
+    The formula is:
     
+    [X]_tot = m_X_tot/m_Tot = sum (m_X)/sum(m_tot) = sum([X]*m_tot) / sum (m_tot)
+    = sum([X]*rho*V) / sum(V*Rho),
+    
+    being [X] the concentration of X, the nuclide of interest, m_tot the mass 
+    of each sample, and m_Tot the total mass of all the solution, the sum of m_tot.
+    There it is assumed we do not know the masses, rather volumes, so the calcs
+    is based on the volumes, and densities. Volumes are given as input, as well
+    as densities.
     
     *Input
         .df_ppb: df with the ppb values of the samples
@@ -2115,11 +2152,17 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
     """
     The uncertainty of the volume was a number, but should be an array, but
     we can do it easily
+    
+    !!!!!!!
+    In the future, I might need to do the same I do here, but for densities....
+    !!!!!!!!!
     """
     delta_V = delta_V * np.ones(len(V))         #array creation
     
     ########### 1) Mass of nuclide (Nmass) calc ####################
-    
+    '''
+    1st step, to calc m_X = [X] * m_tot = [X] * rho * V, for each sample
+    '''
     if MS_here:     #exclude 1st column of the ppb df, the MS
         df_Nmass = df_ppb.iloc[:,1:]*V*rho
         df_Nmass_std = df_Nmass * np.sqrt((delta_V/V)**2 + (delta_rho/rho)**2 +
@@ -2131,7 +2174,12 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
                             (df_ppb_std/df_ppb)**2) 
     
     ############## 2) Cumulative concentration calc ###################
+    '''
+    Now I need to do the sums, 
+    [X]_tot = sum([X]*rho*V) / sum(V*Rho)
     
+    To do it, first I will create the df I will fill.
+    '''
     df_cum = pd.DataFrame(index = df_Nmass.index, columns = df_Nmass.columns)
                 #empty df creation, with desired column and row names :)
     df_cum_std = pd.DataFrame(index = df_Nmass.index, columns = df_Nmass.columns)
@@ -2141,7 +2189,8 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
     Now, I should fill that df, with a foor loop, or 2, as needed. Essentially 
     I need to do:
     [U238] = sum of df_ppb*m_U238, suming in columns, and that for each row (
-        nuclide). note 1st column does not need to be sum
+        nuclide). note 1st column does not need to be sum, so I can compute them
+    now:
     '''
  
     df_cum.iloc[:,0] = df_Nmass.iloc[:,0]/(V[0]*rho)    #1st row, non cumulative
@@ -2172,7 +2221,138 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
         return df_cum, df_cum_std, df_Nmass, df_Nmass_std
     else:       #Not return it
         return df_cum, df_cum_std
+
     
+#%% ######## 1.16 Substraction of bentonite leached elements ##############
+#################################################################
+
+def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
+                                    return_leached = False):
+    '''
+    This function will remove the nuclides leached by bentonite from the ICPMS
+    data. Having the ppb data and the MS (with their errors), ASSUMING the
+    1st sample of each replicate (3 replicates ASSUMED!) is the procedural blank,
+    only bentonite and BIC water, and that the 1st MS is the blank, BIC water,
+    This function, for each replicate, will substract the contribution of the
+    bentonite to the concentration of all the elements.
+    
+    We have 3 replicates: 1_1, 1_2,.... 2_1,2_2,.., 3_1, 3_2, ...
+    with their mother solutions; 0_1,0_2,.... Then, this function will compute 
+    the elements leached by the bentonite for each replicate:
+                    1_1-0_1
+                    2_1-0_1
+                    3_1-0_1
+    And it will substract it to the other samples:
+        1_2- (1_1-0_1), 1_3 - (1_1-0_1),...
+        2_2 - (2_1-0_1), 2_3 - (2_1-0_1)...
+        ...
+        
+    *INPUTS
+        .df_ppb: df with the ppb data. It should have the replicates in order:
+            1_1, 1_2,1_3,...,2_1,2_2,2_3,...,3_1,3_2,...
+        .df_ppb_std: df with the std of the ppb data. Same order
+        .df_MS: df with the mother solutions. In the order:
+            0_1, 0_2,...
+        .df_MS_std: df with the std of the MS
+        .return_leached: boolean, to indicate wether df with the ppb (and 
+            their std) leached by bentonite should be returned or not. Default:
+            False
+        
+    *OUTPUTS
+        .df_ppb_br: df with the ICPMS data with the bentonite contribution 
+            removed (br). Note the procedural blank will still be there. Though
+            they may not be useful, at least for the Qe function they will
+        .df_ppb_br_std: df of the std of the ppb_br
+    '''
+
+
+    ############### 1) Data preparation #######################
+    #We need to separate the replicates, in order to perform the substraction
+    df_1 = df_ppb.iloc[:, : round(df_ppb.shape[1] / 3)]
+            #1st replicate
+    df_2 = df_ppb.iloc[:, round(df_ppb.shape[1] / 3): 2*round(df_ppb.shape[1] / 3)]
+    df_3 = df_ppb.iloc[:, 2*round(df_ppb.shape[1] / 3) :]    
+    #Also their std are needed:
+        
+    df_1_std = df_ppb_std.iloc[:, : round(df_ppb_std.shape[1] / 3)]
+    df_2_std = df_ppb_std.iloc[:, round(df_ppb_std.shape[1] / 3): 2*round(df_ppb_std.shape[1] / 3)]
+    df_3_std = df_ppb_std.iloc[:, 2*round(df_ppb_std.shape[1] / 3) :]      
+    
+    ############## 2) Calc of the contribution of bentonite
+    #This will be a df Series!
+    Ser_ppb_leach_1 = df_1.iloc[:,0] - df_MS.iloc[:,0]
+                    #df series, with 1 column, named 0, and all indexes (nuclei)
+    Ser_ppb_leach_2 = df_2.iloc[:,0] - df_MS.iloc[:,0]               
+    Ser_ppb_leach_3 = df_3.iloc[:,0] - df_MS.iloc[:,0]
+    
+    #And their std:
+        
+    Ser_ppb_std_leach_1 = np.sqrt(df_1_std.iloc[:,0]**2 + df_MS_std.iloc[:,0]**2)
+    Ser_ppb_std_leach_2 = np.sqrt(df_2_std.iloc[:,0]**2 + df_MS_std.iloc[:,0]**2)
+    Ser_ppb_std_leach_3 = np.sqrt(df_3_std.iloc[:,0]**2 + df_MS_std.iloc[:,0]**2)
+    
+    '''
+    Okay, this data I could print, and even store it and give it as an output,
+    if desired.
+    
+    First I will join them in a df, and then printing it and saving it
+    '''
+    
+    df_leached = pd.concat([Ser_ppb_leach_1, Ser_ppb_leach_2, 
+                            Ser_ppb_leach_3], axis = 1)
+    df_leached.columns = ['Repl 1','Repl 2','Repl 3']
+    df_leached_std = pd.concat([Ser_ppb_std_leach_1, Ser_ppb_std_leach_2, 
+                            Ser_ppb_std_leach_3], axis = 1)
+    df_leached_std.columns = ['Repl 1','Repl 2','Repl 3']
+    #I could print these data, or at least for the relevant Nuclei
+    
+    
+    print('####### Concentration in ppb of leached relevant nuclides from the bentonites to the BIC solution')
+    print(df_leached.loc[Isot_rel])
+    print('######################################\n')
+
+    print('########## Uncertainty of those: ########')
+    print(df_leached_std.loc[Isot_rel])
+    print('######################################\n')
+    
+    
+    ############# 3) Substraction ##################
+    df_1_br = df_1.subtract(Ser_ppb_leach_1.values, axis = 0) #substr in repl 1
+    df_2_br = df_2.subtract(Ser_ppb_leach_2.values, axis = 0) 
+    df_3_br = df_3.subtract(Ser_ppb_leach_3.values, axis = 0) 
+    
+    '''
+    The uncertainty will be more complicate, since I need to do the sqrt of the
+    sum of the squares. The simples thing, 
+    np.sqrt(df_1_std**2 + Ser_ppb_std_leach_1**2)
+    
+    ofc does not work, because it treated the series as a row vector, not
+    a column one. Asking chatgpt, it gave me a solution that seemed to work
+    
+    '''
+    df_1_br_std = np.sqrt(df_1_std**2 + Ser_ppb_std_leach_1.values[:, None]**2)
+    df_2_br_std = np.sqrt(df_2_std**2 + Ser_ppb_std_leach_2.values[:, None]**2)
+    df_3_br_std = np.sqrt(df_3_std**2 + Ser_ppb_std_leach_3.values[:, None]**2)
+    
+    ################ 4) Output #############
+    
+    #First we need to merge the df, and then returning them
+    df_ppb_br = pd.concat([df_1_br, df_2_br, df_3_br], axis = 1)
+    df_ppb_std_br = pd.concat([df_1_br_std, df_2_br_std, df_3_br_std], axis = 1)
+    
+    
+    ###Note that those include the procedural blank, shall I remove it?
+    #Nooo, because it is needed for the Qe calc, since I did the funciton in
+    #the way I did. SO just keep it!
+    
+    if return_leached:      #True, so return it
+        return df_ppb_br, df_ppb_std_br, df_leached, df_leached_std
+    else:       #False, dont return it
+        return df_ppb_br, df_ppb_std_br
+    
+
+
+
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -2198,9 +2378,9 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
                       plot_everything = False, Logs = False ):
     '''
     Function that will do a single bar plots of ICPMS data, using
-    the 2nd data as the errorbars. By raw I mean withoutany corrections/calibrations (neither the 
-    dilution factor correction). This is a preliminary plot, to check if 
-    everything is allright, with the rstd (rstd should be < 20%).
+    the 2nd data as the errorbars. By raw I mean withoutany corrections/
+    calibrations (neither the dilution factor correction). This is a preliminary 
+    plot, to check if  everything is allright, with the rstd (rstd should be < 20%).
     
     *Inputs:
         .df_1, df_2: dataframes to plot. Initially containing the cps and 
@@ -2268,7 +2448,7 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
     for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
                     #df_1.index give the index values, low and high
                     #
-        if df_1.index[i][:-4] in Elem_rel or plot_everything == True: 
+        if df_1.index[i] in Elem_rel or plot_everything == True: 
             #if the element is relevant you plot it!
         ########### Bar plot ###########################
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -2293,7 +2473,7 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
                 , rotation = 90)
         
             #Saving in the folder
-            if df_1.index[i][:-4] in Elem_rel:  #if the element is relevant
+            if df_1.index[i] in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -2399,7 +2579,7 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
     for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
                     #df_1.index give the index values, low and high
                     #
-        if df_1.index[i][:-4] in Elem_rel or plot_everything == True: 
+        if df_1.index[i] in Elem_rel or plot_everything == True: 
             #if the element is relevant you plot it!
         ########### Bar plot ###########################
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -2427,7 +2607,7 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
             plt.legend(fontsize = Font)
         
             #Saving in the folder
-            if df_1.index[i][:-4] in Elem_rel:  #if the element is relevant
+            if df_1.index[i] in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -2555,7 +2735,7 @@ Setting b gives w. In fact the general equations for 2n bars per
     for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
                     #df_1.index give the index values, low and high
                     #
-        if df_1.index[i][:-4] in Elem_rel or plot_everything == True: 
+        if df_1.index[i] in Elem_rel or plot_everything == True: 
             #if the element is relevant you plot it!
         ########### Bar plot ###########################
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -2589,7 +2769,7 @@ Setting b gives w. In fact the general equations for 2n bars per
             plt.legend(aaa, [p_.get_label() for p_ in aaa])
         
             #Saving in the folder
-            if df_1.index[i][:-4] in Elem_rel:  #if the element is relevant
+            if df_1.index[i] in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -2704,7 +2884,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
 		   # 4 because of the way the df is created (and hence the excel tabelle)
 
             #Saving in the folder
-            if index[:-4] in Elem_rel:  #if the element is relevant
+            if index in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -2757,7 +2937,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
 		   # 4 because of the way the df is created (and hence the excel tabelle)
 
             #Saving in the folder
-            if index[:-4] in Elem_rel:  #if the element is relevant
+            if index in Elem_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -2919,7 +3099,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
         #
         
         #Saving in the folder
-        if df_cps['Sard'].index[i][:-4] in Elem_rel:        #if the element is relevant
+        if df_cps['Sard'].index[i] in Elem_rel:        #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -3141,7 +3321,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
     if isinstance(x, pd.Series):         #If x is a pd series (like time and so)  
         if Nrepl == 2:               #2 replicates, standard case (x is time for ex)    
             for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-                if y_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant
+                if y_1.index[i] in Elem_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
@@ -3175,7 +3355,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')      
         elif Nrepl ==3:                     #3 replicates
             for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-                if y_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant
+                if y_1.index[i] in Elem_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
@@ -3216,7 +3396,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
     elif isinstance(x, pd.DataFrame):           #if x is a DataFrame    
         if Nrepl == 2:               #2 replicates, standard case (x is time for ex)    
             for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-                if y_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant
+                if y_1.index[i] in Elem_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
@@ -3252,7 +3432,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')            
         if Nrepl == 3:               #2 replicates, standard case (x is time for ex)    
             for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-                if y_1.index[i][:-4] in Elem_rel or plot_everything == True:      #if the element is relevant
+                if y_1.index[i] in Elem_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
@@ -3408,7 +3588,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
         
     if isinstance(x, pd.Series):                 #If x is a pd Series          
         for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-            if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
+            if df_mean_cps.index[i] in Elem_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -3465,7 +3645,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
 
     elif isinstance(x, pd.DataFrame):                 #If x is a pd Dataframe       
         for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-            if df_mean_cps.index[i][:-4] in Elem_rel:                      #if the element is relevant
+            if df_mean_cps.index[i] in Elem_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -3637,7 +3817,7 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
         for i in list( range(df_mean_cps_T.shape[0] ) ): 
                             #Loop thorugh all rows (elements)
 
-            if df_mean_cps_T.index[i][:-4] in Elem_rel: #if the element is relevant
+            if df_mean_cps_T.index[i] in Elem_rel: #if the element is relevant
             #note the -4 is so that that element contain only name and number, 
             #like Mg26, not Mg26 (MR), in order to check with the list!
                 plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -3754,7 +3934,7 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
     elif isinstance(x_T, pd.DataFrame):       #######if x, std_x are df DF!!
         for i in list( range(df_mean_cps_T.shape[0] ) ): #Loop thorugh all rows (elements)
 
-            if df_mean_cps_T.index[i][:-4] in Elem_rel: #if the element is relevant
+            if df_mean_cps_T.index[i] in Elem_rel: #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default

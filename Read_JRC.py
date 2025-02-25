@@ -34,6 +34,7 @@ import os, sys                   #to import functions from other folders!!
 sys.path.insert(0, 
  '//net1.cec.eu.int/jrc-services/KRU-Users/lopedan/Desktop/PhD_Residuos_nucleares/Python/Functions')   
                                     #path where I have the functions
+sys.path.insert(0, '/home/dla/Python/Functions_homemade')
 import Fits, Peak_analyis_spectra
 import time as tr                                #to measure the running time
 from scipy.optimize import curve_fit             #Fit tool
@@ -69,15 +70,16 @@ Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)
 #%%## ## 1.1) ICPMS excel reader #############
 #####################################
 
-def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = False):
+def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', 
+                      return_debug = False):
     '''
     Function that will read the excel file from ICPMS and will return a df with 
     the relevant information, for easier handling /plotting. Note the excel 
     should be a bit preprocessed:
             
-        1) Clean sheet where only the relevant data(cps, ppb, whatever) is, 
+        1) Clean sheet where only the relevant data (cps, ppb, whatever) is, 
         to load it. You can remove ICPMS blanks (std 0, etc). THe Isotopes column
-        in COlumn A in excel THe 1st isotope, Co59(LR) in row 7 in excel). 
+        in Column A in excel THe 1st isotope, Co59(LR) in row 7 in excel). 
         Sample names in row 2 in excel
             
     You could use this function to get the raw data (output from ICPMS) or to correct 
@@ -159,11 +161,14 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
          #that does not work if I load directly the Blk corr, so lets do it simpler:
     df_cps = Dat.iloc[4:,:] 
     
-    #Another cleaning will be putting the df in numeric format. It is in object format, which gives problems
+    #Another cleaning will be putting the df in numeric format. It is in object 
+    #format, which gives problems
     #(YeroDivisionerror) with divisions, while for numbers there is no problem.
 
     df_cps = df_cps.apply(pd.to_numeric)    
                 
+    
+  
     
     ############## 3) Ouptuts ######################
         
@@ -198,6 +203,78 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', return_debug = Fal
 
 
 
+#%% ############## 1.1.5) Convert data from ppb to M ###########
+#############################################################
+
+def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1, 
+                   Delta_m_s = 0.0001, Delta_V_s = 0.001):
+    '''
+    This function will convert the ppb data (ng/g) from the ICPMS to the M (mol/L)
+    data, the common format that papers use. The atomic weights values are
+    taken from Stefaans excel, which come from an IUPAC publication!
+    
+    The data is from ppb, ng/gtot, we can convert it to M easily:
+        10*-9 g/gtot * 1mol /At g * gtot/Vtot ==>
+        ppb * 10**-9 * rho/At = M
+    
+    
+    *Inputs
+    .df_ppb,df_ppb_std: df with the ppb and std value
+    .m_s, V_s: array with the mass and volumes of the samples. Default values:
+        m_S = 1000g, V_s = 1L, to have desntiy 1kg/L
+    .Delta_m_s, Delta_V_s: values of the uncertainties. Defaults:
+            Delta_m_s = 0.0001g, Delta_V_s = 0.001L
+            
+    *Outputs
+    .df with the concentration in M
+    .df with the uncertainties in M, ASSUMING no uncertainty in the atomic weights
+    '''
+    
+    
+    ################ 3) Conversion from ppb to M #########3
+    '''
+    If I am reading a ppb data, I could convert it to Mol, I would only need
+        1) Atomic weights
+        2) Density of the samples, which I could have, since I measured both
+    
+    The operation is easy:
+        ng/gtot *gtot/Vtot *mol/g = M ==> ppb * rho * At = M
+    '''
+
+    At_we = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
+                          'To_read_atom_weight', index_col=0)   #read of the
+                    #excel with the atomic weights
+                    #
+    
+    rho = m_s/V_s               #density of the samples
+    Delta_rho = rho*np.sqrt((Delta_m_s/m_s)**2 + (Delta_V_s/V_s)**2)
+                #uncertainty of the density
+                
+    #Creation of empty df to store the data
+    df_M = pd.DataFrame( index =df_ppb.index, columns = df_ppb.columns )
+                    #empty df, but with defined columns and rows
+    
+    #Now to apply it I would need a loop
+    for i in range(df_ppb.shape[0] ): 
+        #loop through all isotopes, loop and stop when u see IS conc
+        df_M.loc[df_ppb.index[i], :]= df_ppb.loc[df_ppb.index[i],
+                df_ppb.columns[:]] * 10**-9 / At_we["atomic mass (u)"][
+                At_we.index==df_ppb.index[i][:-4]].values * rho
+        #print('Iter ' + str(i) + ' performed successfully')
+    
+    #It is not numeric, so lets convert it:
+    df_M = df_M.apply(pd.to_numeric)  
+    
+    #The uncertainty calc can be outside the loop
+    df_M_std = df_M * np.sqrt((Delta_rho/rho)**2 + (df_ppb_std/df_ppb)**2)
+            #ASSUMING no error in the atomic weights!!!!!!!      
+
+
+    ############# 2) Output ##########
+
+    return df_M, df_M_std              
+                    
+                    
 #%%########## 1.2) Future std computer!!!!!!!!!!!!!!!!!!!!!! #############
 #####################################
 

@@ -220,7 +220,10 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     
     *Inputs
     .df_ppb,df_ppb_std: df with the ppb and std value
-    .m_s, V_s: array with the mass and volumes of the samples. Default values:
+    .m_s, V_s: array with the mass and volumes of the samples, or single 
+        values. When it is an array, the column names must be the sample names,
+        as in the df_ppb. Beware for the MS case, I was not doing that!
+        Default values:
         m_S = 1000g, V_s = 1L, to have desntiy 1kg/L
     .Delta_m_s, Delta_V_s: values of the uncertainties. Defaults:
             Delta_m_s = 0.0001g, Delta_V_s = 0.001L
@@ -230,8 +233,37 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     .df with the uncertainties in M, ASSUMING no uncertainty in the atomic weights
     '''
     
+    ############### 1) Data cleaning #####
+    '''
+    Some data, specially the masses and volumes may not be numeric, so we must
+    convert them to numeric, to perform the operations. However, this can only
+    be made if the variables are not a float (number). I need to check for that
+    using if statements.
     
-    ################ 3) Conversion from ppb to M #########3
+    Also, if we are speaking about series, some data of m_s, V_s may be missing.
+    This is particularly True for the MS case, since the CL of BIC I did not
+    record any mass, since all the solution I put was either BIC, or the CL.
+    Then, I will replace 0 and NaN, by the average value.
+    '''
+    if isinstance(m_s, float) == False: #Case m_s is not a float, a series
+        m_s = m_s.apply(pd.to_numeric) 
+        #
+        #To replace 0 and NaN by the average, 1st I need to replcae 0 to NaN,
+        #since NaN do not affect in the average, and then do it:
+        m_s.replace(0, np.nan, inplace = True)
+        m_s.replace(np.nan, m_s.mean(), inplace = True)
+    
+    if isinstance(V_s, float) == False:       #Case V_s is not a flot
+        V_s = V_s.apply(pd.to_numeric) 
+        #
+        V_s.replace(0, np.nan, inplace = True)
+        V_s.replace(np.nan, V_s.mean(), inplace = True)
+    
+        
+
+    
+    
+    ################ 2) Conversion from ppb to M #########3
     '''
     If I am reading a ppb data, I could convert it to Mol, I would only need
         1) Atomic weights
@@ -2567,7 +2599,7 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
         df_3_br = df_3*corr_3.values
         df_1_br_std = df_1_br*np.sqrt( (df_1_std/df_1)**2 + (Delta_corr_1/corr_1).values**2)
         df_2_br_std = df_2_br*np.sqrt( (df_2_std/df_2)**2 + (Delta_corr_2/corr_2).values**2)
-        df_3_br_std = df_1_br*np.sqrt( (df_3_std/df_3)**2 + (Delta_corr_3/corr_3).values**2)
+        df_3_br_std = df_3_br*np.sqrt( (df_3_std/df_3)**2 + (Delta_corr_3/corr_3).values**2)
         '''
     The uncertainty will be more complicate, since I need to do the sqrt of the
     sum of the squares. The simples thing, 

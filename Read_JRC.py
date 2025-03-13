@@ -66,6 +66,16 @@ Isot rele Cs are from the Cs sep
 """
 Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)           
             
+
+#For my personal laptop
+#At_we = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
+                       #   'To_read_atom_weight', index_col=0)   #read of the
+                    #excel with the atomic weights
+#For guest laptop at JRC:  
+At_we = pd.read_excel('C:/Users/localadmin/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
+                      index_col=0)
+        #Path from guest laptop from JRC)       
+                   
 #############################################################            
 #%%## ## 1.1) ICPMS excel reader #############
 #####################################
@@ -272,10 +282,6 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     The operation is easy:
         ng/gtot *gtot/Vtot *mol/g = M ==> ppb * rho * At = M
     '''
-
-    At_we = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
-                          'To_read_atom_weight', index_col=0)   #read of the
-                    #excel with the atomic weights
                     #
     
     rho = m_s/V_s               #density of the samples
@@ -285,6 +291,9 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     #Creation of empty df to store the data
     df_M = pd.DataFrame( index =df_ppb.index, columns = df_ppb.columns )
                     #empty df, but with defined columns and rows
+    
+    print('###########################################')
+    print('Beware with the atomic weight df, if unproperly read will give problems! ')
     
     #Now to apply it I would need a loop
     for i in range(df_ppb.shape[0] ): 
@@ -4608,19 +4617,26 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
                 b= log K_F
     (easier than if I use 1/n as constant!)
     
-    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe you need 
-    to modify it in the future??????
+    n is adimensional, but K_F has unit, which depends on Ce; Kf = Qe/Ce**n
+        i) Ce in ppb, ng/g. Then K_F is in ng^(1-n)*g_tot^n/(g_be)
+        ii) Ce in M = mol/L. Then K_F is in L^n/(mol^(n-1)*Kg) = 
+            L^n mol^(1-n)/kg
+    
+    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe 
+    you need to modify it in the future??????
     
     *Inputs
         .Ce, Qe: df series containing C_e and Q_e data. Expected the averaged values
             . Must have same index as the df columns in order to plot them!!
-        .delta_Ce, delta_Qe: df with their uncertainties. Default value = 0, since I do not use 
-        them!
+        .delta_Ce, delta_Qe: df with their uncertainties. Default value = 0, 
+        since I do not use  them!
         .p_0 = None: initial stimation of the fit parameters. 
-        .x_label, y_label= x and y label, for the plot. Default value: 'log($C_e [ng/g]$)' and 
+        .x_label, y_label= x and y label, for the plot. Default value: 
+            'log($C_e [ng/g]$)' and 
                     log($Q_e [ng/g_{be}]$)' respectively!
         .post_title = '' : title to add after 'Linear fit '
-        .save_name = filename of the fit plot, if it wants to be save. Default value = '' ==> no saving.
+        .save_name = filename of the fit plot, if it wants to be save. 
+        Default value = '' ==> no saving.
                     this variable is followed by .png for savinf
         .Color = 'b': color for the plot
         .Folder_name: folder name, where to store the fit plots
@@ -4636,8 +4652,8 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
     '''    
     ############# 0.1) Folder creation ###############
     '''
-    First the folder to store the plots will be created. IN the main folder a subfolder
-    with the relevant elements, to be given, will be created
+    First the folder to store the plots will be created. IN the main folder a
+    subfolder with the relevant elements, to be given, will be created
     '''
     
     path_bar_pl = os.getcwd() + '/' + folder_name + '/'
@@ -4670,7 +4686,8 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
     
     ################ 3) Model parameters ################
     '''
-    From that I can also get the constants; applying log10 == log, no ln!!! :
+    From that I can also get the constants; applying log10 == log, no ln!!!, 
+    since log properties are applicable regardless of the base:
         y= ax + b : loq Qe = n log Ce + log KF
                     y= log Q_e
                     x= Log C_e
@@ -4687,8 +4704,13 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
     '''
     fit['n'] = fit['a']         
     fit['\Delta(n)'] = fit['\Delta(a)'] 
-    fit['K_F[ng^(1-n)*g_tot^n/(g_be)]'] = 10**fit['b']        
-    fit['\Delta(K_F[ng^(1-n)*g_tot^n/(g_be)])'] = fit['K_F[ng^(1-n)*g_tot^n/(g_be)]'] *fit['\Delta(b)'] * np.log(10)
+    fit['K_F'] = 10**fit['b']        
+    fit['\Delta(K_F)'] = fit['K_F'] *fit['\Delta(b)'] * np.log(10)
+    
+    '''
+    K_F error may be higher than you expected, but since you work with lgoaritm
+    this could happen!
+    '''
     
     
     
@@ -4787,10 +4809,10 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
     
     ############## 1) Calcs #################
     Ce_Qe = Ce / Qe
-    delta_Ce_Qe = Ce_Qe * np.sqrt((delta_Ce / Ce)**2 + 
+    delta_Ce_Qe = np.abs(Ce_Qe) * np.sqrt((delta_Ce / Ce)**2 + 
                                   (delta_Qe / Qe)**2 )
     Qe_Ce = Qe / Ce
-    delta_Qe_Ce = Qe_Ce * np.sqrt((delta_Ce / Ce)**2 + 
+    delta_Qe_Ce = np.abs(Qe_Ce) * np.sqrt((delta_Ce / Ce)**2 + 
                                   (delta_Qe / Qe)**2 )
 
     ############# 2) Fit and parameters ######################
@@ -5155,5 +5177,83 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
     Fit['\Delta(d)[A]'] = Delta_d
     
     return Fit
+
+
+#%% ######### 6) FTIR, read and plot #################### 
+######################################################
+
+def Read_FTIR (name, Type = 'A', Plot = 'A'):
+    '''
+    Function that reads the .dpt file from the FTIR in F130 (Olaf Walter), returning a df
+    with the relevant info. It will also plot it, and save it!
+    In case the data its in absorbance, it will convert it to transmitance!
+    
+
+    *Inputs:
+        .name: name of the file. Ej: 'file.dpt'. If in a folder: 'Folder/name.dpt'
+        .Type: string indicating whether its Absorbance data (A) or transmitance (T).
+            default: 'A'
+        .Plot: string to define what shall we plot, the transmitance (T) or 
+            absorbance (A). Default: 'A'
+        
+    *Output
+        .df with the 1/lambda and the transmitance!
+    
+    '''
+    
+    ##### 1. Reading #########
+    '''
+    Reading the data is trivial. But of course it depends on whether the file
+    contain the absorbance or the transmitance. The relation between them are:
+        A = -log (T)  (log10) ==> T = 10**-A
+    '''
+    
+    if Type == 'A': #It is absorbance
+        df = pd.read_csv(name, sep = ',', names = ['1/lambda[cm-1]','Absorbance'])
+        df['Transmitance'] = 10**(-df['Absorbance'])
+        #Now we put them in % scale
+        df['Absorbance[%]'] =  df['Absorbance']*100
+        df['Transmitance[%]'] = df['Transmitance']*100
+    else: #It is transmitance
+        df = pd.read_csv(name, sep = ',', names = ['cm-1','Transmitance'])
+        df['Absorbance'] = -np.log10(df['Transmitance'])
+        df['Absorbance[%]'] =  df['Absorbance']*100
+        df['Transmitance[%]'] =  df['Transmitance']*100
+        
+
+    ##Prints useful for command line sytling (also for interlaminar space)
+    print('\n##############')
+    print('Currently working with:\n') 
+    print( name[:-4])
+    
+    
+    ########### 2. Plotting ##
+    plt.figure(figsize=(11, 8))  # width, heigh 6.4*4.8 inches by default (11,8)
+    # I need to enlarge since because of the title is big, I think
+    plt.title('FTIR: ' + name[:-4], fontsize=22,
+              wrap=True, loc='center')  # title
+    #plt.plot(df['1/lambda[cm-1]'], df['Transmitance[%]'], label='data')
+    if Plot== 'A':           #plotting Abs
+        plt.plot(df['1/lambda[cm-1]'], df['Absorbance[%]'], label='data')
+        plt.ylabel('Absorbance [%]', fontsize=18)
+    else:   #plotting transm
+        plt.plot(df['1/lambda[cm-1]'], df['Transmitance[%]'], label='data')
+        plt.ylabel('Transmitance [%]', fontsize=18)
+    #
+    plt.xlabel(" 1/$\lambda$ [cm-1]", fontsize=18)  # ylabe
+    plt.gca().invert_xaxis()            #to invert x axis (1st higher values, then lower)
+    plt.tick_params(axis='both', labelsize=18)  # size of axis
+    plt.minorticks_on()             #enabling minor grid lines
+    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)       
+                #which both to plot major and minor grid lines
+    plt.grid(which = 'major')
+    #plt.legend(fontsize=18)
+    plt.savefig( name[:-4]+ '.png', format='png',
+                bbox_inches='tight')  # To save plot, same name as file, change extensio
+    plt.show()
+    
+    
+    #Finally, return the df:
+    return df
 
 

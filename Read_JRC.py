@@ -5191,8 +5191,8 @@ def Read_FTIR (name, Type = 'A', Plot = 'A'):
 
     *Inputs:
         .name: name of the file. Ej: 'file.dpt'. If in a folder: 'Folder/name.dpt'
-        .Type: string indicating whether its Absorbance data (A) or transmitance (T).
-            default: 'A'
+        .Type: string indicating whether the data its Absorbance (A) or transmitance (T).
+            data. Default: 'A'
         .Plot: string to define what shall we plot, the transmitance (T) or 
             absorbance (A). Default: 'A'
         
@@ -5215,7 +5215,7 @@ def Read_FTIR (name, Type = 'A', Plot = 'A'):
         df['Absorbance[%]'] =  df['Absorbance']*100
         df['Transmitance[%]'] = df['Transmitance']*100
     else: #It is transmitance
-        df = pd.read_csv(name, sep = ',', names = ['cm-1','Transmitance'])
+        df = pd.read_csv(name, sep = ',', names = ['1/lambda[cm-1]','Transmitance'])
         df['Absorbance'] = -np.log10(df['Transmitance'])
         df['Absorbance[%]'] =  df['Absorbance']*100
         df['Transmitance[%]'] =  df['Transmitance']*100

@@ -5243,7 +5243,7 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
 #%% ######### 6) FTIR, read and plot #################### 
 ######################################################
 
-def Read_FTIR (name, Type = 'A', Plot = 'A'):
+def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
     '''
     Function that reads the .dpt file from the FTIR in F130 (Olaf Walter), returning a df
     with the relevant info. It will also plot it, and save it!
@@ -5254,6 +5254,8 @@ def Read_FTIR (name, Type = 'A', Plot = 'A'):
         .name: name of the file. Ej: 'file.dpt'. If in a folder: 'Folder/name.dpt'
         .Type: string indicating whether the data its Absorbance (A) or transmitance (T).
             data. Default: 'A'
+        .Sep: string indicating the separator. Default: a comma, ','. Could also be
+            '/t'  (a tab)
         .Plot: string to define what shall we plot, the transmitance (T) or 
             absorbance (A). Default: 'A'
         
@@ -5270,13 +5272,13 @@ def Read_FTIR (name, Type = 'A', Plot = 'A'):
     '''
     
     if Type == 'A': #It is absorbance
-        df = pd.read_csv(name, sep = ',', names = ['1/lambda[cm-1]','Absorbance'])
+        df = pd.read_csv(name, sep = Sep, names = ['1/lambda[cm-1]','Absorbance'])
         df['Transmitance'] = 10**(-df['Absorbance'])
         #Now we put them in % scale
         df['Absorbance[%]'] =  df['Absorbance']*100
         df['Transmitance[%]'] = df['Transmitance']*100
     else: #It is transmitance
-        df = pd.read_csv(name, sep = ',', names = ['1/lambda[cm-1]','Transmitance'])
+        df = pd.read_csv(name, sep = Sep, names = ['1/lambda[cm-1]','Transmitance'])
         df['Absorbance'] = -np.log10(df['Transmitance'])
         df['Absorbance[%]'] =  df['Absorbance']*100
         df['Transmitance[%]'] =  df['Transmitance']*100

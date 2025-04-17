@@ -5093,7 +5093,8 @@ def Read_XRD_WB (name):
 #%% ######### 5.2) XRD reader, F130 (hot XRD) #################### 
 ######################################################
 
-def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266):
+def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0, 
+                   DosTheta_inter = [4,6]):
     '''
     Function that reads the .ras file from the XRD in F130 (Olaf Walter), returning a df
     with the relevant info. It will also plot it and save it, in the same folder!
@@ -5111,6 +5112,10 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266):
         mode in step, the usual
         .Skip_rows: number of rows of the .ras file to skip. Default: 266. Spotted 
         from opening the file
+        .Compute_d : boolean to indicate if you can to compute the interlaminar
+        space distance from the 001 peka or not. Default: 0 (no)
+        .2Theta_inter: array indicating the interval of the 001 peak, in case that
+        Compute_d = 1. Default: [4,6]
         
     *Output
         .df with the 2Theta, Counts and cps
@@ -5122,8 +5127,8 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266):
     aux = pd.read_csv(name, skiprows = Skip_rows, sep = ' ', 
                       names = ['2Theta[°]', 'Counts', 'npi'], encoding='latin')
     
-    '''That worked, but 2 last columns are text, that I can delete easily. Also I have 3 column, 
-    being the 3rd always 1, so I will also delte it:'''
+    '''That worked, but 2 last columns are text, that I can delete easily. 
+    Also I have 3 column,  being the 3rd always 1, so I will also delte it:'''
     
     df = aux.iloc[:-2,:-1]        #Removing 3rd column, and last 2 rows
     
@@ -5136,8 +5141,8 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266):
 
 
     '''
-    I will also return the cps nromalized, min value 0 and max 1. This can be accomplished
-    by appling the operation:
+    I will also return the cps nromalized, min value 0 and max 1. This can be 
+    accomplished by appling the operation:
             (x-min(x)) /(max(x)-min(x))         para todo x
     '''
     
@@ -5148,24 +5153,74 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266):
     ##Prints useful for command line sytling (also for interlaminar space)
     print('\n##############')
     print('Currently working with:\n') 
-    print( name[:-4])
+    print( name[:-4] + '\n')
     
-    ########### 2. Plotting ##
-    plt.figure(figsize=(11, 8))  # width, heigh 6.4*4.8 inches by default (11,8)
-    # I need to enlarge since because of the title is big, I think
-    plt.title('XRD: ' + name[:-4], fontsize=22,
+    
+    
+    ########### 2. interl space calc ##############
+    if Compute_d:       #if true, compute it
+        print('\n##############')    
+        print('Beware woth the initial interval, you might need to modify it'+
+        'since the first guess may not be okay/good enough and could give error \n')    
+        try:    #Try the fit
+            Fit = XRD_Get_interl_sp (df, DosTheta_inter)
+        #
+        #Now saving the results in the previous df
+            df[Fit.columns] = Fit
+        except RuntimeError:        
+                #IF error because Fit does not get a fit xD (is RuntimeError)
+            print('\n##############') 
+            print('Impossible to do the fit with the given 2Theta interval, give'+
+                  'a better one, puto!!!!!!!')
+            print('The legend of the plot will be remarking that xD')
+            print('\n##############')
+        
+        #
+        #Now in the plot we will include a textbox with the d value:
+        plt.figure(figsize=(11, 8))  # width, heigh 6.4*4.8 inches by default (11,8)
+        # I need to enlarge since because of the title is big, I think
+        plt.title('XRD: ' + name[:-4], fontsize=22,
+                  wrap=True, loc='center')  # title
+        try:
+            plt.plot(df['2Theta[°]'], df['CPS_norm'], 
+                 label='$d_{001}$ =(' + f'{df['d[A]'].iloc[0]:.2f}' + '+-' +
+                 f'{df['\Delta(d)[A]'].iloc[0]:.2f}' + ')Angs')
+        except KeyError:    
+            #If fit did not work, d(A) does not exist, to previous label will not work
+            plt.plot(df['2Theta[°]'], df['CPS_norm'], 
+                 label='No fit possible bro xD')
+        plt.xlabel(" $2 \Theta [°]$", fontsize=18)  # ylabel
+        plt.ylabel('cps', fontsize=18)
+        plt.tick_params(axis='both', labelsize=18)  # size of axis
+        plt.minorticks_on()             #enabling minor grid lines
+        plt.grid(which = 'minor', linestyle=':', linewidth=0.5)  
+                    #which both to plot major and minor grid lines
+        plt.grid(which = 'major')
+        plt.legend(fontsize=18)
+        plt.savefig( name[:-4]+ '.png', format='png',
+                    bbox_inches='tight')  
+                    # To save plot, same name as file, change extensio
+        plt.show()    
+        #
+    else:       #False, so I did not compute the distance
+        'False, no distance computed. Then I only do the plot'
+    #
+        plt.figure(figsize=(11, 8))  # width, heigh 6.4*4.8 inches by default (11,8)
+        # I need to enlarge since because of the title is big, I think
+        plt.title('XRD: ' + name[:-4], fontsize=22,
               wrap=True, loc='center')  # title
-    plt.plot(df['2Theta[°]'], df['CPS_norm'], label='data')
-    plt.xlabel(" $2 \Theta [°]$", fontsize=18)  # ylabel
-    plt.ylabel('cps', fontsize=18)
-    plt.tick_params(axis='both', labelsize=18)  # size of axis
-    plt.minorticks_on()             #enabling minor grid lines
-    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
-    plt.grid(which = 'major')
-    #plt.legend(fontsize=18)
-    plt.savefig( name[:-4]+ '.png', format='png',
+        plt.plot(df['2Theta[°]'], df['CPS_norm'], label='data')
+        plt.xlabel(" $2 \Theta [°]$", fontsize=18)  # ylabel
+        plt.ylabel('cps', fontsize=18)
+        plt.tick_params(axis='both', labelsize=18)  # size of axis
+        plt.minorticks_on()             #enabling minor grid lines
+        plt.grid(which = 'minor', linestyle=':', linewidth=0.5)  
+                #which both to plot major and minor grid lines
+        plt.grid(which = 'major')
+                #plt.legend(fontsize=18)
+        plt.savefig( name[:-4]+ '.png', format='png',
                 bbox_inches='tight')  # To save plot, same name as file, change extensio
-    plt.show()
+        plt.show()
     
     
     #Finally, return the df:

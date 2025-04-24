@@ -72,10 +72,13 @@ Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)
                        #   'To_read_atom_weight', index_col=0)   #read of the
                     #excel with the atomic weights
 #For guest laptop at JRC:  
-At_we = pd.read_excel('C:/Users/localadmin/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
-                      index_col=0)
+# At_we = pd.read_excel('C:/Users/localadmin/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
+#                       index_col=0)
+At_we = pd.read_excel('C:/Users/Administrator/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
+                      index_col=0)     
         #Path from guest laptop from JRC)       
-                   
+              
+        
 #############################################################            
 #%%## ## 1.1) ICPMS excel reader #############
 #####################################
@@ -389,25 +392,29 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     Function that will find the ICPMS dilution factor from the excel containing
     the ICPMS sample preparation info.
     Note There is 2 dilution factors involved:
-            1) Dlution actor for the ICPMS sample preparation (simeq 50). In this case you add 
+            1) Dlution actor for the ICPMS sample preparation (simeq 50). In this
+                        case you add 
                                     .8.8mL HNO3 1M
                                     .1mL IS (2IS; 0.5mL each)
                                     .0.2mL sample
-            2) Dilution factor for the sample you use for the ICPMS sample prep (simeq 1). 
-                    In this case you add some HNO3 conc (65% w/w)to the sample, to stabilize it.
+            2) Dilution factor for the sample you use for the ICPMS sample prep 
+                        (simeq 1). 
+                In this case you add some HNO3 conc (65% w/w)to the sample, 
+                to stabilize it.
                                                                             
     Note the excel should be a bit preprocessed:
             
-        1) Including sample preparation (neccesary to get the Dilution factor). In this excel,
-               the sample names must be the same as the names in the top
-               of the ICPMS data (do it manually, lazy spaniard, less siesta and more work!). This sheet
-               must be called 'Sample_prep'. Note the structure is like ICPMS results, column for sample.
-               This is needed for further operations (corrections and so)
+        1) Including sample preparation (neccesary to get the Dilution factor). 
+            In this excel, the sample names must be the same as the names in the top
+               of the ICPMS data (do it manually, lazy spaniard, less siesta and
+            more work!). This sheet must be called 'Sample_prep'. Note the 
+            structure is like ICPMS results, column for sample. This is needed
+            for further operations (corrections and so)
                
     *Inputs:
-        .excel_name: string with the name of the excel, with the .xlsx. note if you select the file
-        on the FIle viewer and do copy paste, the name will be there. But dont forget the '', it must
-        be an string! Eg: 'Excel.xlsx'
+        .excel_name: string with the name of the excel, with the .xlsx. note if 
+        you select the file on the FIle viewer and do copy paste, the name will
+        be there. But dont forget the '', it must be an string! Eg: 'Excel.xlsx'
         .D_f_data: array with the rows where the sample names and the Dilution factor 
             (ICPMS sample prep) is found.
             Note that info is also important for getting the index labels!
@@ -432,12 +439,14 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     The Df extraction from the excel is simlpe:
     '''
 
-    D_f = Dat_sa_prep.iloc[D_f_data[1]-1, 1: len(Dat_sa_prep)]   #Dilution factor (pandas Series)
-            #The -1 is because python start in 0 while excel in 1 for counting rows and columns
+    D_f = Dat_sa_prep.iloc[D_f_data[1]-1, 1: len(Dat_sa_prep)]   
+                #Dilution factor (pandas Series)
+    #The -1 is because python start in 0 while excel in 1 for counting rows and columns
     
     
     #I need to put the correct index names for the operations, that can be done like:
-    D_f.index = Dat_sa_prep.iloc[D_f_data[0]-1, 1: len(Dat_sa_prep)]     #proper index name (to operate)
+    D_f.index = Dat_sa_prep.iloc[D_f_data[0]-1, 1: len(Dat_sa_prep)]     
+                            #proper index name (to operate)
     
     
     ######## 3) cleaning ###############
@@ -445,7 +454,7 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     Since its object type, I will make it numeric, since everything will be easier
     with it (and strictly its true)
     '''
-    D_f = D_f.apply(pd.to_numeric)                    #conversion to numeric data type
+    D_f = D_f.apply(pd.to_numeric)              #conversion to numeric data type
     
     ########### 4) Return #############
     '''
@@ -462,28 +471,30 @@ def ICPMS_Df_corrector (df_data, Df):
     '''
     Function that will apply the correction for the dilution factor to the ICPMS results.
     Note There is 2 dilution factors involved:
-            1) Dlution factor for the ICPMS sample preparation (simeq 50). In this case you add 
+            1) Dlution factor for the ICPMS sample preparation (simeq 50). In this
+                    case you add 
                                     .8.8mL HNO3 1M
                                     .1mL IS (2IS; 0.5mL each)
                                     .0.2mL sample
             2) Dilution factor for the sample you use for the ICPMS sample prep (simeq 1). 
-                    In this case you add some HNO3 conc (65% w/w)to the sample, to stabilize it.
+                    In this case you add some HNO3 conc (65% w/w)to the sample, 
+                    to stabilize it.
                                                                             
                                                                             
-    The correction is essentially scalatin for that factor, so the results takes into account
-    that only a portion was measuring. So:
+    The correction is essentially scalatin for that factor, so the results takes 
+    into account that only a portion was measuring. So:
             df_data * Df (Df >=1)
     
-    Its fundamental the labelling is appropiate! The data_exp sheet AND Sample_prep sheet must have
-    same labels as the ICPMS output!!!!! Once the ICPMS resutls are there, change name to both, otherwise
-    will return NaN!!!!
+    Its fundamental the labelling is appropiate! The data_exp sheet AND 
+    Sample_prep sheet must have same labels as the ICPMS output!!!!! Once the 
+    ICPMS resutls are there, change name to both, otherwise will return NaN!!!!
 
     *Inputs:
-        .df_data: dataframe containing the cleaned data, to which the correction should be applied. 
-		the isotopes are the index, so all columns are data!
-        .D_f: pandas series containing the dilution factor to apply. Note the labelling is crutial,
-            both inputs should have same labels (remember that you change the name in the exp sheet to
-                                                 match the names that Stefaan used)
+        .df_data: dataframe containing the cleaned data, to which the correction 
+        should be applied.  the isotopes are the index, so all columns are data!
+        .D_f: pandas series containing the dilution factor to apply. Note the 
+        labelling is crutial, both inputs should have same labels (remember 
+        that you change the name in the exp sheet to match the names that Stefaan used)
 
     *Outputs:
         .df with the correction factor (Df) applied
@@ -493,9 +504,10 @@ def ICPMS_Df_corrector (df_data, Df):
     
     
     ########### 1) Calcs ###########
-    '''Now, I can apply the Dilution factor to both the std and the cps, should be straightforward, same
-    fashion than above. Well, not as simple, since for the multiplication the indexes should be the same
-    so, I redefined (above) the Df indexes so they matched the Df ones, and then that calc is straightforward
+    '''Now, I can apply the Dilution factor to both the std and the cps, should 
+    be straightforward, same fashion than above. Well, not as simple, since for 
+    the multiplication the indexes should be the same so, I redefined (above) 
+    the Df indexes so they matched the Df ones, and then that calc is straightforward
     '''
     
     df_corrected = pd.DataFrame(df_data * Df,
@@ -517,23 +529,24 @@ def ICPMS_Df_corrector (df_data, Df):
 
 def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
     '''
-    Function that will apply the sample blank correction to the other samples in the ICPMS results df.
-    This version is the 2 replicates version. Remember we already applied in the excel the IS correction
-    and the ICPMS blanks corrections. Now its time for the blanks you did in your experiment.
+    Function that will apply the sample blank correction to the other samples in
+    the ICPMS results df. This version is the 2 replicates version. Remember we
+    already applied in the excel the IS correction and the ICPMS blanks corrections.
+    Now its time for the blanks you did in your experiment.
 
-    The correction is essentially substracting the blank (number 1) to the rest of the samples, but
-    involved some operations since we have dataframes. So those will be here. Necessary that the data
-    contain no Div0, ensure in the excel by deleting those!
-    that only a portion was measuring. 
+    The correction is essentially substracting the blank (number 1) to the rest
+    of the samples, but involved some operations since we have dataframes. So 
+    those will be here. Necessary that the data contain no Div0, ensure in the
+    excel by deleting those! that only a portion was measuring. 
     
     Only for 2 and 3 replicates, but could be generalized for N replicates easily.
 
 
     *Inputs:
-        .df_data: dataframe containing the data, the full data, with the 2 replicates. This is the 
-        output fromt he reader function. You could apply this before or after Df corrections. Format:
-            isotopes as index, columns the samples, 1st 1st replicate, then 2nd replicate. 2 replicates assume
-            this function!!!!
+        .df_data: dataframe containing the data, the full data, with the 2 replicates.
+        This is the  output fromt he reader function. You could apply this before
+        or after Df corrections. Format: isotopes as index, columns the samples, 
+        1st 1st replicate, then 2nd replicate. 2 replicates assume this function!!!!
         .Nrepl: number of replicates. Default value: 2 (2 replicates). Can also be 3
 
     *Outputs:
@@ -543,29 +556,30 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
     
     ########### 1) Calcs ###########
     '''
-    I must treat the 2 experiments are different, I should substract the blank 1 to the 1st emasurements
-    and the 2 to the others. Since I ordered it in the right way (1st replicacte 1, then replicate 2, 
-    I could) split it easily :D
+    I must treat the 2 experiments are different, I should substract the blank 
+    to the 1st emasurements and the 2 to the others. Since I ordered it in the
+    right way (1st replicacte 1, then replicate 2, I could) split it easily :D
             df.shape gives the shape of the df, n_rows, n_columns
     
     Note the df have number of samples * 2 replicates columns.
     
-    Then, I will create a new dataframe substracting that data. To do so, I need to get rid
-    of the isotopes column, since is text, and then add it again. Watch, the substraction is 
-    easy with a pandas mehotd.
+    Then, I will create a new dataframe substracting that data. To do so, I need 
+    to get rid of the isotopes column, since is text, and then add it again. 
+    Watch, the substraction is easy with a pandas mehotd.
 
     I shuold then remove those columns
     from there, and replace negatives values for 0, for a good plot
     '''
 
     if Nrepl ==2:               #2 replicates, standard case
-        df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      #1st replicate
-        df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       #replicate 2
+        df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]   #1st replicate
+        df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]   #replicate 2
     
         #The next step is blank substraction
         df_1_blk = df_1.subtract(df_1.iloc[:,0], axis = 0 ) 
                 #0 since 1st columns is the blank  
-        df_1_blk.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True)     #removing the value I use to substract
+        df_1_blk.drop( [df_1.iloc[:,0].name], axis = 1, inplace = True) 
+                #removing the value I use to substract
     
     #Finally, for plotting purposes, we will replace negative values with 0:
         df_1_blk[df_1_blk < 0] = 0          #substituyin negative values with 0! 
@@ -573,13 +587,14 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
     #And now we do the same for replicate 2   
     
         df_2_blk = df_2.subtract(df_2.iloc[:,0],  axis = 0 )        #substraction
-        df_2_blk.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)     #removing the value I use to substract
+        df_2_blk.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)     
         df_2_blk[df_2_blk < 0] = 0      #replcaing negative values with 0
             #Those 3 lines would be needed for a loop, so sohuld be easy, if needed
     
     #Finally, lets store it
 
-        df_blk = pd.concat( [df_1_blk, df_2_blk], axis = 1)         #mergind the 2 little df ina  huge one
+        df_blk = pd.concat( [df_1_blk, df_2_blk], axis = 1)   
+                #mergind the 2 little df ina  huge one
     
     elif Nrepl == 3:         #3 replicates case
         #Copy paste the before code, now for 3 replicates
@@ -595,11 +610,12 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
         df_2_blk.drop( [df_2.iloc[:,0].name], axis = 1, inplace = True)
         df_3_blk.drop( [df_3.iloc[:,0].name], axis = 1, inplace = True)
         
-        df_1_blk[df_1_blk < 0] = 0                      #replcaing negative values with 0
+        df_1_blk[df_1_blk < 0] = 0          #replcaing negative values with 0
         df_2_blk[df_2_blk < 0] = 0     
         df_3_blk[df_3_blk < 0] = 0      
         
-        df_blk = pd.concat( [df_1_blk, df_2_blk, df_3_blk], axis = 1)         #mergind the 2 little df ina  huge one
+        df_blk = pd.concat( [df_1_blk, df_2_blk, df_3_blk], axis = 1)         
+                        #mergind the 2 little df ina  huge one
     
     else:                   #Otherwise, error
         print('Wrong number of replicates Nrepl!, nothing has been done!')
@@ -616,15 +632,16 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
 
 def Get_A_Resol(isotope_name):
     '''
-    Function to get the mass number A and the resolution type from the isotope name of the ICPMS excel. 
-    The name is in the format:
+    Function to get the mass number A and the resolution type from the isotope 
+    name of the ICPMS excel. The name is in the format:
             .BB111(MR)
-    where BB can be 1 or 2 leters indicating the chemical symbol, and 111 can be 2 numbers also, the
-    mass number. (MR) or (LR) is low or high resolution. There are 2 excepctions, Ar40Ar40(LR/MR)
-    and U238O16(LR/MR).
+    where BB can be 1 or 2 leters indicating the chemical symbol, and 111 can 
+    be 2 numbers also, the mass number. (MR) or (LR) is low or high resolution. 
+    There are 2 excepctions, Ar40Ar40(LR/MR) and U238O16(LR/MR).
     
     * Input
-        .isotope_name: string with the ICPMS excel format, eg 'U238(LR)', 'Co59(MR)', etc
+        .isotope_name: string with the ICPMS excel format, eg 'U238(LR)', 
+        'Co59(MR)', etc
         
     #Output
         .Mass number A of the isotope. For U238(LR) 238, for Co59(MR) 59, etc  
@@ -639,9 +656,10 @@ def Get_A_Resol(isotope_name):
     resol = aux[1][:-1]
     ''' 
     Now in the first eleemnt of that I need to check:
-        1) Name with 1 or 2 letters? with isalpha() you get True if letter. isdigit() for numbers)
-    I need to introduce the 2 expcetions as different cases also. All in a loop, since if i get the 
-    exceptions, I do not want to continue
+        1) Name with 1 or 2 letters? with isalpha() you get True if letter. 
+            isdigit() for numbers)
+    I need to introduce the 2 expcetions as different cases also. All in a loop, 
+    since if i get the exceptions, I do not want to continue
     '''
     
     if aux[0] == 'U238O16':         #exception
@@ -665,53 +683,66 @@ def Get_A_Resol(isotope_name):
 #####################################
 
 def IS_sens_calculator_plotter(df_cps_ppb, df_std,
-        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)'],
+        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)',
+                   'Co59(MR)', 'In115(MR)'],
         name_IS_sens_LR_plot = 'IS_sensLR_plot', 
         name_IS_sens_MR_plot = 'IS_sensMR_plot'):
     '''
-    Function part of the ICPMS Data processing! Function that will compute the IS sens (cps/ppb) 
-    for a df containing the cps and ppb, and another df with its std. The format is like
-    Stefaans excel, his first sheet. It IS needed the ppb table below the cps data. How below? Do not care, I
-    find the data using locate functions ;)
-    Note std is computed using the squared error propagation methods!  
+    Function part of the ICPMS Data processing! Function that will compute the 
+    IS sens (cps/ppb) for a df containing the cps and ppb, and another df with
+    its std. The format is like Stefaans excel, his first sheet. It IS needed
+    the ppb table below the cps data. How below? Do not care, I find the data
+    using locate functions ;) Note std is computed using the squared error 
+    propagation methods!  
 
     
-    !!!!!!ASSUMPTION!!!! : Delta(ppb IS)/ppb IS = 1%, completely arbitrary, to simplify everything, as a 1st approx!
-    it may be changed after! Those ppb come from perkin Elmer multielementa solutions, and derived calcs 
-        (logbooks, calculations of concentrations, etc)
+    !!!!!!ASSUMPTION!!!! : Delta(ppb IS)/ppb IS = 1%, completely arbitrary, 
+    to simplify everything, as a 1st approx! it may be changed after! Those ppb
+    come from perkin Elmer multielementa solutions, and derived calcs 
+    (logbooks, calculations of concentrations, etc)
         !!!!!!!!!!!!!!!!!!
     
     Note the plots appear in the plots pannel in Spyder, but are also saved ;)
 
     * Input
-        .df_cps_ppb: df containing the cps and ppb data. THe fashion is like Stefaans raw sheet. 
-        Isotopes are index. Take care of the names of the columns (like in IS conc table or so, the values you find),
-        if they dont exist will give error! For the ppb data, the names are just Co-59, Ho-165, In-115, Th-232.
-        This is extremely important. Otherwise it will not work!
-        . df_std: df containng the std of the cps. Default value: None, so I dont need to give it, since in the
-            past I was not giving it, not to obtian error with the old scripts
-        .IS_meas: array containing in a list the measured Internal Standards, containing its resolution, like 
-            how they appear in the isotopes column. Default value:
-                ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
-            That mean those isotopes were measured. If Ho165(MR) also measured, just included it, and fine ;)
-        .name_IS_sens_LR_plot: name for the plot of the IS sens for LR case. Similar for MR. Default values:
-            'IS_sensLR_plot' and 'IS_sensMR_plot'. To that is added the .png to create the file.
+        .df_cps_ppb: df containing the cps and ppb data. THe fashion is like 
+        Stefaans raw sheet. Isotopes are index. Take care of the names of the
+        columns (like in IS conc table or so, the values you find), if they 
+        dont exist will give error! For the ppb data, the names are just 
+        Co-59, Ho-165, In-115, Th-232.This is extremely important. Otherwise it
+        will not work!
+        . df_std: df containng the std of the cps. Default value: None, so I
+        dont need to give it, since in the past I was not giving it, not to 
+        obtian error with the old scripts
+        .IS_meas: array containing in a list the measured Internal Standards, 
+        containing its resolution, like how they appear in the isotopes column. 
+        Default value:
+        ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
+            That mean those isotopes were measured. If Ho165(MR) also measured, 
+            just included it, and fine ;)
+        .name_IS_sens_LR_plot: name for the plot of the IS sens for LR case. 
+        Similar for MR. Default values: 'IS_sensLR_plot' and 'IS_sensMR_plot'. 
+        To that is added the .png to create the file.
               
     #Output
         .df with the IS sens data
         .df with the std of the IS sens.
         .Plot with the IS sens plot, 2 plots, 1 for LR and other for MR, in .png file
     
-    Note that if this only one argument for output written, then the output will be a tuple with 2 df        
+    Note that if this only one argument for output written, then the output 
+    will be a tuple with 2 df        
         
     ###### TO Do
-        .Function to compute the ppb data, from Sum isobars? May be complex, possibly too time consuming ?
-        . Think a way so that std can be optionally given, so my old scripts are still working? The alternative
-        is modifying them, inclduding the std, will not be fatal though xD
+        .Function to compute the ppb data, from Sum isobars? May be complex, 
+            possibly too time consuming ?
+        . Think a way so that std can be optionally given, so my old scripts 
+            are still working? The alternative is modifying them, inclduding the
+            std, will not be fatal though xD
     '''
     
     # if df_std == 'No':      #if no std passed
-    #     df_std = df_cps_ppb * 0 #Creating a ceros matrix if no error provided, so we avoid doing an if loop
+    #     df_std = df_cps_ppb * 0 
+    #Creating a ceros matrix if no error provided, so we avoid doing an if loop
     
     
     ############ Data finder ################
@@ -755,7 +786,8 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
         elif value_to_find[0] == 'T':  #Th232 case
             value_to_find_ppb = 'Th-232'
             
-        cps_IS = df_cps_ppb.loc[df_cps_ppb.index == value_to_find]      #cps of the IS (give full row)
+        cps_IS = df_cps_ppb.loc[df_cps_ppb.index == value_to_find]  
+                            #cps of the IS (give full row)
         std_IS = df_std.loc[df_std.index == value_to_find]        #%rstd of the IS 
         ppb_IS = df_cps_ppb.loc[df_cps_ppb.index == value_to_find_ppb]  #ppb of the IS
 
@@ -768,6 +800,11 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
         #To compute the error of the sens, I assume that Delta(ppb) = 1% ppb ==> 
                     #Delta(ppb)/ppb = 1/100!!
         aux2 = aux * np.sqrt((std_IS/cps_IS)**2 + (1/100)**2)     #std values
+        
+        print('############################################')
+        print('Here, to copmute the std of the sens, assuming error in theoretical ppb'+
+              'data of 1% Take into account, or at least remember !!!!!!!!!!!!!!!!!')
+        print('############################################')
         
         #TO store temporarily those values I create an auxiliary list
         #     #no df, not efficient!
@@ -783,7 +820,8 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     
     '''
     Now, to add the isotopes as index, we first add them as a column, and then we set
-    the column to index:we need to insert the isotopes column, giving as values the isotopes names or so:
+    the column to index:we need to insert the isotopes column, giving as values 
+    the isotopes names or so:
     '''
     #df_IS_sens['Isotopes'] = ['Co LR', 'In LR', 'Ho LR', 'Th LR', 'Co MR', 'In MR']
     df_IS_sens['Isotopes'] = IS_meas        #setting isotopes name from the loop variable, better
@@ -793,44 +831,49 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     df_IS_sens_std.set_index('Isotopes', inplace = True)
 
     '''
-    As a final stylish, I can put the same column names as the df used to create the IS df:
+    As a final stylish, I can put the same column names as the df used to create 
+    the IS df:
     '''
     df_IS_sens.columns = df_cps_ppb.columns
     df_IS_sens_std.columns = df_cps_ppb.columns
     
     
     'I can print the %rstd values = std/mean * 100 of the IS sens, useful to spot fluctuations!'
-    rstd = df_IS_sens.std(axis =1) / df_IS_sens.mean(axis =1) * 100                   #%rstd of the IS sens
-                                    #ofc agrees with excel!
-    print('##################################################################### \n')
+    rstd = df_IS_sens.std(axis =1) / df_IS_sens.mean(axis =1) * 100  
+            #%rstd of the IS sens. ofc agrees with excel!
+    print('################################################################# \n')
     print('%rstd of the IS sens:')
     print(rstd)
     print('Values >= 5/6% start to be suspicious, something happened! (Th oxidation for ex?) \n')
-    print('##################################################################### \n')
+    print('############################################################### \n')
     
     
     #################################################
     ############# IS sens plotter ####################
     ########
     '''
-    I need to do 2 plots, 1 for the LR and other for the MR. I should sort them somehow. I found how xD, explicit plotting,
-    recommended by python, better than implicit(what you normally do xD)
+    I need to do 2 plots, 1 for the LR and other for the MR. I should sort them 
+    somehow. I found how xD, explicit plotting, recommended by python, better 
+    than implicit(what you normally do xD)
     '''
     
     pltL = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default  LR plot!
     axL = pltL.subplots()
-    axL.set_title("IS sens LR along measuring sequence", fontsize=22, wrap=True)           #title
+    axL.set_title("IS sens LR along measuring sequence", fontsize=22, wrap=True) 
+            #title
    
     pltM = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default   MR plot!
     axM = pltM.subplots()
-    axM.set_title("IS sens MR along measuring sequence", fontsize=22, wrap=True)           #title    
+    axM.set_title("IS sens MR along measuring sequence", fontsize=22, wrap=True)           
     
     for i in range(0, df_IS_sens.shape[0]):   #looping through rows of the df
         if df_IS_sens.index[i][-4:] == '(LR)':      #low resolution
-            axL.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],'-o' ,label = df_IS_sens.index[i]) 
+            axL.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],
+                     '-o' ,label = df_IS_sens.index[i]) 
             
         else:   #MR
-            axM.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],'-o' ,label = df_IS_sens.index[i])  
+            axM.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],
+                     '-o' ,label = df_IS_sens.index[i])  
     
     #Final styling of the plot
     axL.legend(fontsize = Font)
@@ -843,7 +886,8 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     axM.set_ylabel("cps/ppb", size = Font)   
     axL.tick_params(axis='both', labelsize= Font)              #size of axis
     axM.tick_params(axis='both', labelsize= Font)              #size of axis
-    pltL.savefig(name_IS_sens_LR_plot + '.png', format='png', bbox_inches='tight')    #note I call plt, not ax!
+    pltL.savefig(name_IS_sens_LR_plot + '.png', format='png', bbox_inches='tight')    
+            #note I call plt, not ax!
     pltM.savefig(name_IS_sens_MR_plot + '.png', format='png', bbox_inches='tight')
     
          
@@ -855,30 +899,35 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
 #####################################
 
 def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
-                       IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']):
+        IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)',
+                   'Co59(MR)', 'In115(MR)']):
     '''
     PART OF THE ICPMS Data processing!
     
-    Function that will apply the IS sens correction to the cps data, from the raw ICPMS data.
-    This is aprt of the ICPMS data analysis. You need to correct for IS sens, then apply ICPMS
-    blanks, and then calibrate with 2+4 and 3+5 IS.
+    Function that will apply the IS sens correction to the cps data, from the raw 
+    ICPMS data. This is aprt of the ICPMS data analysis. You need to correct 
+    for IS sens, then apply ICPMS blanks, and then calibrate with 2+4 and 3+5 IS.
     
-    'IS conc [ppb]' should be the box that indicates where the ppb chart start. That is, in A column in excel,
-    that should be written, since that is used to find the ppb data!!!
+    'IS conc [ppb]' should be the box that indicates where the ppb chart start. 
+    That is, in A column in excel, that should be written, since that is used to
+    find the ppb data!!!
     
-    Note the plots appear in the plots pannel in Spyder, and that the IS measured decide the correction, I defined
-    them with if statements, have not yet come up with a better idea...
+    Note the plots appear in the plots pannel in Spyder, and that the IS 
+    measured decide the correction, I defined them with if statements, have not
+    yet come up with a better idea...
 
     
     * Input
-        .df_raw: df containing the raw cps and ppb data. THe fashion is like Stefaans raw sheet
+        .df_raw: df containing the raw cps and ppb data. THe fashion is like Stefaans
+                raw sheet
         .df_raw_std: df containing the std from the cps data. 
-        .df_IS_sens: df containing the IS sens data (cps/ppb). Ensure the size andindexing are
-        appropiates!
+        .df_IS_sens: df containing the IS sens data (cps/ppb). Ensure the size 
+        and indexing are appropiates!
         .df_IS_sens_std: df containing the IS sens data std (cps/ppb)
-        .IS_meas: array containing in a list the measured Internal Standards, containing its resolution, like 
-            how they appear in the isotopes column. Default value:
-                ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
+        .IS_meas: array containing in a list the measured Internal Standards, 
+        containing its resolution, like  how they appear in the isotopes column. 
+        Default value:
+        ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']
         
     #Output
         .df with the IS corrected data, containing the cps and ppb data
@@ -886,7 +935,8 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
         
         
     ###### TO Do #############
-        .Switch cases if other corrections needed (avoid one IS because the measuring was wrong?)
+        .Switch cases if other corrections needed (avoid one IS because the 
+                                                 measuring was wrong?)
     #########################
     '''
     
@@ -898,12 +948,13 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
             .From 139 to 209 Ho165
             .From 210 to 248 Th232
 
-    If there are less IS, then I will make less divisions. Ex, if for MR there is only Co and In,
+    If there are less IS, then I will make less divisions. Ex, if for MR there is
+    only Co and In,
             .Co from 59 to 80
             .Rest In115
             
-    I shold be able to detech the name of th eisotope (row), get number, and apply those limits.
-    The correction is data / IS sens * <IS sens>, being sens = cps/ppb
+    I shold be able to detech the name of th eisotope (row), get number, and apply
+    those limits. The correction is data / IS sens * <IS sens>, being sens = cps/ppb
 
     The name format is:
         .A11(LR)
@@ -912,13 +963,14 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
         .AB111(MR)
         .And some random elements, like Ar40Ar40(L/MR), U238O16(L/MR)
 
-    So, avoiding the weird stuff, the chemical name can have 1 or 2 letters, and the number can be 2 or 3 ciphers.
-    I created a function to get the mass number. Note the operations should be
-    line by line. The structure would be loop like, at the beginning I check the mass number, and apply. Lets do a
+    So, avoiding the weird stuff, the chemical name can have 1 or 2 letters, 
+    and the number can be 2 or 3 ciphers. I created a function to get the mass 
+    number. Note the operations should be line by line. The structure would be 
+    loop like, at the beginning I check the mass number, and apply. Lets do a
     single one
     
-    Now I can try to do a loop. I could give where the IS sens start from the df inspection (240), and 
-    I know the order:
+    Now I can try to do a loop. I could give where the IS sens start from the 
+    df inspection (240), and I know the order:
         .Co LR
         .In LR
         .Ho R
@@ -926,24 +978,27 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
         .CO MR
         . In MR
         
-    Next step is to create a function to get the mass and apply one or other correction. We already have the 
-    function, so now we need to create a loop (after a function) that get the mass, and
-    apply one or other correction
+    Next step is to create a function to get the mass and apply one or other 
+    correction. We already have the function, so now we need to create a loop 
+    (after a function) that get the mass, and apply one or other correction
     '''   
     
-    df_IS_co = df_raw.copy()       #Thats the proper way to create it, copy so it is not asigned to it!
+    df_IS_co = df_raw.copy()       
+        #Thats the proper way to create it, copy so it is not asigned to it!
     df_IS_co_std = df_raw.copy() 
     
-    	#The loop should go until the alst isotope, which I can find by finding IS conc ppb, the first thing 
-        #for the ppb chart! so, THIS data is mandatory that exist like that!!
     '''
-    To generalize, I will do if statement for the different IS measured cases. By far only 2, the sequence 
-    done in the past, the 4 in LR and 2 in MR; and now (8/23) 4 in MR also, the most detailed case. 11/23,
-    only LR elements!
+    The loop should go until the alst isotope, which I can find by finding IS 
+    conc ppb, the first thing for the ppb chart! so, THIS data is mandatory that
+    exist like that!! 
+    To generalize, I will do if statement for the different IS measured cases. 
+    By far only 2, the sequence done in the past, the 4 in LR and 2 in MR; and 
+    now (8/23) 4 in MR also, the most detailed case. 11/23, only LR elements!
     '''
     
-    if IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 'Co59(MR)', 'In115(MR)']:   
-                                                                    ########case 1, the old scenario (exp bef 8/23)
+    if IS_meas == ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)', 
+                   'Co59(MR)', 'In115(MR)']:   
+                             ########case 1, the old scenario (exp bef 8/23)
      
         for i in range(np.where(df_raw.index == 'IS conc [ppb]')[0][0]): #loop through all isotopes
                 #df_raw.loc[229,'Isotopes'] = df_raw.iloc[226,0]#relation iloc, loc
@@ -1243,28 +1298,33 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
     '''
     PART OF THE ICPMS Data processing!
     
-    Function to be run after the IS sensitivity correction, to apply the next step in the ICPMS data
-    analysis process, the ICPMS blanks correction (std 0ppt and blanks). 
+    Function to be run after the IS sensitivity correction, to apply the next step
+    in the ICPMS data analysis process, the ICPMS blanks correction (std 0ppt and 
+                blanks). 
     
-    Note that in the excel, int he part of the ppb table, you should delete the names, that stefaan write twice,
-    for this to work!!!! 
-    Also needed that the ppb data table is introduced by:  "IS conc [ppb]". beware, sometimes Stef writes (ppb), not [ppb]!!
+    Note that in the excel, int he part of the ppb table, you should delete the 
+    names, that stefaan write twice, for this to work!!!! 
+    Also needed that the ppb data table is introduced by:  "IS conc [ppb]". beware,
+    sometimes Stef writes (ppb), not [ppb]!!
     
     
     *Inputs:
-        .columns_blks: np.array([]) indicating the number of the columns contaning blanks (std 0ppt and blank std).
+        .columns_blks: np.array([]) indicating the number of the columns contaning 
+        blanks (std 0ppt and blank std).
             Ex: columns_blanks = np.array([1, 2]). Those columns number are from excel!
-        .df_IS_co: df containing the cps (also ppb, not needed but there it is), output from the IS sens correction
-            funciton. The formatting is like the excel. 
+        .df_IS_co: df containing the cps (also ppb, not needed but there it is), 
+        output from the IS sens correction funciton. The formatting is like the excel. 
         .df_IS_co_std: df containing the std of the cps corrected from the IS
     *Outputs:
-        .df containinng the cps data corrected for the ICPMS blanks. Note it also contains the ppb data, 
-            but now modified so they are random numbers. 
-        .df containing the std of the cps corrected for the ICPMS blanks. Quadratic error propagation used!
+        .df containinng the cps data corrected for the ICPMS blanks. Note it also
+        contains the ppb data, but now modified so they are random numbers. 
+        .df containing the std of the cps corrected for the ICPMS blanks. 
+            Quadratic error propagation used!
             
             
     ##### To DO ###########
-        *Improve style and remove ppb data (would need modifications for the IS sens function)
+        *Improve style and remove ppb data (would need modifications for the IS 
+                sens function)
     
     '''
     
@@ -1273,13 +1333,16 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
     So, for the Blank correction, I need:
         1) To put ina  df all of the blanks. I could indicate column numbers, KISS
         2) Compute average from the cps of the blank
-        3) Substract either the average or the ICPMS blanks, or the minimum cps value of the samples (from IS corrected, no 
-                 ICPMS blanks), to ensure no negative values. 
+        3) Substract either the average or the ICPMS blanks, or the minimum cps
+            value of the samples (from IS corrected, no ICPMS blanks), to ensure
+            no negative values. 
 
-    I would really need the IS corrected data without the sens also bro, but I could get it easily I think
+    I would really need the IS corrected data without the sens also bro, but I 
+    could get it easily I think
     '''
     
-    columns_blks = columns_blks - 1 #to adapt to the system in the df, isotopes are index, not columns!
+    columns_blks = columns_blks - 1 
+        #to adapt to the system in the df, isotopes are index, not columns!
     
     #1) is trivial:
     df_blanks = df_IS_co.iloc[:, columns_blks ]          #df with the ICPMS blanks
@@ -1295,7 +1358,8 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
     print('\n ######################################')
     
     #2) could be done with df
-    df_blanks['<cps>'] = df_blanks.mean(axis = 1)            #I append the mean values. Gives a warning, 
+    df_blanks['<cps>'] = df_blanks.mean(axis = 1) 
+                #I append the mean values. Gives a warning, 
                                                             #but nothing is wrong!
     df_blanks_std ['<cps>'] = df_blanks.std(axis = 1) 
 
@@ -1307,19 +1371,26 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
     df_Is_co_no_blk = df_IS_co.drop(df_IS_co.columns[columns_blks ], axis = 1)
                         #df initial without the ICPMS blanks!! 
 
-    #I could do the min to that, but since also contain the cps data there are some NaN, which make things not 
-    #work. If I do fill nan with the mean values, that could fix it. Lets try bro! 
+    '''
+    I could do the min to that, but since also contain the cps data there are 
+    some NaN, which make things not work. If I do fill nan with the mean values,
+    that could fix it. Lets try bro! 
 
-    df_Is_co_no_blk.fillna(999999.999, inplace = True)       #filling NaN values with 99999 (easily recognizable)
+    '''
+
+    df_Is_co_no_blk.fillna(999999.999, inplace = True) 
+            #filling NaN values with 99999 (easily recognizable)
 
     #Now the min values are, storing them in the same df:
     df_Is_co_no_blk['min cps'] = df_Is_co_no_blk.min(axis = 1) 
                 #axis = 1 for columns!
     '''
-    For this I would need a loop to check for each row which value to substract. I would say we always substract
-    the mean, and Stefaan also think that. adn I probe that matematically, so it is like that xD
+    For this I would need a loop to check for each row which value to substract.
+    I would say we always substract the mean, and Stefaan also think that. adn 
+    I probe that matematically, so it is like that xD
 
-    So, now the problem is perform that operation here on python, since the df are different.
+    So, now the problem is perform that operation here on python, since the df 
+    are different.
 
     I needed to delete some column nsames in teh ppb data!!!!!!!!!!
     
@@ -1390,6 +1461,8 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
         Befpre there must be only the cps data, nothing else, no text nor anything!!
         . To do 3), you define the IS cases (which IS are to be used), so beware, 
                 maybe your case its not (yet) defined!!  
+        .For 6), you need to have installed xlsxwriter (conda install xslxwriter
+                                                        for anaconda isntall)
         
     *Inputs:
         .df_cps: df containing the cps data and also the ppb data, in the classic 
@@ -1752,8 +1825,9 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, Nrepl = 2,
         df_1 = df_data_aux.iloc[ :, 0: round( ( df_data_aux.shape[1] ) / 2 ) ] #1st replicate
         df_2 = df_data_aux.iloc[ :, round( ( df_data_aux.shape[1] ) / 2 ) :  ] #replicate 2
     
-        df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 2 ) ]      #1st replicate
-        df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 2 ) :  ]       #replicate 2
+        df_VoM_1 = df_VoM_disol.iloc[ 0: round( ( df_VoM_disol.shape[0] ) / 2 ) ]      
+                #1st replicate
+        df_VoM_2 = df_VoM_disol.iloc[ round( ( df_VoM_disol.shape[0] ) / 2 ) :  ] #replicate 2
             #Achtung! In shape I put 0, because they are series, so 1D!!!!
             #VoM = Volume or Mass!
         df_m_1 = df_m_be.iloc[ 0: round( ( df_m_be.shape[0] ) / 2 ) ] #1st replicat
@@ -4659,7 +4733,7 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
 
 #%% ######### 2.3) Freundlich isot fit #############################
 ###################################################
-def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
+def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
             x_label = 'log($C_e [ng/g]$)', y_label = 'log($Q_e [ng/g_{be}]$)',
             Color = 'b', save_name = '', post_title = ' ', npo=100):   
     '''
@@ -4691,7 +4765,6 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
             . Must have same index as the df columns in order to plot them!!
         .delta_Ce, delta_Qe: df with their uncertainties. Default value = 0, 
         since I do not use  them!
-        .p_0 = None: initial stimation of the fit parameters. 
         .x_label, y_label= x and y label, for the plot. Default value: 
             'log($C_e [ng/g]$)' and 
                     log($Q_e [ng/g_{be}]$)' respectively!
@@ -4730,8 +4803,8 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
     logCe = np.log10(Ce)
     logQe = np.log10(Qe)
     
-    delta_logCe = delta_Ce / np.abs(Ce)         #error of the log!
-    delta_logQe = delta_Qe / np.abs(Qe)
+    delta_logCe = delta_Ce / (np.abs(Ce) * np.log(10))   #error of the log10!!
+    delta_logQe = delta_Qe / (np.abs(Qe) * np.log(10))
 
     ############# 2)Fit ######################
     
@@ -4806,7 +4879,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, folder_name = 'Fits',
 #%% ######### 2.4) Langmuir isot fit #############################
 ###################################################
 
-def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
+def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
              folder_name = 'Fits', x_label = '$C_e [ng/g]$', 
              y_label = '$C_e/Q_e [g_{be}/g_{tot}]$',
             Color = 'b', save_name = '', post_title = ' ', npo=100):   
@@ -4834,7 +4907,6 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
                 plot them!!
         .delta_Ce, delta_Qe: df with their uncertainties. Default value = 0, 
         since I do not use them!
-        .p_0 = None: initial stimation of the fit parameters. 
         .x_label, y_label= x and y label, for the plot. Default value: 
             'log($C_e [ng/g]$)' and log($Q_e [ng/g_{be}]$)' respectively!
         .post_title = '' : title to add after 'Linear fit '
@@ -4952,35 +5024,152 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, p_0 = None, Fit_type = 1,
              (fit["/Delta(K_L[g/ng])"]/fit["K_L[g/ng]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
 
-    
-    # ############# 4) Plot of the fit##########
-    # logCe_vector = np.linspace( min(logCe),max(logCe),npo )         #for the fit plotting
-    
-    # fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-    # ax = fig.add_subplot(111)
-    # ax.errorbar(logCe, logQe, delta_logCe, delta_logQe, 'o', color = Color, markersize = 5,
-    #             label = 'Data')
-    # ax.plot(logCe_vector, logCe_vector*fit['a'] + *fit['b'],'--', color = Color,
-    #         label= 'Fit: ' + y_label + f' = {Qe:.1e} ' + '$\cdot$ [1- exp(-'+ x_label + '$\cdot$' +f'+{K1:.1e} )]')      #fit
-    #         #.2f to show 2 decimals on the coefficients!
-    #         #2e for scientific notation with 2 significative digits
-    # ax.set_title('Freundlich fit ' + post_title, fontsize=22)          #title
-    # ax.set_xlabel(x_label, fontsize= Font)                                    #xlabel
-    # ax.set_ylabel(y_label, fontsize= Font)                                    #ylabel
-    # ax.tick_params(axis='both', labelsize= Font)            #size of tick labels  
-    # ax.grid(True)                                              #show grid
-    # ax.legend(fontsize = Font)             #legend
-    #                 #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
-    # plt.savefig(folder_name +'/' + save_name +'.png', format='png', bbox_inches='tight')                
-    #                 ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
-    
-    
+        #Finally lets compute the mean free energy    
+
     ########## 5) Return ###########
     
     return fit
 
 
 
+#%% ######### 2.5) D-R iso fit #############################
+###################################################
+def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1, 
+            folder_name = 'Fits', x_label = 'log($C_e [ng/g]$)', 
+            y_label = 'log($Q_e [ng/g_{be}]$)',
+            Color = 'b', save_name = '', post_title = ' '):   
+    '''
+    Function to do and compute the D-R fit model. Its equation is:
+        
+    Qe = Qs * exp(-beta eps**2),
+    eps = RT*ln(Ct/Ce),
+    
+    Ct = constant, usually taken as 1M, or 1g/L, depending on your data
+    [Wang2020] said that it could be the solubility limit. Watch out!
+
+    Linearizing it:
+        log(Qe) = log(Qs) - beta*eps**2
+    
+    Note that lin fit we will do. The units of Qe will define the units of Qs!
+
+    Note that you could compute the mean free energy F as
+    F = 1/sqrt(-2beta)
+    And from that now the nature of the process:
+        F<8KJ/mol ==> physisorption (van der Waals, weak electrostatic)
+        8<F<16 ==> ion exchangee / weak chemisorption
+        F> 16kJ/mol ==> strong chemisorption
+    [Chabani2006]
+    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe 
+    you need to modify it in the future??????
+    
+    *Inputs
+        .Ce, Qe: df series containing C_e and Q_e data. Expected the averaged values
+            . Must have same index as the df columns in order to plot them!!
+        .delta_Ce, delta_Qe: df with their uncertainties. Default value = 0, 
+        since I do not use  them!
+        .T: temperature of the experiment [K], or of each sample. Default: 
+                293.15 (20°)
+        .delta_T: uncertainty of the temperature [K]. Default: 0.1
+        .x_label, y_label= x and y label, for the plot. Default value: 
+            'log($C_e [ng/g]$)' and 
+                    log($Q_e [ng/g_{be}]$)' respectively!
+        .post_title = '' : title to add after 'Linear fit '
+        .save_name = filename of the fit plot, if it wants to be save. 
+        Default value = '' ==> no saving.
+                    this variable is followed by .png for saving
+        .Color = 'b': color for the plot
+        .Folder_name: folder name, where to store the fit plots
+    
+    
+    *Outputs
+        .df series with all the relevant info, from the fit and computed quantities, 
+        errors (quadratic propagation) included
+            The input units define those units!! Remember saltpepper!
+    
+    
+    '''    
+    ############# 0.1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a
+    subfolder with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    
+    ############## 1) Calcs #################
+    R = 8.31446261815324    #J/(K*mol) molar gas constant
+    
+    #I need to compute the logarithms!
+    logQe = np.log(Qe)    
+    delta_logQe = delta_Qe / np.abs(Qe)       #error of the natural log!
+    
+    eps = R*T*np.log(1/Ce)                      #J/mol
+    delta_eps = eps* np.sqrt((delta_T/T)**2 + (Ce**4))
+    
+    #Elevating it by square:
+    eps2 = eps*eps          #J2/mol2
+    delta_eps2 = np.sqrt(2) * eps * delta_eps
+    
+        #delta(log(1/Ce))/(1/Ce) = 1/(1/Ce**2)=Ce**2
+    ############# 2)Fit ######################
+    
+    fit = Fits.LinearRegression(eps2, logQe, delta_eps2, delta_logQe,
+                                   x_label = x_label, y_label = y_label, 
+                                   x_legend = '$\epsilon$^2', y_legend = 'log($Q_e$)',
+                                   Color = Color, 
+                                   save_name = folder_name +'/' + save_name, 
+                                   post_title = post_title)       
+                            #Fit (i dont use npo variable, fit variable)
+                #note that for the legnd I delete the units!!
+    
+    
+    ################ 3) Model parameters ################
+    '''
+    From that I can also get the constants; applying log10 == log, no ln!!!, 
+    since log properties are applicable regardless of the base:
+        y= ax + b : loq Qe = log Qs - beta*eps**2
+                    y= log Q_e
+                    x= eps**2
+                    a = -beta
+                    b= log Qs ==> Q_s = e**b
+                    delta_beta = delta_a
+                    delta_b = delta_Qs/Q_s ==Y delta_Qs = Q_s * delta_b
+    '''
+    fit['beta[mol2/J2]'] = -fit['a']         
+    fit['\Delta(beta[mol2/J2])'] = fit['\Delta(a)'] 
+    fit['Q_s'] = 10**fit['b']        
+    fit['\Delta(Q_s)'] = fit['Q_s'] *fit['\Delta(b)']
+    
+    #Lets finally compute the mean free energy F, to see the nature of the process
+    F = 1/np.sqrt(2*fit['beta[mol2/J2]'])   #J/mol
+    delta_F = F *   fit['\Delta(beta[mol2/J2])'] / (2*fit['beta[mol2/J2]'])      
+        #After some uncertainty calcs I derived that formula
+    
+    #Now we can print which type of sorption is, based on F:
+    print('##################################################')
+    print(f' F = {F:.1e} +- {delta_F:.1e}' + 'J/mol')
+    if F*10**-3 < 8: #physi
+        print('F < 8KJ/mol, indicating it is physisorption ')
+    elif (F*10**-3 < 8 and F*10**-3 > 16): #chemi
+        print('F> 16kJ/mol, indicating it is chemisorption')
+    else : #F*10**-3 > 16     #WTF is that?
+        print('8KJ/mol < F < 16KJ/mol, Ion exchange/soft chemisorption')
+    
+    print('##################################################')
+    
+    #Finally we store them
+    fit['F[J/mol]'] = F    
+    fit['\Delta(F[J/mol])'] = delta_F
+    
+    ########## 4) Return ###########
+    
+    return fit
     
 #%% ######### 4) TGA reader ##################### 
 ##################################################

@@ -451,6 +451,11 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     
     ######## 3) cleaning ###############
     '''
+    If there is no dil 2, in the dilution 2 table, you might encounter
+    Div#0, so we will remove it, replcaing it by 1:
+    '''
+    D_f = D_f.replace('#DIV/0!',1)
+    '''
     Since its object type, I will make it numeric, since everything will be easier
     with it (and strictly its true)
     '''
@@ -2660,7 +2665,8 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
     And it will perform the following correction to the other samples:
         C_f corr = C_f * C_0/(C_0+C_leach)
     which would be like:
-        1_2 corr = 1_2 * 0_1/(0_1+C_leach 1), 1_3 corr = 1_3 * 0_1/(0_1+C_leach 1),
+        1_1 corr = 1_1 * 0_1/(0_1+C_leach 1)
+        1_2 corr = 1_2 * 0_2/(0_2+C_leach 1), 1_3 corr = 1_3 * 0_3/(0_3+C_leach 1),
         ...
         2_2 corr = 2_2 * 0_2/(0_2+C_leach), 2_3 cor = 2_3 * 0_2/(0_2+C_leac)
         ...

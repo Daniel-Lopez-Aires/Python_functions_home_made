@@ -83,18 +83,13 @@ At_we = pd.read_excel('C:/Users/Administrator/Desktop/Python/at_wt_natural_eleme
 #%%## ## 1.1) ICPMS excel reader #############
 #####################################
 
-def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read', 
+def Read_ICPMS_excel (excel_name, Sheet_name = 'To_read', Numbering_row = 1,
+                      Is_wash_inside = 0,
                       return_debug = False):
     '''
-    Function that will read the excel file from ICPMS and will return a df with 
-    the relevant information, for easier handling /plotting. Note the excel 
-    should be a bit preprocessed:
-            
-        1) Clean sheet where only the relevant data (cps, ppb, whatever) is, 
-        to load it. You can remove ICPMS blanks (std 0, etc). THe Isotopes column
-        in Column A in excel THe 1st isotope, Co59(LR) in row 7 in excel). 
-        Sample names in row 2 in excel
-            
+    Function that will read a excel sheet from the excel file from ICPMS and 
+    will return a df with the relevant information, for easier handling /plotting. 
+
     You could use this function to get the raw data (output from ICPMS) or to correct 
     them for the ICPMS dilution factor.     
 
@@ -102,22 +97,29 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read',
     go to the excel sheet, and delete those rows/columns. No clue why this 
     happens, but that solves it (:   
                                                                                  
-    Recommended to delete the "wash" sample, will only bring problems in analyis xD
+    The wash solution will be removed, if desired. BEware, there should not be 
+    any extra info at the bottom, so for example the "Flags" thing that Rafa 
+    sometimes includes at the end, move it to the top, or simply delete!!
 
     
     *Inputs:
         .excel_name: string with the name of the excel, with the .xlsx. note if 
         you select the file on the FIle viewer and do copy paste, the name will 
         be there. But dont forget the '', it must be an string! Eg: 'Excel.xlsx'
-        .cps_sheet_name: string with the name of the sheet with the data to read 
+        .Sheet_name: string with the name of the sheet with the data to read 
             future maybe also concentration values?). Default value: 'To_read' 
         (from acid vs no acid test)
+        .Numbering_now: number to indicate the starting row (from excel), which 
+        contains the sample number: 1,2,3,4... Default: 1 (in the sheet to_read  
+        is the 1st row, in the raw outcome from icpms might not be)
+        .Is_wash_inside: boolean to indicate whether the wash is inside or not.
+            Default: 0 (is not inside)
         .return_debug: if you want to get some extra df for debug 
         (raw data, without cleaning, so like the excel). Default value = False
 
         
     *Outputs:
-        .several df with the cps/%rsd or whatver it is reading. Depending whether
+        .A pandas df with the cps/%rsd or whatever it is reading. Depending whether
         you want the debug you may  have 1 or 2 outputs. THe isotopes are the 
         index of the df, so the columns are the sample data! the column names
         are the sample names
@@ -144,7 +146,8 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read',
     with the name given as input:
     '''    
     #Load
-    Dat = pd.read_excel(excel_name, cps_sheet_name, header = [1], index_col=0)
+    Dat = pd.read_excel(excel_name, Sheet_name, header = Numbering_row, 
+                        index_col=0)
         #header 1 means take row 1 to give names to the columns
         #That contains the cps and cps*dil factor
         #index col = 0 to use first column as index!
@@ -153,6 +156,7 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read',
     one sheet they were loadingn NaN values. I just erase those empty stuff in
     excel (selecting and delete) and after it worked!
     '''
+    
     
     ############### 2) Clean df ############
     
@@ -180,8 +184,10 @@ def Read_ICPMS_excel (excel_name, cps_sheet_name = 'To_read',
 
     df_cps = df_cps.apply(pd.to_numeric)    
                 
+    ###Removing the wash data, if sinde
+    if Is_wash_inside:
+        df_cps = df_cps.iloc[:,:-1]     #Removing last columns
     
-  
     
     ############## 3) Ouptuts ######################
         
@@ -806,10 +812,6 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
                     #Delta(ppb)/ppb = 1/100!!
         aux2 = aux * np.sqrt((std_IS/cps_IS)**2 + (1/100)**2)     #std values
         
-        print('############################################')
-        print('Here, to copmute the std of the sens, assuming error in theoretical ppb'+
-              'data of 1% Take into account, or at least remember !!!!!!!!!!!!!!!!!')
-        print('############################################')
         
         #TO store temporarily those values I create an auxiliary list
         #     #no df, not efficient!
@@ -842,6 +844,10 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     df_IS_sens.columns = df_cps_ppb.columns
     df_IS_sens_std.columns = df_cps_ppb.columns
     
+    print('############################################ \n')
+    print('Attention: Here, to compute the std of the sens, assuming error in '+
+          'theoretical ppb data of 1% Take into account, or at least remember !!!')
+    print('############################################ \n')
     
     'I can print the %rstd values = std/mean * 100 of the IS sens, useful to spot fluctuations!'
     rstd = df_IS_sens.std(axis =1) / df_IS_sens.mean(axis =1) * 100  
@@ -1973,7 +1979,8 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
     '''
     Function that will compute the distribution constant Kd and the adsorption 
     quantity Q_e from the ppb data obtained with ICPMS. Note that data must be
-    corrected for the dilutions factors. 
+    corrected for the dilutions factors. This function was made for 3 replicates,
+    beware!!!!
     
     Based on the blk corrector function. The sorbed quantity Q_e is:
         Q_e = (C_0 - C_e) * V/m
@@ -2043,6 +2050,9 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
         .df with the Kd data
         .df with q_e data
         
+    
+    ######## To Do: #########
+    .Create version for 2 replicates, or generalize for more replicates?
         '''
     
     
@@ -2073,12 +2083,12 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
         2) 1) * V/m = q_e
         3) 2)	1/C_eq = Kd
     
-    I must treat the 2 experiments are different, I should substract the blank 1
+    I must treat the 3 experiments are different, I should substract the blank 1
     to the 1st emasurements and the 2 to the others. Since I ordered it in the 
     right way (1st replicacte 1, then replicate 2, I could) split it easily :D
             df.shape gives the shape of the df, n_rows, n_columns
     
-    Note the df have number of samples * 2 replicates columns.
+    Note the df have number of samples * 3 replicates columns.
     
     Then, I will create a new dataframe substracting that data. To do so, I 
     need to get rid of the isotopes column, since is text, and then add it again.
@@ -2098,13 +2108,7 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
     
     '''
     
-    #So, lets split into the 2 replicates!
-    '''
-    For 2 replicates its easy, for 3 it could be more tricky. Beware! TO create 
-    a function you should say the number of replicates and so!
-    '''
-    
-    #Gathering the replicates sepparately    
+    #Gathering the 3 replicates sepparately    
     df_1 = df_samples_aux.iloc[:, : round(df_samples_aux.shape[1] / 3)]
             #1st replicate
     df_2 = df_samples_aux.iloc[:, round(df_samples_aux.shape[1] / 3): 2*round(df_samples_aux.shape[1] / 3)]

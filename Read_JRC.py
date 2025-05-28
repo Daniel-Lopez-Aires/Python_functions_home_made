@@ -461,6 +461,10 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     Div#0, so we will remove it, replcaing it by 1:
     '''
     D_f = D_f.replace('#DIV/0!',1)
+    
+    #Also, if there are NaN rows and columns (empty in the excel), I will remove:
+    D_f= D_f.loc[D_f.index.dropna()]
+    
     '''
     Since its object type, I will make it numeric, since everything will be easier
     with it (and strictly its true)

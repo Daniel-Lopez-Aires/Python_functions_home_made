@@ -859,7 +859,7 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     print('################################################################# \n')
     print('%rstd of the IS sens:')
     print(rstd)
-    print('Values >= 5/6% start to be suspicious, something happened! (Th oxidation for ex?) \n')
+    print('Values >= 10/15% start to be suspicious, something happened! (Th oxidation for ex?) \n')
     print('############################################################### \n')
     
     
@@ -2836,6 +2836,148 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
     else:       #False, dont return it
         return df_ppb_br, df_ppb_std_br
 
+
+
+    
+#%% ######## 1.18 Cs correction ##############
+#################################################################    
+
+def ICPMS_Cs_correction(df_ppb, df_sens,
+                            Cs133_fis_ab = 41.34, Ba134_fis_ab = 19.07,
+                            Ba136_fis_ab = 1.72, Ba137_fis_ab = 15.17,
+                            Ba138_fis_ab = 64.04):
+    '''
+    This function will apply the corrections to compute, for a SNF leachate ICPMS:
+        .Natural and fission Ba
+        .Fission Cs (no natural Cs, it was removed with the ICPMS Blk corr)
+    The data should be Xe corrected, since Xe interfere with Ba and Cs. ORIGEN
+    calcs from the fuel are also need.
+        
+    *INPUTS
+        .df_ppb: df with the ppb data. It should have the replicates in order:
+            1_1, 1_2,1_3,...,2_1,2_2,2_3,...,3_1,3_2,...
+        .df_sens: df with the sensitivity (cps/ppb) of each nuclide(mass)
+        ._ab: fission abundances of those nuclie [%]
+        
+    *OUTPUTS
+        .df_ppb_br: df with the ICPMS data with the bentonite contribution 
+            removed (br). Note the procedural blank will still be there. Though
+            they may not be useful, at least for the Qe function they will
+        .df_ppb_br_std: df of the std of the ppb_br
+        
+        
+        
+            To Do:
+                .Link with abundance excel??
+                .Implement uncertainty calc!!
+    '''
+
+
+    ######### 1) Ratio Ba 138/Ba 136 calc
+    rat_Ba138136_nat = 71.698/7.854        #nat abundance ratio of Ba138/ba 136
+    
+    rat_Ba138136 = df_ppb.loc['Ba138(LR)'] / df_ppb.loc['Ba136(LR)']
+            #measured ratio of Ba138/Ba136
+    rat_Ba138136_fis = Ba138_fis_ab / Ba136_fis_ab  #fission ratio (ORIGEN)
+    #Excel #Checked!
+    
+    
+    ########## 2) Calc of the fraction of natural/fission Ba:
+    #For this I need to take care, for natural samples, ratio is 1!
+    
+    '''
+    With the ratios I can compute the ratio of natural and fission Ba. Beware, this
+    calc should only take place for radiaoct samples. For natural no, you set
+    all to nat Ba!
+    '''
+    #With the ratios I copmute the fraction of natural and fission. Beware, this
+    
+    frac_Ba136_nat = (rat_Ba138136 - rat_Ba138136_fis)/(
+        rat_Ba138136_nat -rat_Ba138136_fis)     #fraction of nat Ba136
+    
+    frac_Ba136_fis = 1- frac_Ba136_nat      #Fission fraction = 1 - natural fraction
+   
+    
+    Ba136_nat = frac_Ba136_nat * df_ppb.loc['Ba136(LR)']    #nat Ba136!
+    
+    Ba138_nat = Ba136_nat * rat_Ba138136_nat
+    
+    Ba136_fis = frac_Ba136_fis * df_ppb.loc['Ba136(LR)']    #fiss Ba136
+    
+    Ba138_fis = Ba136_fis *rat_Ba138136_fis          #fiss Ba138
+    #Checked!
+    
+
+    ########### 3) Ba134,5,6,7, nat calc from Ba138
+    #Using natural abundances data!
+    
+    Ba134_nat = 2.417 * Ba138_nat/71.698
+    Ba135_nat = 6.592 * Ba138_nat/71.698
+    Ba136_nat = 7.854 * Ba138_nat/71.698
+    Ba137_nat = 11.232 * Ba138_nat/71.698
+    #Checked!
+
+    ########## 4) Fission Ba134, 137 #####################
+    #ORIGEN dependant!
+    
+    Ba134_fis = Ba134_fis_ab * ( Ba136_fis + Ba138_fis) / (Ba136_fis_ab + Ba138_fis_ab )
+                #Ba134 fis
+    Ba137_fis = Ba137_fis_ab * ( Ba136_fis + Ba138_fis) / (Ba136_fis_ab + Ba138_fis_ab )
+            #Ba 137 fis
+            
+
+    ############ 5) Cs (fission only, no natural) calc ########
+    '''
+    #Note no natural Cs since it was removed with the ICPMS Blk substraction,
+    #so what remains is only radioactive!
+    
+    This is evident:
+    Cs 134 fiss = total 134 (measured) - Ba134 nat - Ba134 fis
+    and similar for Cs137, Cs135
+    '''
+
+    #
+    Cs134_fis = df_ppb.loc['Ba134(LR)'] - Ba134_fis - Ba134_nat
+    Cs137_fis = df_ppb.loc['Ba137(LR)'] - Ba137_fis - Ba137_nat
+    #
+    Cs135_fis = df_ppb.loc['Ba135(LR)'] - Ba135_nat
+                #no Ba 135 fis created!!
+    #checked!
+
+    ############# 6) Sens correction for Cs
+    '''
+    Note that the ppb of Cs were computed using the Ba sensitivity, so to correct
+    for that, I can simply revert that, and multiply for the Cs133 sens:
+        sens new = sens Ba 13X / sens Cs 133
+        
+        X = 4,5,7
+        
+    '''
+    Cs_134_fis_sensco = Cs134_fis * df_sens.loc['Ba134(LR)']/df_sens.loc['Cs133(LR)']
+    Cs_135_fis_sensco = Cs135_fis * df_sens.loc['Ba135(LR)']/df_sens.loc['Cs133(LR)']
+    Cs_137_fis_sensco = Cs137_fis * df_sens.loc['Ba137(LR)']/df_sens.loc['Cs133(LR)']
+
+
+    ############## 7) Output ##################
+    '''
+    Okay, I will return the df_ppb, but I will add it the info. I will add all, 
+    and with time I will know if I need more or less info xD
+    '''
+    
+    df_ppb.loc['Ba134nat'] = Ba134_nat
+    df_ppb.loc['Ba134fis'] = Ba134_fis
+    df_ppb.loc['Cs134fis'] = Cs_134_fis_sensco
+    df_ppb.loc['Ba135nat'] = Ba135_nat
+    df_ppb.loc['Ba135nat'] = Ba135_nat
+    df_ppb.loc['Cs135fis'] = Cs_135_fis_sensco
+    df_ppb.loc['Ba136nat'] = Ba136_nat
+    df_ppb.loc['Ba136fis'] = Ba136_fis
+    df_ppb.loc['Ba137nat'] = Ba137_nat
+    df_ppb.loc['Ba137fis'] = Ba137_fis
+    df_ppb.loc['Cs137fis'] = Cs_137_fis_sensco
+    
+    
+    return df_ppb
 
 
 

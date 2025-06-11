@@ -479,6 +479,38 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     return D_f            #return
 
 
+#%%######## 1.4) ICPMS Sens finder #############
+#####################################
+
+def ICPMS_Sens_finder(Excel_name, Excel_sheet = 'Calib', Sens_column = 12):
+    '''
+    Function to get the senstivity of each mass from the excel. It is an easy
+    task to do, you just read in thee xcel where you did the calibration.
+    
+    *Inputs:
+        .Excel_name
+        .Excel_sheet
+        .Sens_colum: number indicating the column where the Sens is.Spotted from
+        excel, so column A is number 1
+    
+    *Outputs:
+        .df with the sens, its std and rstd [cps/ppb]
+    '''
+    
+    
+    ########## Loading #################
+    Sheet = pd.read_excel(Excel_name, Excel_sheet, header = 5, index_col =0)
+
+    i = 12 #excel count, of Sens column!
+    #from that the relevant data is:
+    df_sens = Sheet[Sheet.columns[i-2:i+1]]
+
+    #Now I need to just rename then and there they are!
+    df_sens.columns = ['Sens [cps/ppb]', 'std [cps/ppb]', 'rsd [cps/ppb]']
+    
+    
+    return df_sens
+
 #%% ##### 1.4) ICPMS Dilution factor corrector #############
 #####################################
 
@@ -2842,7 +2874,8 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
 #%% ######## 1.18 Cs correction ##############
 #################################################################    
 
-def ICPMS_Cs_correction(df_ppb, df_sens,
+def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens, 
+                        columns_blks = np.array([1,2,3]),
                             Cs133_fis_ab = 41.34, Ba134_fis_ab = 19.07,
                             Ba136_fis_ab = 1.72, Ba137_fis_ab = 15.17,
                             Ba138_fis_ab = 64.04):
@@ -2852,25 +2885,37 @@ def ICPMS_Cs_correction(df_ppb, df_sens,
         .Fission Cs (no natural Cs, it was removed with the ICPMS Blk corr)
     The data should be Xe corrected, since Xe interfere with Ba and Cs. ORIGEN
     calcs from the fuel are also need.
+    
+    Note that for the std calcs, it was asssumed:
+        i) NO std to natural abundances
+        ii) NO std to ORIGEN calcs (fission abundances, etc)
         
     *INPUTS
-        .df_ppb: df with the ppb data. It should have the replicates in order:
-            1_1, 1_2,1_3,...,2_1,2_2,2_3,...,3_1,3_2,...
-        .df_sens: df with the sensitivity (cps/ppb) of each nuclide(mass)
-        ._ab: fission abundances of those nuclie [%]
+        .df_ppb: df with the ppb data. 
+        .df_ppb_std: df with the ppb std data
+        .df_sens: df with the sensitivity (cps/ppb) of each nuclide(mass), as well
+        as with its std
+        .columns_blks: np.array([]) indicating the number of columns containing
+            blks. From excel, so column A = 1
+        . .._ab: fission abundances of those nuclei [%]
         
     *OUTPUTS
-        .df_ppb_br: df with the ICPMS data with the bentonite contribution 
-            removed (br). Note the procedural blank will still be there. Though
-            they may not be useful, at least for the Qe function they will
-        .df_ppb_br_std: df of the std of the ppb_br
+        .df_ppb: including Ba, Cs 
+        .df_ppb_std: including thie rstd
         
         
         
-            To Do:
+            #### To Do:
                 .Link with abundance excel??
-                .Implement uncertainty calc!!
+                .Check why uncertantiy calc so high/solve it somehow??
     '''
+
+    ######## 0) 
+    columns_blks = columns_blks - 1 
+        #to adapt the counting system, python starts at0, not 1!
+    print('##############################')
+    print('Did you calibrate properly Ba masses? is mandatory!!!')
+    print('#####################################################\n')
 
 
     ######### 1) Ratio Ba 138/Ba 136 calc
@@ -2878,33 +2923,64 @@ def ICPMS_Cs_correction(df_ppb, df_sens,
     
     rat_Ba138136 = df_ppb.loc['Ba138(LR)'] / df_ppb.loc['Ba136(LR)']
             #measured ratio of Ba138/Ba136
+    rat_Ba138136_std = rat_Ba138136 * np.sqrt(
+        (df_ppb_std.loc['Ba138(LR)']/df_ppb.loc['Ba138(LR)'])**2 + 
+        (df_ppb_std.loc['Ba136(LR)']/df_ppb.loc['Ba136(LR)'])**2 ) #std
+    #Bro, this is so huge that fuck up all the
+    
     rat_Ba138136_fis = Ba138_fis_ab / Ba136_fis_ab  #fission ratio (ORIGEN)
+        #no std, assumed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+        
     #Excel #Checked!
+    
+    print('##############################################')
+    print('Natural ratio Ba138/Ba136:' + f'{rat_Ba138136_nat: .3f}. Measured ratio:')
+    #f for decimals, e for scientific notation
+    print(rat_Ba138136)
+    print('#################################')
+    print('If they are close, it indicates that little fission Ba present')
+    print('#####################################################\n')
     
     
     ########## 2) Calc of the fraction of natural/fission Ba:
-    #For this I need to take care, for natural samples, ratio is 1!
-    
     '''
     With the ratios I can compute the ratio of natural and fission Ba. Beware, this
     calc should only take place for radiaoct samples. For natural no, you set
     all to nat Ba!
+    
+    Note here, Stef set for natural samples, a ratio of 1, so all Ba is natural!
     '''
     #With the ratios I copmute the fraction of natural and fission. Beware, this
     
     frac_Ba136_nat = (rat_Ba138136 - rat_Ba138136_fis)/(
         rat_Ba138136_nat -rat_Ba138136_fis)     #fraction of nat Ba136
+    frac_Ba136_nat_std = frac_Ba136_nat * rat_Ba138136_std/(rat_Ba138136 
+                                                            - rat_Ba138136_fis)
+                        #std
+    '''
+    Okay, that is not 100% true, since for the blanks, all the Ba136 is natural Ba
+    (ASSUMPTION), there is no fission Ba. Hence, I will overwrite them to set
+    1 as fraction, and 0 to std!
+    '''
+    frac_Ba136_nat.iloc[columns_blks] = 1        #no fission, is a blank!
+    frac_Ba136_nat_std.iloc[columns_blks] = 0            #std
     
     frac_Ba136_fis = 1- frac_Ba136_nat      #Fission fraction = 1 - natural fraction
-   
+    frac_Ba136_fis_std = frac_Ba136_nat_std      #std
     
     Ba136_nat = frac_Ba136_nat * df_ppb.loc['Ba136(LR)']    #nat Ba136!
+    Ba136_nat_std = Ba136_nat * np.sqrt( (frac_Ba136_nat_std/frac_Ba136_nat)**2 +
+            (df_ppb_std.loc['Ba136(LR)']/ df_ppb.loc['Ba136(LR)'])**2 ) #std
     
     Ba138_nat = Ba136_nat * rat_Ba138136_nat
+    Ba138_nat_std = Ba138_nat * Ba136_nat_std/Ba136_nat  #std (rat nat no std given)
     
     Ba136_fis = frac_Ba136_fis * df_ppb.loc['Ba136(LR)']    #fiss Ba136
+    Ba136_fis_std = Ba136_fis * np.sqrt((frac_Ba136_fis_std/frac_Ba136_fis)**2 + 
+                     (df_ppb_std.loc['Ba136(LR)']/df_ppb.loc['Ba136(LR)'])**2 )
     
     Ba138_fis = Ba136_fis *rat_Ba138136_fis          #fiss Ba138
+    Ba138_fis_std = Ba138_fis * Ba136_fis_std/Ba136_fis #std (fis ratio no std!)
     #Checked!
     
 
@@ -2912,19 +2988,32 @@ def ICPMS_Cs_correction(df_ppb, df_sens,
     #Using natural abundances data!
     
     Ba134_nat = 2.417 * Ba138_nat/71.698
+    Ba134_nat_std = Ba134_nat * Ba138_nat_std/Ba138_nat      #std
+    
     Ba135_nat = 6.592 * Ba138_nat/71.698
+    Ba135_nat_std = Ba135_nat * Ba138_nat_std/Ba138_nat 
+    
     Ba136_nat = 7.854 * Ba138_nat/71.698
+    Ba136_nat_std = Ba136_nat * Ba138_nat_std/Ba138_nat 
+    
     Ba137_nat = 11.232 * Ba138_nat/71.698
-    #Checked!
+    Ba137_nat_std = Ba137_nat * Ba138_nat_std/Ba138_nat 
+    #Checked! (std no checked, computing here for 1st time)
+
 
     ########## 4) Fission Ba134, 137 #####################
     #ORIGEN dependant!
     
     Ba134_fis = Ba134_fis_ab * ( Ba136_fis + Ba138_fis) / (Ba136_fis_ab + Ba138_fis_ab )
                 #Ba134 fis
+    Ba134_fis_std = Ba134_fis * np.sqrt(Ba136_fis_std**2 + Ba138_fis_std**2)/ (
+        Ba136_fis + Ba138_fis)          #std
+                
     Ba137_fis = Ba137_fis_ab * ( Ba136_fis + Ba138_fis) / (Ba136_fis_ab + Ba138_fis_ab )
             #Ba 137 fis
-            
+    Ba137_fis_std = Ba137_fis * np.sqrt(Ba136_fis_std**2 + Ba138_fis_std**2)/ (
+        Ba136_fis + Ba138_fis)          #std        
+
 
     ############ 5) Cs (fission only, no natural) calc ########
     '''
@@ -2938,12 +3027,44 @@ def ICPMS_Cs_correction(df_ppb, df_sens,
 
     #
     Cs134_fis = df_ppb.loc['Ba134(LR)'] - Ba134_fis - Ba134_nat
+    Cs134_fis_std = np.sqrt(df_ppb_std.loc['Ba134(LR)']**2 + Ba134_fis_std**2 
+                            + Ba134_nat_std**2 )
     Cs137_fis = df_ppb.loc['Ba137(LR)'] - Ba137_fis - Ba137_nat
+    Cs137_fis_std = np.sqrt(df_ppb_std.loc['Ba137(LR)']**2 + Ba137_fis_std**2 
+                            + Ba137_nat_std**2 )
     #
     Cs135_fis = df_ppb.loc['Ba135(LR)'] - Ba135_nat
+    Cs135_fis_std = np.sqrt(df_ppb_std.loc['Ba135(LR)']**2 + Ba135_nat_std**2)
                 #no Ba 135 fis created!!
     #checked!
 
+    '''
+    Their abundances will also be computed, since they are really useful to 
+    understand the data. We would expect similar Cs133 as Cs137 production, or
+    slightly higher Cs137. Huge discrepancies would indicate that the data is not
+    trustworthy
+    '''
+
+    Cs133_ab = df_ppb.loc['Cs133(LR)'] * 100 / (df_ppb.loc['Cs133(LR)'] + 
+        Cs134_fis + Cs135_fis + Cs137_fis)
+    Cs134_ab = Cs134_fis * 100 / (df_ppb.loc['Cs133(LR)'] + 
+        Cs134_fis + Cs135_fis + Cs137_fis)
+    Cs135_ab = Cs135_fis * 100 / (df_ppb.loc['Cs133(LR)'] + 
+        Cs134_fis + Cs135_fis + Cs137_fis)
+    Cs137_ab = Cs137_fis * 100 / (df_ppb.loc['Cs133(LR)'] + 
+        Cs134_fis + Cs135_fis + Cs137_fis)
+    
+    df_Cs_ab = pd.DataFrame([Cs133_ab, Cs134_ab, Cs135_ab, Cs137_ab], 
+                index = ['Cs133', 'Cs134', 'Cs135', 'Cs137']) #abundances [%]
+    
+    print('###############################################')
+    print('Fission Cs abundances [%]:')
+    print(df_Cs_ab)
+    print('Ab of Cs133 should be <= Cs137. Huge discrepancies indicate untrustworthy data')
+    print('#####################################################\n')
+    
+    
+    
     ############# 6) Sens correction for Cs
     '''
     Note that the ppb of Cs were computed using the Ba sensitivity, so to correct
@@ -2953,31 +3074,110 @@ def ICPMS_Cs_correction(df_ppb, df_sens,
         X = 4,5,7
         
     '''
-    Cs_134_fis_sensco = Cs134_fis * df_sens.loc['Ba134(LR)']/df_sens.loc['Cs133(LR)']
-    Cs_135_fis_sensco = Cs135_fis * df_sens.loc['Ba135(LR)']/df_sens.loc['Cs133(LR)']
-    Cs_137_fis_sensco = Cs137_fis * df_sens.loc['Ba137(LR)']/df_sens.loc['Cs133(LR)']
+    Cs134_fis_co = Cs134_fis * df_sens.loc[
+        'Ba134(LR)']['Sens [cps/ppb]']/df_sens.loc['Cs133(LR)']['Sens [cps/ppb]']
+    Cs134_fis_co_std = Cs134_fis_co * np.sqrt( (Cs134_fis_std/Cs134_fis)**2 + 
+     (df_sens.loc['Ba134(LR)']['std [cps/ppb]']/
+      df_sens.loc['Ba134(LR)']['Sens [cps/ppb]'])**2 + (
+          df_sens.loc['Cs133(LR)']['std [cps/ppb]']
+          /df_sens.loc['Cs133(LR)']['Sens [cps/ppb]'])**2 )
+    
+    Cs135_fis_co = Cs135_fis * df_sens.loc[
+        'Ba135(LR)']['Sens [cps/ppb]']/df_sens.loc['Cs133(LR)']['Sens [cps/ppb]']
+    Cs135_fis_co_std = Cs135_fis_co * np.sqrt( (Cs135_fis_std/Cs135_fis)**2 + 
+     (df_sens.loc['Ba135(LR)']['std [cps/ppb]']/
+      df_sens.loc['Ba135(LR)']['Sens [cps/ppb]'])**2 + (
+          df_sens.loc['Cs133(LR)']['std [cps/ppb]']
+          /df_sens.loc['Cs133(LR)']['Sens [cps/ppb]'])**2 )
+    
+    Cs137_fis_co = Cs137_fis * df_sens.loc[
+        'Ba137(LR)']['Sens [cps/ppb]']/df_sens.loc['Cs133(LR)']['Sens [cps/ppb]']
+    Cs137_fis_co_std = Cs137_fis_co * np.sqrt( (Cs137_fis_std/Cs137_fis)**2 + 
+     (df_sens.loc['Ba137(LR)']['std [cps/ppb]']/
+      df_sens.loc['Ba137(LR)']['Sens [cps/ppb]'])**2 + (
+          df_sens.loc['Cs133(LR)']['std [cps/ppb]']
+          /df_sens.loc['Cs133(LR)']['Sens [cps/ppb]'])**2 )
+          #excel checked!
 
-
+    '''
+    Another useful check is to compare the total Cs obtained with the one predicted
+    from the abundancies obtained from ORIGEN. They should not disagree too much
+    .Huge discrepancies would indicate untrustowrthy data (measurement data)
+    '''
+    Cs_tot = df_ppb.loc['Cs133(LR)'] + Cs134_fis_co + Cs135_fis_co + Cs137_fis_co
+    Cs_tot_std = np.sqrt(df_ppb_std.loc['Cs133(LR)']**2 + Cs134_fis_co_std**2 +
+                         Cs135_fis_co_std**2 + Cs137_fis_co_std**2) #std
+    
+    Cs_tot_OR = df_ppb.loc['Cs133(LR)'] / Cs133_fis_ab * 100 #Cs expected from ORIGEN
+    Cs_tot_OR_std = Cs_tot_OR * df_ppb_std.loc['Cs133(LR)'] / df_ppb.loc['Cs133(LR)']
+    
+    rat_Cstot_OR = Cs_tot/Cs_tot_OR
+    
+    print('##################################################')
+    print('Total Cs measured [ppb]: ')
+    print(Cs_tot)
+    print('##################################################')
+    print('Total Cs from ORIGEN [ppb]: ')
+    print(Cs_tot_OR)
+    print('##################################################')
+    print('Ratio total Cs measured/ORIGEN: ')
+    print(rat_Cstot_OR)
+    print('Huge discrepancies (>= 2/3) indicate untrustworthy measurements, use ORIGEN data!')
+    print('################################################\n')
+    print('################## End of the function ###########################\n')
+    print('################################################\n')
+    print('################################################\n')
+    print('################################################\n')
+    
+    
     ############## 7) Output ##################
     '''
     Okay, I will return the df_ppb, but I will add it the info. I will add all, 
     and with time I will know if I need more or less info xD
+    
+    Cs tot from origen will also be included
     '''
     
+    ##### ppb
     df_ppb.loc['Ba134nat'] = Ba134_nat
     df_ppb.loc['Ba134fis'] = Ba134_fis
-    df_ppb.loc['Cs134fis'] = Cs_134_fis_sensco
+    df_ppb.loc['Cs134fis'] = Cs134_fis_co
     df_ppb.loc['Ba135nat'] = Ba135_nat
     df_ppb.loc['Ba135nat'] = Ba135_nat
-    df_ppb.loc['Cs135fis'] = Cs_135_fis_sensco
+    df_ppb.loc['Cs135fis'] = Cs135_fis_co
     df_ppb.loc['Ba136nat'] = Ba136_nat
     df_ppb.loc['Ba136fis'] = Ba136_fis
     df_ppb.loc['Ba137nat'] = Ba137_nat
     df_ppb.loc['Ba137fis'] = Ba137_fis
-    df_ppb.loc['Cs137fis'] = Cs_137_fis_sensco
+    df_ppb.loc['Cs137fis'] = Cs137_fis_co
+    df_ppb.loc['Ba138nat'] = Ba138_nat
+    df_ppb.loc['Ba138fis'] = Ba138_fis
+    # The total Cs will also be given as output!
+    df_ppb.loc['Cs'] = Cs_tot
+    df_ppb.loc['Cs (ORIGEN)'] = Cs_tot_OR
     
     
-    return df_ppb
+    #### ppb_std
+    df_ppb_std.loc['Ba134nat'] = Ba134_nat_std
+    df_ppb_std.loc['Ba134fis'] = Ba134_fis_std
+    df_ppb_std.loc['Cs134fis'] = Cs134_fis_co_std
+    df_ppb_std.loc['Ba135nat'] = Ba135_nat_std
+    df_ppb_std.loc['Ba135nat'] = Ba135_nat_std
+    df_ppb_std.loc['Cs135fis'] = Cs135_fis_co_std
+    df_ppb_std.loc['Ba136nat'] = Ba136_nat_std
+    df_ppb_std.loc['Ba136fis'] = Ba136_fis_std
+    df_ppb_std.loc['Ba137nat'] = Ba137_nat_std
+    df_ppb_std.loc['Ba137fis'] = Ba137_fis_std
+    df_ppb_std.loc['Cs137fis'] = Cs137_fis_co_std
+    df_ppb_std.loc['Ba138nat'] = Ba138_nat_std
+    df_ppb_std.loc['Ba138fis'] = Ba138_fis_std    
+    #
+    df_ppb_std.loc['Cs'] = Cs_tot_std
+    df_ppb_std.loc['Cs (ORIGEN)'] = Cs_tot_OR_std
+    
+    
+    ######
+    return df_ppb, df_ppb_std
 
 
 

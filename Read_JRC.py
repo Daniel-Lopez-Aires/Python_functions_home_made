@@ -1537,10 +1537,10 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
         corrections :)
     
     
-    To Do:
+    ###### To Do: #######
             .Automatize more stuff? such as the sens corrections, not by case 
                         something better, more general??
-            .Optimize excel saving!
+            .Output more things? Or less??
             :Delete the ppb data when not needed, so in excels it doesnt exist neither?
     '''
     
@@ -2901,13 +2901,14 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
         
     *OUTPUTS
         .df_ppb: including Ba, Cs 
-        .df_ppb_std: including thie rstd
+        .df_ppb_std: including the rstd
         
         
         
             #### To Do:
                 .Link with abundance excel??
                 .Check why uncertantiy calc so high/solve it somehow??
+                Maybe depends on ICPMS data, so complicate
     '''
 
     ######## 0) 
@@ -3073,10 +3074,13 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
         
         X = 4,5,7
         
+    Fpor the std there I needed to use np.abs (what is right btw), sicne some values
+    were negative!
+        
     '''
     Cs134_fis_co = Cs134_fis * df_sens.loc[
         'Ba134(LR)']['Sens [cps/ppb]']/df_sens.loc['Cs133(LR)']['Sens [cps/ppb]']
-    Cs134_fis_co_std = Cs134_fis_co * np.sqrt( (Cs134_fis_std/Cs134_fis)**2 + 
+    Cs134_fis_co_std = np.abs(Cs134_fis_co) * np.sqrt( (Cs134_fis_std/Cs134_fis)**2 + 
      (df_sens.loc['Ba134(LR)']['std [cps/ppb]']/
       df_sens.loc['Ba134(LR)']['Sens [cps/ppb]'])**2 + (
           df_sens.loc['Cs133(LR)']['std [cps/ppb]']
@@ -3084,7 +3088,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     
     Cs135_fis_co = Cs135_fis * df_sens.loc[
         'Ba135(LR)']['Sens [cps/ppb]']/df_sens.loc['Cs133(LR)']['Sens [cps/ppb]']
-    Cs135_fis_co_std = Cs135_fis_co * np.sqrt( (Cs135_fis_std/Cs135_fis)**2 + 
+    Cs135_fis_co_std = np.abs(Cs135_fis_co) * np.sqrt( (Cs135_fis_std/Cs135_fis)**2 + 
      (df_sens.loc['Ba135(LR)']['std [cps/ppb]']/
       df_sens.loc['Ba135(LR)']['Sens [cps/ppb]'])**2 + (
           df_sens.loc['Cs133(LR)']['std [cps/ppb]']
@@ -3092,7 +3096,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     
     Cs137_fis_co = Cs137_fis * df_sens.loc[
         'Ba137(LR)']['Sens [cps/ppb]']/df_sens.loc['Cs133(LR)']['Sens [cps/ppb]']
-    Cs137_fis_co_std = Cs137_fis_co * np.sqrt( (Cs137_fis_std/Cs137_fis)**2 + 
+    Cs137_fis_co_std = np.abs(Cs137_fis_co) * np.sqrt( (Cs137_fis_std/Cs137_fis)**2 + 
      (df_sens.loc['Ba137(LR)']['std [cps/ppb]']/
       df_sens.loc['Ba137(LR)']['Sens [cps/ppb]'])**2 + (
           df_sens.loc['Cs133(LR)']['std [cps/ppb]']
@@ -3135,45 +3139,46 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     Okay, I will return the df_ppb, but I will add it the info. I will add all, 
     and with time I will know if I need more or less info xD
     
-    Cs tot from origen will also be included
+    Cs tot from origen will also be included.
+    
+    Note I all (LR) to all the names, which will be useful for plotting, since
+    I plot and save name removing 4 last digits [:-4], which removed (LR)
     '''
     
     ##### ppb
-    df_ppb.loc['Ba134nat'] = Ba134_nat
-    df_ppb.loc['Ba134fis'] = Ba134_fis
-    df_ppb.loc['Cs134fis'] = Cs134_fis_co
-    df_ppb.loc['Ba135nat'] = Ba135_nat
-    df_ppb.loc['Ba135nat'] = Ba135_nat
-    df_ppb.loc['Cs135fis'] = Cs135_fis_co
-    df_ppb.loc['Ba136nat'] = Ba136_nat
-    df_ppb.loc['Ba136fis'] = Ba136_fis
-    df_ppb.loc['Ba137nat'] = Ba137_nat
-    df_ppb.loc['Ba137fis'] = Ba137_fis
-    df_ppb.loc['Cs137fis'] = Cs137_fis_co
-    df_ppb.loc['Ba138nat'] = Ba138_nat
-    df_ppb.loc['Ba138fis'] = Ba138_fis
+    df_ppb.loc['Ba134_nat(LR)'] = Ba134_nat
+    df_ppb.loc['Ba134_fis(LR)'] = Ba134_fis
+    df_ppb.loc['Cs134_fis(LR)'] = Cs134_fis_co
+    df_ppb.loc['Ba135_nat(LR)'] = Ba135_nat
+    df_ppb.loc['Cs135_fis(LR)'] = Cs135_fis_co
+    df_ppb.loc['Ba136_nat(LR)'] = Ba136_nat
+    df_ppb.loc['Ba136_fis(LR)'] = Ba136_fis
+    df_ppb.loc['Ba137_nat(LR)'] = Ba137_nat
+    df_ppb.loc['Ba137_fis(LR)'] = Ba137_fis
+    df_ppb.loc['Cs137_fis(LR)'] = Cs137_fis_co
+    df_ppb.loc['Ba138_nat(LR)'] = Ba138_nat
+    df_ppb.loc['Ba138_fis(LR)'] = Ba138_fis
     # The total Cs will also be given as output!
-    df_ppb.loc['Cs'] = Cs_tot
-    df_ppb.loc['Cs (ORIGEN)'] = Cs_tot_OR
+    df_ppb.loc['Cs_tot(LR)'] = Cs_tot
+    df_ppb.loc['Cs_tot_ORIGEN(LR)'] = Cs_tot_OR
     
     
     #### ppb_std
-    df_ppb_std.loc['Ba134nat'] = Ba134_nat_std
-    df_ppb_std.loc['Ba134fis'] = Ba134_fis_std
-    df_ppb_std.loc['Cs134fis'] = Cs134_fis_co_std
-    df_ppb_std.loc['Ba135nat'] = Ba135_nat_std
-    df_ppb_std.loc['Ba135nat'] = Ba135_nat_std
-    df_ppb_std.loc['Cs135fis'] = Cs135_fis_co_std
-    df_ppb_std.loc['Ba136nat'] = Ba136_nat_std
-    df_ppb_std.loc['Ba136fis'] = Ba136_fis_std
-    df_ppb_std.loc['Ba137nat'] = Ba137_nat_std
-    df_ppb_std.loc['Ba137fis'] = Ba137_fis_std
-    df_ppb_std.loc['Cs137fis'] = Cs137_fis_co_std
-    df_ppb_std.loc['Ba138nat'] = Ba138_nat_std
-    df_ppb_std.loc['Ba138fis'] = Ba138_fis_std    
+    df_ppb_std.loc['Ba134_nat(LR)'] = Ba134_nat_std
+    df_ppb_std.loc['Ba134_fis(LR)'] = Ba134_fis_std
+    df_ppb_std.loc['Cs134_fis(LR)'] = Cs134_fis_co_std
+    df_ppb_std.loc['Ba135_nat(LR)'] = Ba135_nat_std
+    df_ppb_std.loc['Cs135_fis(LR)'] = Cs135_fis_co_std
+    df_ppb_std.loc['Ba136_nat(LR)'] = Ba136_nat_std
+    df_ppb_std.loc['Ba136_fis(LR)'] = Ba136_fis_std
+    df_ppb_std.loc['Ba137_nat(LR)'] = Ba137_nat_std
+    df_ppb_std.loc['Ba137_fis(LR)'] = Ba137_fis_std
+    df_ppb_std.loc['Cs137_fis(LR)'] = Cs137_fis_co_std
+    df_ppb_std.loc['Ba138_nat(LR)'] = Ba138_nat_std
+    df_ppb_std.loc['Ba138_fis(LR)'] = Ba138_fis_std    
     #
-    df_ppb_std.loc['Cs'] = Cs_tot_std
-    df_ppb_std.loc['Cs (ORIGEN)'] = Cs_tot_OR_std
+    df_ppb_std.loc['Cs_tot(LR)'] = Cs_tot_std
+    df_ppb_std.loc['Cs_tot_ORIGEN(LR)'] = Cs_tot_OR_std
     
     
     ######

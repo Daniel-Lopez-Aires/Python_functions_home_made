@@ -303,6 +303,7 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     
     print('###########################################')
     print('Beware with the atomic weight df, if unproperly read will give problems! ')
+    print('###########################################\n')
     
     #Now to apply it I would need a loop
     for i in range(df_ppb.shape[0] ): 
@@ -2144,6 +2145,10 @@ def ICPMS_KdQe_calc_Ad (df_mother_sol, df_samples, df_VoM_disol, df_m_be,
     
     '''
     
+    print('######################################')
+    print('Are all the variable in order? It is mandatory since we will split them!')
+    print('######################################\n')
+    
     #Gathering the 3 replicates sepparately    
     df_1 = df_samples_aux.iloc[:, : round(df_samples_aux.shape[1] / 3)]
             #1st replicate
@@ -2708,7 +2713,7 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
         1_1 corr = 1_1 * 0_1/(0_1+C_leach 1)
         1_2 corr = 1_2 * 0_2/(0_2+C_leach 1), 1_3 corr = 1_3 * 0_3/(0_3+C_leach 1),
         ...
-        2_2 corr = 2_2 * 0_2/(0_2+C_leach), 2_3 cor = 2_3 * 0_2/(0_2+C_leac)
+        2_2 corr = 2_2 * 0_2/(0_2+C_leach), 2_3 cor = 2_3 * 0_3/(0_3+C_leac)
         ...
         
     *INPUTS
@@ -3120,18 +3125,17 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     print('##################################################')
     print('Total Cs measured [ppb]: ')
     print(Cs_tot)
-    print('##################################################')
+    print('##################################################\n')
     print('Total Cs from ORIGEN [ppb]: ')
     print(Cs_tot_OR)
-    print('##################################################')
+    print('##################################################\n')
     print('Ratio total Cs measured/ORIGEN: ')
     print(rat_Cstot_OR)
     print('Huge discrepancies (>= 2/3) indicate untrustworthy measurements, use ORIGEN data!')
+    print('################################################')
+    print('################## End of the function ###########################')
     print('################################################\n')
-    print('################## End of the function ###########################\n')
-    print('################################################\n')
-    print('################################################\n')
-    print('################################################\n')
+
     
     
     ############## 7) Output ##################
@@ -5833,10 +5837,8 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
         
         #Let´s print that so it appears in the command line:
     print('\n#######################\n')
-    print('Interlaminar space of  (see above)')
-    print(aux)
-    print('\n ###############')
-        
+    print('Interlaminar space of  (see above):' + f'{aux["d[A]"] : .3f}' + ' +-' + f'{aux["\Delta(d)[A]"] : .3f}')
+    print('#######################\n ')
     
     #Finally, return d and its error in a df, recycling the one for the fit
     Fit['d[A]'] = d

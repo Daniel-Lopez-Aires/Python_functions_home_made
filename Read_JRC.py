@@ -41,6 +41,7 @@ from scipy.optimize import curve_fit             #Fit tool
 import warnings
 warnings.filterwarnings('ignore')       #To ignore and not print warning
 warnings.simplefilter("ignore")         #to ignore all warnings
+import re #regex, to group by
 
 #############################################################
 
@@ -89,9 +90,13 @@ def Read_ICPMS_excel (excel_name, Sheet_name = 'To_read', Numbering_row = 1,
     '''
     Function that will read a excel sheet from the excel file from ICPMS and 
     will return a df with the relevant information, for easier handling /plotting. 
-
-    You could use this function to get the raw data (output from ICPMS) or to correct 
-    them for the ICPMS dilution factor.     
+    The sheet could have any format, raw cps from Stef could be read.
+    Assumptions for the function:
+        .Sample names (colums) in row 4 (excel count)
+        
+    
+    You could use this function to get the raw data (output from ICPMS) or to 
+    correct them for the ICPMS dilution factor.     
 
     Note sometimes some random NaN data from excel can be added. Easy solution, 
     go to the excel sheet, and delete those rows/columns. No clue why this 
@@ -176,7 +181,7 @@ def Read_ICPMS_excel (excel_name, Sheet_name = 'To_read', Numbering_row = 1,
     #df_cps = Dat.drop(index = [Dat.index[0], Dat.index[1], Dat.index[2],Dat.index[3] ], axis = 0)   
          #Removing rows 0, 1,2,3 (their index)
          #that does not work if I load directly the Blk corr, so lets do it simpler:
-    df_cps = Dat.iloc[4:,:] 
+    df_cps = Dat.iloc[4:,:] #get data from row 4 on
     
     #Another cleaning will be putting the df in numeric format. It is in object 
     #format, which gives problems
@@ -199,8 +204,9 @@ def Read_ICPMS_excel (excel_name, Sheet_name = 'To_read', Numbering_row = 1,
             return df_cps
 
     '''
-    Sucessfully debbugged, enjoy bro! Note I return the last the Df corrected because 
-    I may not be interested in that, for ex if I want to plot the raw data.
+    Sucessfully debbugged, enjoy bro! Note I return the last the Df corrected 
+    because  I may not be interested in that, for ex if I want to plot the 
+    raw data.
     '''
 
     '''
@@ -239,7 +245,7 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     
     *Inputs
     .df_ppb,df_ppb_std: df with the ppb and std value
-    .m_s, V_s: array with the mass and volumes of the samples, or single 
+    .m_s, V_s: array with the mass (g) and volumes (L) of the samples, or single 
         values. When it is an array, the column names must be the sample names,
         as in the df_ppb. Beware for the MS case, I was not doing that!
         Default values:
@@ -277,9 +283,6 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
         #
         V_s.replace(0, np.nan, inplace = True)
         V_s.replace(np.nan, V_s.mean(), inplace = True)
-    
-        
-
     
     
     ################ 2) Conversion from ppb to M #########3
@@ -1001,6 +1004,13 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
             .Co from 59 to 80
             .Rest In115
             
+    The correction is:
+        new cps = cps / sens * <sens>
+        
+    Being sens = cps/ppb teor of the IS used to correct, and <sens> te average
+    of all the sensitivies.
+        
+        
     I shold be able to detech the name of th eisotope (row), get number, and apply
     those limits. The correction is data / IS sens * <IS sens>, being sens = cps/ppb
 
@@ -1496,7 +1506,7 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
         1) Read cps amd ppb data and %rsd 
         2) Compute sens = cps/ppb and plot it
         3) Apply the sensitivity correction
-        4) plot the new sensitivtiy plots (should be straight lines)
+        4) Plot the new sensitivtiy plots (should be straight lines)
         5) Substract ICPMS blanks
         6) Save that data (to calibrate after, by hand, for the moment..)
     This function computes as well the std using quadratic uncertainty propagation. 
@@ -1704,7 +1714,7 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     which is what I will use for the calib
     '''
     
-    return df_Blks_co
+    return df_Blks_co, df_Blks_co_std, df_IS_co, df_IS_co_std
 
 
 
@@ -2705,15 +2715,15 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
     with their mother solutions; 0_1,0_2,.... Then, this function will compute 
     the elements leached by the bentonite (C_leach) for each replicate:
                     1_1-0_1
-                    2_1-0_1
-                    3_1-0_1
+                    2_1-0_2
+                    3_1-0_3
     And it will perform the following correction to the other samples:
         C_f corr = C_f * C_0/(C_0+C_leach)
     which would be like:
         1_1 corr = 1_1 * 0_1/(0_1+C_leach 1)
-        1_2 corr = 1_2 * 0_2/(0_2+C_leach 1), 1_3 corr = 1_3 * 0_3/(0_3+C_leach 1),
+        1_2 corr = 1_2 * 0_2/(0_1+C_leach 1), 1_3 corr = 1_3 * 0_3/(0_3+C_leach 1),
         ...
-        2_2 corr = 2_2 * 0_2/(0_2+C_leach), 2_3 cor = 2_3 * 0_3/(0_3+C_leac)
+        2_2 corr = 2_2 * 0_2/(0_2+C_leach 2), 2_3 cor = 2_3 * 0_3/(0_3+C_leac)
         ...
         
     *INPUTS
@@ -2907,6 +2917,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     *OUTPUTS
         .df_ppb: including Ba, Cs 
         .df_ppb_std: including the rstd
+        .df with the Cs abundances [%]
         
         
         
@@ -2920,6 +2931,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     columns_blks = columns_blks - 1 
         #to adapt the counting system, python starts at0, not 1!
     print('##############################')
+    print('###### Start fo the Cs calibration function ##########')
     print('Did you calibrate properly Ba masses? is mandatory!!!')
     print('#####################################################\n')
 
@@ -2944,7 +2956,8 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     #f for decimals, e for scientific notation
     print(rat_Ba138136)
     print('#################################')
-    print('If they are close, it indicates that little fission Ba present')
+    print('If they are close (9.something), it indicates that little fission Ba present')
+    print('More change, such as 11.something indicates fission Ba present')
     print('#####################################################\n')
     
     
@@ -3117,20 +3130,32 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     Cs_tot_std = np.sqrt(df_ppb_std.loc['Cs133(LR)']**2 + Cs134_fis_co_std**2 +
                          Cs135_fis_co_std**2 + Cs137_fis_co_std**2) #std
     
-    Cs_tot_OR = df_ppb.loc['Cs133(LR)'] / Cs133_fis_ab * 100 #Cs expected from ORIGEN
-    Cs_tot_OR_std = Cs_tot_OR * df_ppb_std.loc['Cs133(LR)'] / df_ppb.loc['Cs133(LR)']
+    #Origen using Cs133
+    Cs_tot_OR133 = df_ppb.loc['Cs133(LR)'] / Cs133_fis_ab * 100 #Cs expected from ORIGEN
+    Cs_tot_OR133_std = Cs_tot_OR133 * df_ppb_std.loc['Cs133(LR)'] / df_ppb.loc['Cs133(LR)']
+    rat_Cstot_OR133 = Cs_tot/Cs_tot_OR133
     
-    rat_Cstot_OR = Cs_tot/Cs_tot_OR
+    #Origen using Cs137
+    Cs_tot_OR137 = Cs137_fis_co / Cs137_ab * 100 #Cs expected from ORIGEN
+    Cs_tot_OR137_std = Cs_tot_OR137 * Cs137_fis_co_std / Cs137_fis_co
+                    #Assumes no error on Cs137abundance!!!
+    rat_Cstot_OR137 = Cs_tot/Cs_tot_OR137
     
     print('##################################################')
     print('Total Cs measured [ppb]: ')
     print(Cs_tot)
     print('##################################################\n')
-    print('Total Cs from ORIGEN [ppb]: ')
-    print(Cs_tot_OR)
+    print('Total Cs from ORIGEN using Cs133 [ppb]: ')
+    print(Cs_tot_OR133)
     print('##################################################\n')
-    print('Ratio total Cs measured/ORIGEN: ')
-    print(rat_Cstot_OR)
+    print('Ratio total Cs measured/ORIGEN using Cs133: ')
+    print(rat_Cstot_OR133)
+    print('##################################################\n')
+    print('Total Cs from ORIGEN using Cs137 [ppb]: ')
+    print(Cs_tot_OR137)
+    print('##################################################\n')
+    print('Ratio total Cs measured/ORIGEN using Cs137: ')
+    print(rat_Cstot_OR137)
     print('Huge discrepancies (>= 2/3) indicate untrustworthy measurements, use ORIGEN data!')
     print('################################################')
     print('################## End of the function ###########################')
@@ -3164,8 +3189,8 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     df_ppb.loc['Ba138_fis(LR)'] = Ba138_fis
     # The total Cs will also be given as output!
     df_ppb.loc['Cs_tot(LR)'] = Cs_tot
-    df_ppb.loc['Cs_tot_ORIGEN(LR)'] = Cs_tot_OR
-    
+    df_ppb.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133
+    df_ppb.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137
     
     #### ppb_std
     df_ppb_std.loc['Ba134_nat(LR)'] = Ba134_nat_std
@@ -3182,15 +3207,77 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     df_ppb_std.loc['Ba138_fis(LR)'] = Ba138_fis_std    
     #
     df_ppb_std.loc['Cs_tot(LR)'] = Cs_tot_std
-    df_ppb_std.loc['Cs_tot_ORIGEN(LR)'] = Cs_tot_OR_std
-    
+    df_ppb_std.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133_std
+    df_ppb_std.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137_std
     
     ######
-    return df_ppb, df_ppb_std
+    return df_ppb, df_ppb_std, df_Cs_ab
 
 
 
+#######################################################################
+# %% ######### 1.19) Isotopes to elements ###########################
+######################################################################
+def ICPMS_Isot_to_Elem(df, name_column = 'Isotope'):
+    '''
+    Function that will take an ICP-MS datasheet (in df format) and will merge 
+    all the isotopes to have elemental data. That is:
+        .Merge all (LR): U(LR) = sum (U233,U234,...), Eu(LR), etc
+        .Merge all (MR): Si(MR) = sum (Si28, Si29..), U(MR), etc
+    
+    We can simply sum; [Si] = [Si28] + [Si29] + [Si30]? Yes:
+    g Si/g tot = (g Si28+gSi29+g Si30)/gtot = [Si28] + [Si29] + [Si30]
+    
+    Created by scholargpt, adapted by me. AI works for me bro!
+    
+    *Inputs
+        .df: df containing the icpms data. Typical format (columns are samples)
+    *Outputs
+        .df with the index being the elemnts
+        
+    '''
+    
+    # Extract element and resolution using regex
+    def parse_label(label):
+        '''
+        Intermediate function that, given ICP-MS nuclide, like U238(LR),
+        will return "U(LR)", getting element and resolution (string)
+        '''
+        
+        match = re.match(r"([A-Za-z]+)[0-9]*(?:\((LR|MR)\))", label)
+            #Match pattern
+            #r"[A-Za-z] to find any letter
+            #r"\d for a digit
+        if match:       #If a match is found:
+            element = match.group(1)
+            resolution = match.group(2)
+            return f"{element}({resolution})"  #This is U(LR) for ex
+        else:
+            return None  # Handle malformed data gracefully
 
+    #I need to put the index as a column to do this, so:
+    #df = df.copy()
+    df['Element(Res)'] = df.index.to_series().apply(parse_label)
+            #create the parsed label: U(LR), Si(MR), etc
+
+    # Drop rows with unparsed labels
+    df_clean = df.dropna(subset=['Element(Res)'])
+        #This essentially removes Ar40Ar40(MR) and the U238O16(MR) and (LR)
+
+    # Group by Element + Resolution, and sum concentrations
+    df_grouped = df_clean.groupby('Element(Res)', sort = False).sum(
+        numeric_only=True)
+        #group by the index. Adding the values. With num_only you avoid errors
+        #of addding string values and so!
+        #sort = False not so sort them alphabetically, keeping previous order
+        
+        
+    ############## Returned
+    return df_grouped
+    
+    
+    
+    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -5786,16 +5873,16 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
 
 def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
     '''
-    Function that will get the interlaminar space of the bentonites, based on the first basal
-    refelction 001, which will satisfy:
+    Function that will get the interlaminar space of the bentonites, based on the
+    first basal refelction 001, which will satisfy:
             lambda = 2d sin (theta)    n = 1
             
     For this, we need:
         1. Perform the gaussian fit of the peak (Fits module used!)
         2. Compute the interlaminar space d
     
-    The .ras file contain lot of text at the beginning (1st 266 lines), then 3 variables:
-            2Theta, Counts, Unknown
+    The .ras file contain lot of text at the beginning (1st 266 lines), then 3 
+    variables:  2Theta, Counts, Unknown
         The unknown seem to be always 1, so I delete it.
         
     Some of the text I skip contian relevant info. Eg:
@@ -5804,9 +5891,10 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
     *Inputs:
         .XRD_df: df containing the info from the XRD. Important the names, must have
             '2Theta[°]' and 'CPS_norm' (I refer to those
-        .DosTheta_inter: array with min and maximum values of the 2Theta variable from the XRD df,
-        to do the fit. Ej: [5,30]
-        .kalpha: Wavelength of the Kalpha1 radiation of the Cu, the element of the XRD = 1.5401Angs
+        .DosTheta_inter: array with min and maximum values of the 2Theta variable 
+        from the XRD df, to do the fit. Ej: [5,30]
+        .kalpha: Wavelength of the Kalpha1 radiation of the Cu, the element of
+            the XRD = 1.5401Angs
         .name: name of the file. Ej: 'file.ras'
 
     *Output
@@ -5816,12 +5904,14 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
     
     
     ####### 1. Gaussian fit #########
-    #We need to get the desired interval to perform the fit, eye spotted from the XRD diagram
+    #We need to get the desired interval to perform the fit, eye spotted from 
+    #the XRD diagram
     
     inter_x =XRD_df['2Theta[°]'].loc[ (XRD_df['2Theta[°]'] < DosTheta_inter[1]) & 
                                         (XRD_df['2Theta[°]'] > DosTheta_inter[0]) ]
         #getting desired interval
-    #Now I need the cps values (y) of those x values. Since the index is preserve, I could use it
+    #Now I need the cps values (y) of those x values. Since the index is preserve, 
+    #I could use it
     inter_y = XRD_df['CPS_norm'][inter_x.index]
     
     Fit = Fits.Gaussian_fit(inter_x.values, inter_y.values)            #Gaussian fit

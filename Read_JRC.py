@@ -17,7 +17,8 @@ plt.grid(which = 'minor', linestyle=':', linewidth=0.5)
                     #which both to plot major and minor grid lines
 plt.grid(which = 'major')
 
-For printing a break of line, \n goes at the end of the print, not at the beginning!
+For printing a break of line, \n goes at the end of the print, not at the 
+beginning!
 """
 
 #%%######### 0) General packages ###########
@@ -58,9 +59,14 @@ Isot_rel = ['Si28(MR)', 'Al27(MR)', 'Mg24(MR)', 'Mn55(MR)', 'Fe56(MR)',
             'Ca44(MR)', 'Na23(MR)', #bentonite elements
             'Sr88(LR)', 'Cs133(LR)', 'Eu151(LR)', 'Eu153(LR)',
             'La139(LR)', 'U238(LR)']     #CL eleements
+            #General list of nuclides of interest!
             #Reserve: 'Ti46', 'Ti47', 'Ti48', 'Ti49', 'Ti50',
             #Eu151 less abundant as Eu153, but Eu153 sufffer interferences from
             #Ba oxides,so for low Eu concentrations, Eu151 better!! [Stef]   
+Elem_rel = ['Si(MR)', 'Al(MR)', 'Mg(MR)', 'Mn(MR)', 'Fe(MR)', 
+            'Ca(MR)', 'Na(MR)', 'P(MR)', #bentonite elements
+            'Sr(LR)', 'Cs(LR)', 'Eu(LR)','La(LR)', 'U(LR)', 'Mo(LR)'] 
+        #General list of elements of interest (merging isotopes)
 
 """
 Isot rele Cs are from the Cs sep
@@ -1754,7 +1760,7 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
     #give the full row!
     '''
     
-    df_elem_rel = pd.DataFrame()         #Empty df to store the values
+    df_Nucl_rel = pd.DataFrame()         #Empty df to store the values
 
     for i in range(0, len(Isotopes)):     #Loop through all the relevant elements
 
@@ -1765,11 +1771,11 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
        df_aux = pd.DataFrame(data = matching_rows)
 
            #And I add that to the storing df
-       df_elem_rel = df_elem_rel.append(df_aux, ignore_index= False)
+       df_Nucl_rel = df_Nucl_rel.append(df_aux, ignore_index= False)
            #ignore index false to store the index, key!
 
     ########### Return ###########
-    return df_elem_rel        #return of the data
+    return df_Nucl_rel        #return of the data
 
 
 
@@ -2540,7 +2546,7 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
 #################################################################
 
 def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
-                             return_leached = False, Elem_rel = Isot_rel,
+                             return_leached = False, Nucl_rel = Isot_rel,
                              N_repl = 3):
     '''
     This function will remove the nuclides leached by bentonite from the ICPMS
@@ -2571,7 +2577,7 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
         .return_leached: boolean, to indicate wether df with the ppb (and 
             their std) leached by bentonite should be returned or not. Default:
             False
-        .Elem_rel: array containing the name of the relevant nuclides.
+        .Nucl_rel: array containing the name of the relevant nuclides.
         Eg: np.array(['U238(LR)', 'Sr88(LR)'])
         .N_repl: number of replicates. Default: 3
         
@@ -2681,11 +2687,11 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
     
     #After the loop, I can print that
     print('####### Concentration in ppb of leached relevant nuclides from the bentonites to the BIC solution')
-    print(df_leached.loc[Elem_rel])
+    print(df_leached.loc[Nucl_rel])
     print('######################################\n')
 
     print('########## Uncertainty of those: ########')
-    print(df_leached_std.loc[Elem_rel])
+    print(df_leached_std.loc[Nucl_rel])
     print('######################################\n')
     
     ########### Output ###################
@@ -2700,7 +2706,7 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
 #################################################################    
 
 def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
-                             return_leached = False, Elem_rel = Isot_rel,
+                             return_leached = False, Nucl_rel = Isot_rel,
                              N_repl = 3):
     '''
     This function will remove the nuclides leached by bentonite from the ICPMS
@@ -2736,7 +2742,7 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
         .return_leached: boolean, to indicate wether df with the ppb (and 
             their std) leached by bentonite should be returned or not. Default:
             False
-        .Elem_rel: array containing the name of the relevant nuclides.
+        .Nucl_rel: array containing the name of the relevant nuclides.
         Eg: np.array(['U238(LR)', 'Sr88(LR)'])
         .N_repl: number of replicates. Default: 3
         
@@ -2869,11 +2875,11 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
     
     #After the loop, I can print that
     print('####### Concentration in ppb of leached relevant nuclides from the bentonites to the BIC solution')
-    print(df_leached.loc[Elem_rel])
+    print(df_leached.loc[Nucl_rel])
     print('######################################\n')
 
     print('########## Uncertainty of those: ########')
-    print(df_leached_std.loc[Elem_rel])
+    print(df_leached_std.loc[Nucl_rel])
     print('######################################\n')
     
     ########### Output ###################
@@ -3218,7 +3224,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
 #######################################################################
 # %% ######### 1.19) Isotopes to elements ###########################
 ######################################################################
-def ICPMS_Isot_to_Elem(df, name_column = 'Isotope'):
+def ICPMS_Isot_to_Elem(df):
     '''
     Function that will take an ICP-MS datasheet (in df format) and will merge 
     all the isotopes to have elemental data. That is:
@@ -3228,10 +3234,13 @@ def ICPMS_Isot_to_Elem(df, name_column = 'Isotope'):
     We can simply sum; [Si] = [Si28] + [Si29] + [Si30]? Yes:
     g Si/g tot = (g Si28+gSi29+g Si30)/gtot = [Si28] + [Si29] + [Si30]
     
+    
     Created by scholargpt, adapted by me. AI works for me bro!
     
     *Inputs
-        .df: df containing the icpms data. Typical format (columns are samples)
+        .df: df containing the icpms data. Typical format;
+            -indexes are isotopes
+            -Each column is a sample
     *Outputs
         .df with the index being the elemnts
         
@@ -3255,13 +3264,14 @@ def ICPMS_Isot_to_Elem(df, name_column = 'Isotope'):
         else:
             return None  # Handle malformed data gracefully
 
-    #I need to put the index as a column to do this, so:
-    #df = df.copy()
-    df['Element(Res)'] = df.index.to_series().apply(parse_label)
+    #I need to put the index as a column to do this, a new df is create not
+    #to alter the original one:
+    df2 = df.copy()
+    df2['Element(Res)'] = df2.index.to_series().apply(parse_label)
             #create the parsed label: U(LR), Si(MR), etc
 
     # Drop rows with unparsed labels
-    df_clean = df.dropna(subset=['Element(Res)'])
+    df_clean = df2.dropna(subset=['Element(Res)'])
         #This essentially removes Ar40Ar40(MR) and the U238O16(MR) and (LR)
 
     # Group by Element + Resolution, and sum concentrations
@@ -3270,8 +3280,8 @@ def ICPMS_Isot_to_Elem(df, name_column = 'Isotope'):
         #group by the index. Adding the values. With num_only you avoid errors
         #of addding string values and so!
         #sort = False not so sort them alphabetically, keeping previous order
-        
-        
+    
+    
     ############## Returned
     return df_grouped
     
@@ -3298,7 +3308,7 @@ def ICPMS_Isot_to_Elem(df, name_column = 'Isotope'):
 
 def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plots',
                       pre_title_plt = "Concentration of ", 
-                      pre_save_name = 'Conc_rsd', Elem_rel = Isot_rel, 
+                      pre_save_name = 'Conc_rsd', Nucl_rel = Isot_rel, 
                       plot_everything = False, Logs = False ):
     '''
     Function that will do a single bar plots of ICPMS data, using
@@ -3320,11 +3330,11 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
             the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', 
         giving Conc_Mg24.png for ex           
-        .Elem_rel: array containing the name of the relevant elemtns, which 
+        .Nucl_rel: array containing the name of the relevant elemtns, which 
         are the elements that will be saved in a specific folder. D
         efault value: (see above in the script)   
         .Plot_everything: boolean stating if we plot everything or only the 
-        relevant elements (in Elem_rel). 
+        relevant elements (in Nucl_rel). 
             Default: False
         .logs: value defining if applying log scale to y axis. Default: False
         
@@ -3372,7 +3382,7 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
     for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
                     #df_1.index give the index values, low and high
                     #
-        if df_1.index[i] in Elem_rel or plot_everything == True: 
+        if df_1.index[i] in Nucl_rel or plot_everything == True: 
             #if the element is relevant you plot it!
         ########### Bar plot ###########################
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -3397,7 +3407,7 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
                 , rotation = 90)
         
             #Saving in the folder
-            if df_1.index[i] in Elem_rel:  #if the element is relevant
+            if df_1.index[i] in Nucl_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -3428,7 +3438,7 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
 def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' , 
                               folder_name = 'Bar_plots',
                       pre_title_plt = "Concentration of ", 
-                      pre_save_name = 'Conc_rsd', Elem_rel = Isot_rel, 
+                      pre_save_name = 'Conc_rsd', Nucl_rel = Isot_rel, 
                       plot_everything = False, Logs = False ):
     '''
     Function that will do a single bar plots of ICPMS data, using
@@ -3452,11 +3462,11 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
             the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', 
         giving Conc_Mg24.png for ex           
-        .Elem_rel: array containing the name of the relevant elemtns, which 
+        .Nucl_rel: array containing the name of the relevant elemtns, which 
         are the elements that will be saved in a specific folder. D
         efault value: (see above in the script)   
         .Plot_everything: boolean stating if we plot everything or only the 
-        relevant elements (in Elem_rel). 
+        relevant elements (in Nucl_rel). 
             Default: False
         .logs: value defining if applying log scale to y axis. Default: False
         
@@ -3503,7 +3513,7 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
     for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
                     #df_1.index give the index values, low and high
                     #
-        if df_1.index[i] in Elem_rel or plot_everything == True: 
+        if df_1.index[i] in Nucl_rel or plot_everything == True: 
             #if the element is relevant you plot it!
         ########### Bar plot ###########################
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -3531,7 +3541,7 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
             plt.legend(fontsize = Font)
         
             #Saving in the folder
-            if df_1.index[i] in Elem_rel:  #if the element is relevant
+            if df_1.index[i] in Nucl_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -3562,7 +3572,7 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
 def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , 
                       ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
                       pre_title_plt = "Concentration of ", 
-                      pre_save_name = 'Conc_rsd', Elem_rel = Isot_rel, 
+                      pre_save_name = 'Conc_rsd', Nucl_rel = Isot_rel, 
                       plot_everything = False, Logs = 0 ):
     '''
     Function that will do bar plots of the raw data from the ICPMS, the cps and
@@ -3584,11 +3594,11 @@ def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' ,
             the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', 
         giving Conc_Mg24.png for ex           
-        .Elem_rel: array containing the name of the relevant elemtns, which 
+        .Nucl_rel: array containing the name of the relevant elemtns, which 
         are the elements that will be saved in a specific folder. D
         efault value: (see above in the script)   
         .Plot_everything: boolean stating if we plot everything or only the 
-        relevant elements (in Elem_rel). 
+        relevant elements (in Nucl_rel). 
             Default: False
         .logs: value defining if applying log scale to 1, 2, or both. 
             0: no apply
@@ -3659,7 +3669,7 @@ Setting b gives w. In fact the general equations for 2n bars per
     for i in list( range(df_1.shape[0] ) ):     #Loop thorugh all rows
                     #df_1.index give the index values, low and high
                     #
-        if df_1.index[i] in Elem_rel or plot_everything == True: 
+        if df_1.index[i] in Nucl_rel or plot_everything == True: 
             #if the element is relevant you plot it!
         ########### Bar plot ###########################
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -3693,7 +3703,7 @@ Setting b gives w. In fact the general equations for 2n bars per
             plt.legend(aaa, [p_.get_label() for p_ in aaa])
         
             #Saving in the folder
-            if df_1.index[i] in Elem_rel:  #if the element is relevant
+            if df_1.index[i] in Nucl_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.savefig(folder_name + '/' + 'Relevants' + '/' +
@@ -3724,7 +3734,7 @@ Setting b gives w. In fact the general equations for 2n bars per
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', 
                    pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                   Elem_rel = Isot_rel, 
+                   Nucl_rel = Isot_rel, 
                    plot_everything = False, Nrepl = 2 ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable,
@@ -3750,7 +3760,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
         . pre_save_name: name of the graph files to save. Default: 'Conc', 
         giving Conc_Mg24.png for ex    
         . Nrepl: number of replicates. Default value: 2. 3 also accepted
-        .Elem_rel: array containing the name of the relevant elemtns, which 
+        .Nucl_rel: array containing the name of the relevant elemtns, which 
             are the elements that will be saved in a specific folder. 
             Default value: (see above in the script)     
                                     
@@ -3808,7 +3818,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
 		   # 4 because of the way the df is created (and hence the excel tabelle)
 
             #Saving in the folder
-            if index in Elem_rel:  #if the element is relevant
+            if index in Nucl_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -3861,7 +3871,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
 		   # 4 because of the way the df is created (and hence the excel tabelle)
 
             #Saving in the folder
-            if index in Elem_rel:  #if the element is relevant
+            if index in Nucl_rel:  #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -3937,7 +3947,7 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', 
                     plot_everything = False, pre_title_plt = "Concentration of ", 
-                    pre_save_name = 'Conc', Elem_rel = Isot_rel ):
+                    pre_save_name = 'Conc', Nucl_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable,
     initially time, for the 3 bentonites. This assume we have 2 replicates, 
@@ -3965,7 +3975,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', 
         giving Conc_Mg24.png for ex    
-        .Elem_rel: array containing the name of the relevant elemtns, which
+        .Nucl_rel: array containing the name of the relevant elemtns, which
         are the elements that will be saved in a specific folder. 
         Default value: (see above in the script)       
                                     
@@ -4023,7 +4033,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
         #
         
         #Saving in the folder
-        if df_cps['Sard'].index[i] in Elem_rel:        #if the element is relevant
+        if df_cps['Sard'].index[i] in Nucl_rel:        #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -4114,7 +4124,7 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', 
             plot_everything = False, pre_title_plt = "Concentration of ", 
             pre_save_name = 'Conc', Nrepl = 2, Blank_here = False, 
-            Elem_rel = Isot_rel, Logs = 0 ):
+            Nucl_rel = Isot_rel, Logs = 0 ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable,
     initially time, the cps and the rstd. This assume we have 2 replicates, 
@@ -4141,7 +4151,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
         . pre_save_name: name of the graph files to save. Default: 'Conc', 
         giving Conc_Mg24.png for ex    
         .Nrepl : number of replicates. Default value : 2. 3 value also accepted
-        .Elem_rel: array containing the name of the relevant elemtns, which 
+        .Nucl_rel: array containing the name of the relevant elemtns, which 
         are the elements that will be saved in a specific folder. 
         Default value: (see above in the script)      
          .Blank_here: True if the df contain the blank. Default: False
@@ -4245,7 +4255,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
     if isinstance(x, pd.Series):         #If x is a pd series (like time and so)  
         if Nrepl == 2:               #2 replicates, standard case (x is time for ex)    
             for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-                if y_1.index[i] in Elem_rel or plot_everything == True:      #if the element is relevant
+                if y_1.index[i] in Nucl_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
@@ -4279,7 +4289,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')      
         elif Nrepl ==3:                     #3 replicates
             for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-                if y_1.index[i] in Elem_rel or plot_everything == True:      #if the element is relevant
+                if y_1.index[i] in Nucl_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
@@ -4320,7 +4330,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
     elif isinstance(x, pd.DataFrame):           #if x is a DataFrame    
         if Nrepl == 2:               #2 replicates, standard case (x is time for ex)    
             for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-                if y_1.index[i] in Elem_rel or plot_everything == True:      #if the element is relevant
+                if y_1.index[i] in Nucl_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
@@ -4356,7 +4366,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                         pre_save_name + '_'  + df_cps.index[i][:-4] + '.png', format='png', bbox_inches='tight')            
         if Nrepl == 3:               #2 replicates, standard case (x is time for ex)    
             for i in list( range(df_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-                if y_1.index[i] in Elem_rel or plot_everything == True:      #if the element is relevant
+                if y_1.index[i] in Nucl_rel or plot_everything == True:      #if the element is relevant
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
@@ -4428,7 +4438,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
 def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps, 
                            x_label, y_label, folder_name = 'Plots', Blank_here = False, 
                            plot_everything = False,  LogScale = False, pre_title_plt = "Concentration of ", 
-                           pre_save_name = 'Conc', Elem_rel = Isot_rel, Ben_type = 'BK' ):
+                           pre_save_name = 'Conc', Nucl_rel = Isot_rel, Ben_type = 'BK' ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, initially
     time, the cps and the rstd. This plots the avg value, with its std, so no replicates here.
@@ -4452,7 +4462,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
         .pre_title_plt : title of the graph, part that appears before the name of the elements (thats why pre title).
                 Detault value: "Concentration of " (note the space after of, so the element is not together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', giving Conc_Mg24.png for ex    
-        .Elem_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
+        .Nucl_rel: array containing the name of the relevant elemtns, which are the elements that will be saved
             in a specific folder. Default value: (see above in the script)  
         .Ben_type: string with the bentonite type: 'S', 'T' or 'BK'. Default:'BK'. This defines color in plot
                                     
@@ -4512,7 +4522,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
         
     if isinstance(x, pd.Series):                 #If x is a pd Series          
         for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-            if df_mean_cps.index[i] in Elem_rel:                      #if the element is relevant
+            if df_mean_cps.index[i] in Nucl_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -4569,7 +4579,7 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
 
     elif isinstance(x, pd.DataFrame):                 #If x is a pd Dataframe       
         for i in list( range(df_mean_cps.shape[0] ) ):       #Loop thorugh all rows (elements)
-            if df_mean_cps.index[i] in Elem_rel:                      #if the element is relevant
+            if df_mean_cps.index[i] in Nucl_rel:                      #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -4658,7 +4668,7 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
         x_label, y_label, folder_name = 'Plots', Logscale = False,
         Blank_here = False, plot_everything = False, 
         pre_title_plt = "Concentration of ", 
-        pre_save_name = 'Conc', Elem_rel = Isot_rel ):
+        pre_save_name = 'Conc', Nucl_rel = Isot_rel ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, 
     initially time, the cps and the rstd, for the 3 bentonites, plotting the average 
@@ -4688,7 +4698,7 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
             together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', 
             giving Conc_Mg24.png for ex    
-        .Elem_rel: array containing the name of the relevant elemtns, which are
+        .Nucl_rel: array containing the name of the relevant elemtns, which are
             the elements that will be saved in a specific folder. Default 
             value: (see above in the script)   
         .Logscale: string to say if you want the x and y axis in logscale or not.
@@ -4741,7 +4751,7 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
         for i in list( range(df_mean_cps_T.shape[0] ) ): 
                             #Loop thorugh all rows (elements)
 
-            if df_mean_cps_T.index[i] in Elem_rel: #if the element is relevant
+            if df_mean_cps_T.index[i] in Nucl_rel: #if the element is relevant
             #note the -4 is so that that element contain only name and number, 
             #like Mg26, not Mg26 (MR), in order to check with the list!
                 plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
@@ -4858,7 +4868,7 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
     elif isinstance(x_T, pd.DataFrame):       #######if x, std_x are df DF!!
         for i in list( range(df_mean_cps_T.shape[0] ) ): #Loop thorugh all rows (elements)
 
-            if df_mean_cps_T.index[i] in Elem_rel: #if the element is relevant
+            if df_mean_cps_T.index[i] in Nucl_rel: #if the element is relevant
             #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
             #in order to check with the list!
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
@@ -4976,6 +4986,285 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
     print('###############################################')
 
     
+
+
+
+#%%### 1.20) ICPMS plotter blank Average of replicates, 2 datasets #############
+#####################################
+
+def ICPMS_Plotter_mean_2_blk (x_1, std_x_1, df_mean_cps_1, df_std_cps_1,
+        x_2, std_x_2, df_mean_cps_2, df_std_cps_2,
+        x_label, y_label, folder_name = 'Plots', Logscale = False,
+        Blank_here = False, plot_everything = False, 
+        pre_title_plt = "Concentration of ", 
+        pre_save_name = 'Conc', Nucl_rel = Isot_rel,
+        Label_MS_1 = 'MS 1', Label_1 = 'Data 1',
+        Label_MS_2 = 'MS 2', Label_2 = 'Data 2'):
+    '''
+    Function that will plots of the data from the ICPMS (cps) vs another variable, 
+    initially time, the cps and the rstd, for the 2 bentonites, plotting the average 
+    values ideally (output of average computer). It will also allow to plot the 
+    blank as a horizontal line, if desired.
+    
+    *Inputs:
+        .x_1/2: x axis variable in the plot (mean values) for each bentonite. 
+        This should be a df series
+        .std_x_1/2: df Series with the std of the x variable for each bentonite
+        .df_mean_cps_1/2: dataframes containing the cps, but average values 
+            (1,2,3,4, etc) for the 3 benotnites
+            .From run of the mean and std calc
+        .df_std_cps_1/2: df containing the std of the mean values of the cps 
+            of the 3 benotnites
+        .x_label: string that will be the x label for the plot (for math stuff, 
+                                    use $$. eg: '$\Delta t[h]$')
+        .y_label: string that will be the y label for the plot
+        .folder_name: string defining the name of the folder to create to store 
+            the plots default value: 'Plots'
+        .Blank_here: True if the df contain the blank, to plot it. Default: False
+        . plot_everything: string defining if you want to plot all the elements 
+            or only the relevant ones. Default value: False (only plot relevants)
+        .pre_title_plt : title of the graph, part that appears before the name 
+            of the elements (thats why pre title). Detault value: 
+            "Concentration of " (note the space after of, so the element is not
+            together with that!)
+        . pre_save_name: name of the graph files to save. Default: 'Conc', 
+            giving Conc_Mg24.png for ex    
+        .Nucl_rel: array containing the name of the relevant elemtns, which are
+            the elements that will be saved in a specific folder. Default 
+            value: (see above in the script)   
+        .Logscale: string to say if you want the x and y axis in logscale or not.
+            Default: False
+                                    
+    *Outputs:
+        .Plots (saving them) of the x and df_mean_cps data, cps vs x!
+    
+    
+    ### TO DO: ####
+	.Plot 2 blk lines, <>+- std? OPtional, since for Qe I do not have blank, 
+    but for conce I do!
+    '''
+    
+    
+    ############# 1) Folder creation ###############
+    '''
+    First the folder to store the plots will be created. IN the main folder a 
+    subfolder
+    with the relevant elements, to be given, will be created
+    '''
+    
+    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
+        #Note os.getcwd() give current directory. With that structure we are able
+        #to automatize the plotting!!!
+        
+    if not os.path.exists(path_bar_pl):
+        os.makedirs(path_bar_pl)
+
+    #Subfolder with relevant plots:
+    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
+        #folder path for the relevant plots
+    
+    if not os.path.exists(path_bar_pl_rel):
+        os.makedirs(path_bar_pl_rel)   
+    
+    
+    ######### 2) plotting ###############
+    '''
+    This is a loop plot, so beware, will take long if you plot all the elements 
+    (280) (2-3mins!).I inlcude in if statement the numer of replicates, currently
+    only 2 and 3!I need to do a for loop with an index, since I have several df here!
+
+    28/3/24 I generalize this making x variable (and std) a df df, not only a 
+    df.series
+    '''
+    t_start = tr.time()       #[s] start time of the plot execution
+    
+    ######if all x and std are pd.series
+    if isinstance(x_1, pd.Series):          #if x, std_x are df.series (base case)
+            #Note I check only one, but I assume the 3 are the same type
+        for i in list( range(df_mean_cps_1.shape[0] ) ): 
+                            #Loop thorugh all rows (elements)
+
+            if df_mean_cps_1.index[i] in Nucl_rel: #if the element is relevant
+            #note the -4 is so that that element contain only name and number, 
+            #like Mg26, not Mg26 (MR), in order to check with the list!
+                plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + df_mean_cps_1.index[i][:-4], fontsize=22,
+                          wrap=True)     #title
+                if Blank_here:  #If Blank is here, to plot it
+                    plt.hlines(df_mean_cps_1.loc[df_mean_cps_1.index[i]][0],
+                               min(x_1), max(x_1), label = Label_MS_1)
+                    plt.errorbar(x_1[1:], df_mean_cps_1.loc[df_mean_cps_1.index[i]][1:], 
+                             df_std_cps_1.loc[df_mean_cps_1.index[i] ][1:],
+                         std_x_1[1:], 'o--', markersize = 5, label = Label_1)    #Tur bentonite
+                    plt.hlines(df_mean_cps_2.loc[df_mean_cps_1.index[i]][0],
+                               min(x_2), max(x_2), label = Label_MS_2)
+                    plt.errorbar(x_2[1:], df_mean_cps_2.loc[df_mean_cps_2.index[i]][1:], 
+                             df_std_cps_2.loc[df_mean_cps_2.index[i] ][1:],
+                         std_x_2[1:], 'ro--', markersize = 5, label = Label_2)    #BK bentonite
+
+                else:               #no blank plot
+                    plt.errorbar(x_1, df_mean_cps_1.loc[df_mean_cps_1.index[i]], 
+                             df_std_cps_1.loc[df_mean_cps_1.index[i] ],
+                         std_x_1, 'o--', markersize = 5, label = Label_1)    #Tur bentonite
+                    plt.errorbar(x_2, df_mean_cps_2.loc[df_mean_cps_2.index[i]], 
+                             df_std_cps_2.loc[df_mean_cps_2.index[i] ],
+                         std_x_2, 'ro--', markersize = 5, label = Label_2)    #BK bentonite
+                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
+            #
+                plt.ylabel(y_label, fontsize= Font)              #ylabel
+                plt.xlabel(x_label, fontsize = Font)
+                plt.tick_params(axis='both', labelsize= Font)    #size of axis
+                if Logscale:            #if True
+                    plt.yscale('log') 
+                    plt.xscale('log') 
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5) 
+                        #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
+                plt.legend(fontsize = Font)
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_mean_cps_1.index[i][:-4] +
+                        '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + df_mean_cps_1.index[i][:-4], fontsize=22, wrap=True)     #title
+                    if Blank_here:  #If Blank is here, to plot it
+                        plt.hlines(df_mean_cps_1.loc[df_mean_cps_1.index[i]][0],
+                                   min(x_1), max(x_1), label = Label_MS_1)
+                        plt.errorbar(x_1[1:], df_mean_cps_1.loc[df_mean_cps_1.index[i]][1:], 
+                                 df_std_cps_1.loc[df_mean_cps_1.index[i] ][1:],
+                             std_x_1, 'o--', markersize = 5,  label = Label_1)    #Tur bentonite
+                        plt.hlines(df_mean_cps_2.loc[df_mean_cps_1.index[i]][0],
+                                   min(x_2), max(x_2), label = Label_MS_2)
+                        plt.errorbar(x_2[1:], df_mean_cps_2.loc[df_mean_cps_2.index[i]][1:], 
+                                 df_std_cps_2.loc[df_mean_cps_2.index[i] ][1:],
+                             std_x_2, 'ro--', markersize = 5, label = Label_2)    #BK bentonite
+                    else:               #no blank plot
+                        plt.errorbar(x_1, df_mean_cps_1.loc[df_mean_cps_1.index[i]], 
+                                 df_std_cps_1.loc[df_mean_cps_1.index[i] ],
+                             std_x_1, 'o--', markersize = 5, label = Label_1)    #Tur bentonite
+                        plt.errorbar(x_2, df_mean_cps_2.loc[df_mean_cps_2.index[i]], 
+                                 df_std_cps_2.loc[df_mean_cps_2.index[i] ],
+                             std_x_2, 'ro--', markersize = 5,  label = Label_2)    #BK bentonite
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
+                    if Logscale:        #if True, do it
+                        plt.yscale('log') 
+                        plt.xscale('log') 
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
+                    plt.grid(which = 'major')
+                    plt.legend(fontsize = Font)            
+                    plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_'  + df_mean_cps_1.index[i][:-4] +
+                        '.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+        
+            plt.close()             #to clsoe the plot not to consume too much resources
+            
+    elif isinstance(x_1, pd.DataFrame):       #######if x, std_x are df DF!!
+        for i in list( range(df_mean_cps_1.shape[0] ) ): #Loop thorugh all rows (elements)
+
+            if df_mean_cps_1.index[i] in Nucl_rel: #if the element is relevant
+            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
+            #in order to check with the list!
+                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                plt.title(pre_title_plt + df_mean_cps_1.index[i][:-4], 
+                          fontsize=22, wrap=True)     #title
+                if Blank_here:      #To plot the blank
+                    plt.errorbar(x_1.loc[x_1.index[i]][1:], 
+                             df_mean_cps_1.loc[df_mean_cps_1.index[i]][1:], 
+                             df_std_cps_1.loc[df_mean_cps_1.index[i]][1:],
+                         std_x_1.loc[std_x_1.index[i]][1:], 'o--', markersize = 5, 
+                          label = Label_1) 
+                    plt.hlines(df_mean_cps_1.loc[df_mean_cps_1.index[i]][0],
+                               min(x_1.loc[x_1.index[i]]), max(x_1.loc[x_1.index[i]]),
+                                label = Label_MS_1)
+                    plt.errorbar(x_2.loc[x_2.index[i]][1:], 
+                             df_mean_cps_2.loc[df_mean_cps_2.index[i] ][1:], 
+                             df_std_cps_2.loc[df_mean_cps_2.index[i] ][1:],
+                         std_x_2.loc[std_x_2.index[i]][1:], 'o--', markersize = 5, 
+                         label = Label_2)    #BK bentonite
+                    plt.hlines(df_mean_cps_2.loc[df_mean_cps_2.index[i]][0],
+                               min(x_2.loc[x_2.index[i]]), max(x_2.loc[x_2.index[i]])
+                               , label = Label_MS_2)
+                else:       #no blank plot
+                    plt.errorbar(x_1.loc[x_1.index[i]], 
+                             df_mean_cps_1.loc[df_mean_cps_1.index[i] ], 
+                             df_std_cps_1.loc[df_mean_cps_1.index[i] ],
+                         std_x_1.loc[std_x_1.index[i]], 'o--', markersize = 5, 
+                         label = Label_1)    #Tur bentonite
+                    plt.errorbar(x_2.loc[x_2.index[i]], 
+                             df_mean_cps_2.loc[df_mean_cps_2.index[i] ], 
+                             df_std_cps_2.loc[df_mean_cps_2.index[i] ],
+                         std_x_2.loc[std_x_2.index[i]], 'o--', markersize = 5, 
+                         label = Label_2)    #BK bentonite
+            #
+                plt.ylabel(y_label, fontsize= Font)              #ylabel
+                plt.xlabel(x_label, fontsize = Font)
+                plt.tick_params(axis='both', labelsize= Font)   #size of axis
+                if Logscale:            #if True
+                    plt.yscale('log') 
+                    plt.xscale('log') 
+                plt.minorticks_on()             #enabling minor grid lines
+                plt.grid(which = 'minor', linestyle=':', linewidth=0.5) #which both to plot major and minor grid lines
+                plt.grid(which = 'major')
+                plt.legend(fontsize = Font)
+                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
+                        pre_save_name + '_'  + df_mean_cps_1.index[i][:-4] + '.png', format='png', bbox_inches='tight')
+            #
+            else:        #if the element is not relevant
+                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
+                #    
+                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
+                    plt.title(pre_title_plt + df_mean_cps_1.index[i][:-4], 
+                              fontsize=22, wrap=True)     #title
+                    plt.errorbar(x_1.loc[x_1.index[i]], 
+                                 df_mean_cps_1.loc[df_mean_cps_1.index[i] ], 
+                                 df_std_cps_1.loc[df_mean_cps_1.index[i] ],
+                         std_x_1.loc[std_x_1.index[i]], 'o--', markersize = 5, 
+                         label = Label_1)    #Tur bentonite
+                    plt.errorbar(x_2.loc[x_2.index[i]], 
+                                 df_mean_cps_2.loc[df_mean_cps_2.index[i] ], 
+                                 df_std_cps_2.loc[df_mean_cps_2.index[i] ],
+                         std_x_2.loc[std_x_2.index[i]], 'o--', 
+                         markersize = 5, label = Label_2)    #BK bentonite
+                    plt.ylabel(y_label, fontsize= Font)                #ylabel
+                    plt.xlabel(x_label, fontsize = Font)
+                    plt.tick_params(axis='both', labelsize= Font)  #size of axis
+                    if Logscale:        #if True, do it
+                        plt.yscale('log') 
+                        plt.xscale('log') 
+                    plt.minorticks_on()             #enabling minor grid lines
+                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5) #which both to plot major and minor grid lines
+                    plt.grid(which = 'major')
+                    plt.legend(fontsize = Font)            
+                    plt.savefig(folder_name +'/' +  
+                        pre_save_name + '_'  + df_mean_cps_1.index[i][:-4] +
+                        '.png', format='png', bbox_inches='tight')
+                    #To save plot in folder
+        
+            plt.close()     #to clsoe the plot not to consume too much resources
+            
+        
+
+    else:           #errro case
+        print('Wrong type of x, std (T, BK, S), what did u put bro? xD')
+        
+        
+    ######### 3) Running time displaying ###############
+    '''
+    The last thing will be to see and display the time needed
+    '''
+    
+    t_run = tr.time() - t_start     #Running time
+
+    print('###############################################')
+    print('Plotting running time: ' + str(t_run) + 's')
+    print('###############################################')
         
 
     
@@ -4991,7 +5280,7 @@ def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
 ####################################################
 #%% ######### 2.1) PSO fit #############################
 ###################################################
-def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
+def PSO_fit(t, Q, delta_1=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
             y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
     '''
     Function to do and compute some variables relevant to the PSO (pseudo second 

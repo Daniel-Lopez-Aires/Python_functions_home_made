@@ -3288,6 +3288,69 @@ def ICPMS_Isot_to_Elem(df):
     
     
     
+    
+    
+    
+#################################################################
+#%% ########## 1.20 )ICPMS Homogeneizer ###########################
+###############################################
+    
+def ICPMS_Homogenize(df_ref, df, Return_extra_mass = 0):
+    '''
+    Function that will homogenize ICPMS df. Imagine that for 2 experiments you
+    measured different masses. The masses of 1 df will be homogenized to match
+    the masses of other df, called ref.
+    
+    In case that in the df_ref there are masses that are not present in the df,
+    a warning will be returned. NaN will be placed then.
+    
+    *Inputs
+        -df_ref: reference df wioth ICMPMS measurements (row/mass, column per sample)
+        -df: df to homogenize
+        -Return_extra_mass = 0. Boolean to indicate whether to return a df with the
+         extra masses (1) or not
+        
+    *Outputs
+        -df_hom: df homogenized
+        -df_extra: the extra elements, which do not appear in df_ref (if any)
+    '''
+    
+    #Target masses to retain
+    Masses_ref = df_ref.index.tolist()
+    Masses_df = df.index.tolist()
+    
+    #Warning if missing any target nuclides
+    missing = [mass for mass in Masses_ref if mass not in Masses_df]
+    if missing:
+        print('################# Warning ######################################')
+        print('Some masses of the reference df not measured in the given df:')
+        print(missing)
+        print('\n Giving NaN in the new df for those masses')
+        print('################################################################\n')
+        #warnings.warn(f'The following masses from df_ref are missing in df:{missing}',
+                     #stacklevel = 2)
+        
+    #Get the homogeniezed df
+    df_homo = df.loc[df.index.intersection(Masses_ref)].reindex(Masses_ref)
+    
+    #Retrieve also the extra data (if any)
+    extra_masses = [mass for mass in Masses_df if mass not in Masses_ref]
+    df_extra = df.loc[extra_masses]
+            #this could be empty. 
+    
+    ############# Returning #######
+    #If df_extra is empty it will not be returned
+    if Return_extra_mass:       #if True, so we want to return it
+        if df_extra.empty:      #to return it, first they should exist xD  
+            return df_homo, df_extra
+        
+    else:                   #not desired to retrieve df_extra
+        return df_homo
+    
+    
+    
+    
+    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -4658,348 +4721,20 @@ def ICPMS_Plotter_mean_blk (x, std_x, df_mean_cps, df_std_cps,
     
 
 
+##############################################################################
+#%%### 1.20) ICPMS plotter blank Average of replicates, N datasets ############
+##############################################################################
 
-#%%### 1.20) ICPMS plotter blank Average of replicates, 3 bentonites! #############
-#####################################
-
-def ICPMS_Plotter_mean_3_blk (x_T, std_x_T, df_mean_cps_T, df_std_cps_T,
-        x_BK, std_x_BK, df_mean_cps_BK, df_std_cps_BK,
-        x_S, std_x_S, df_mean_cps_S, df_std_cps_S,
-        x_label, y_label, folder_name = 'Plots', Logscale = False,
-        Blank_here = False, plot_everything = False, 
-        pre_title_plt = "Concentration of ", 
-        pre_save_name = 'Conc', Nucl_rel = Isot_rel ):
-    '''
-    Function that will plots of the data from the ICPMS (cps) vs another variable, 
-    initially time, the cps and the rstd, for the 3 bentonites, plotting the average 
-    values ideally (output of average computer). It will also allow to plot the 
-    blank as a horizontal line, if desired.
-    
-    *Inputs:
-        .x_S/BK/T: x axis variable in the plot (mean values) for each bentonite. 
-        This should be a df series
-        .std_x_T/BK/S: df Series with the std of the x variable for each bentonite
-        .df_mean_cps_T/BK/S: dataframes containing the cps, but average values 
-            (1,2,3,4, etc) for the 3 benotnites
-            .From run of the mean and std calc
-        .df_std_cps_T/BK/S: df containing the std of the mean values of the cps 
-            of the 3 benotnites
-        .x_label: string that will be the x label for the plot (for math stuff, 
-                                    use $$. eg: '$\Delta t[h]$')
-        .y_label: string that will be the y label for the plot
-        .folder_name: string defining the name of the folder to create to store 
-            the plots default value: 'Plots'
-        .Blank_here: True if the df contain the blank, to plot it. Default: False
-        . plot_everything: string defining if you want to plot all the elements 
-            or only the relevant ones. Default value: False (only plot relevants)
-        .pre_title_plt : title of the graph, part that appears before the name 
-            of the elements (thats why pre title). Detault value: 
-            "Concentration of " (note the space after of, so the element is not
-            together with that!)
-        . pre_save_name: name of the graph files to save. Default: 'Conc', 
-            giving Conc_Mg24.png for ex    
-        .Nucl_rel: array containing the name of the relevant elemtns, which are
-            the elements that will be saved in a specific folder. Default 
-            value: (see above in the script)   
-        .Logscale: string to say if you want the x and y axis in logscale or not.
-            Default: False
-                                    
-    *Outputs:
-        .Plots (saving them) of the x and df_mean_cps data, cps vs x!
-    
-    
-    ### TO DO: ####
-	.Plot 2 blk lines, <>+- std? OPtional, since for Qe I do not have blank, but for conce I do!
-    '''
-    
-    
-    ############# 1) Folder creation ###############
-    '''
-    First the folder to store the plots will be created. IN the main folder a subfolder
-    with the relevant elements, to be given, will be created
-    '''
-    
-    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
-        #Note os.getcwd() give current directory. With that structure we are able
-        #to automatize the plotting!!!
-        
-    if not os.path.exists(path_bar_pl):
-        os.makedirs(path_bar_pl)
-
-    #Subfolder with relevant plots:
-    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
-        #folder path for the relevant plots
-    
-    if not os.path.exists(path_bar_pl_rel):
-        os.makedirs(path_bar_pl_rel)   
-    
-    
-    ######### 2) plotting ###############
-    '''
-    This is a loop plot, so beware, will take long if you plot all the elements 
-    (280) (2-3mins!).I inlcude in if statement the numer of replicates, currently
-    only 2 and 3!I need to do a for loop with an index, since I have several df here!
-
-    28/3/24 I generalize this making x variable (and std) a df df, not only a 
-    df.series
-    '''
-    t_start = tr.time()       #[s] start time of the plot execution
-    
-    ######if all x and std are pd.series
-    if isinstance(x_T, pd.Series):          #if x, std_x are df.series (base case)
-            #Note I check only one, but I assume the 3 are the same type
-        for i in list( range(df_mean_cps_T.shape[0] ) ): 
-                            #Loop thorugh all rows (elements)
-
-            if df_mean_cps_T.index[i] in Nucl_rel: #if the element is relevant
-            #note the -4 is so that that element contain only name and number, 
-            #like Mg26, not Mg26 (MR), in order to check with the list!
-                plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22,
-                          wrap=True)     #title
-                if Blank_here:  #If Blank is here, to plot it
-                    plt.hlines(df_mean_cps_T.loc[df_mean_cps_T.index[i]][0],
-                               min(x_T), max(x_T), color = Bent_color['Tur'],
-                               label = 'MS Tur')
-                    plt.errorbar(x_T[1:], df_mean_cps_T.loc[df_mean_cps_T.index[i]][1:], 
-                             df_std_cps_T.loc[df_mean_cps_T.index[i] ][1:],
-                         std_x_T[1:], 'o--', markersize = 5, color = Bent_color['Tur'],
-                         label = '<Tur>')    #Tur bentonite
-                    plt.hlines(df_mean_cps_BK.loc[df_mean_cps_T.index[i]][0],
-                               min(x_BK), max(x_BK), color = Bent_color['BK'],
-                               label = 'MS BK')
-                    plt.errorbar(x_BK[1:], df_mean_cps_BK.loc[df_mean_cps_BK.index[i]][1:], 
-                             df_std_cps_BK.loc[df_mean_cps_BK.index[i] ][1:],
-                         std_x_BK[1:], 'ro--', markersize = 5, color = Bent_color['BK'],
-                         label = '<BK>')    #BK bentonite
-                    plt.hlines(df_mean_cps_S.loc[df_mean_cps_S.index[i]][0],
-                               min(x_T), max(x_T), color = Bent_color['Sard'],
-                               label = 'MS Sar')
-                    plt.errorbar(x_S[1:], df_mean_cps_S.loc[df_mean_cps_S.index[i]][1:], 
-                             df_std_cps_S.loc[df_mean_cps_S.index[i] ][1:],
-                         std_x_S[1:], 'ro--', markersize = 5, color = Bent_color['Sard'],
-                         label = '<Sar>')    #Sar bentonite
-                else:               #no blank plot
-                    plt.errorbar(x_T, df_mean_cps_T.loc[df_mean_cps_T.index[i]], 
-                             df_std_cps_T.loc[df_mean_cps_T.index[i] ],
-                         std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'],
-                         label = '<Tur>')    #Tur bentonite
-                    plt.errorbar(x_BK, df_mean_cps_BK.loc[df_mean_cps_BK.index[i]], 
-                             df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
-                         std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'],
-                         label = '<BK>')    #BK bentonite
-                    plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i]], 
-                             df_std_cps_S.loc[df_mean_cps_S.index[i] ],
-                         std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'],
-                         label = '<Sar>')    #Sar bentonite
-                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
-            #
-                plt.ylabel(y_label, fontsize= Font)              #ylabel
-                plt.xlabel(x_label, fontsize = Font)
-                plt.tick_params(axis='both', labelsize= Font)    #size of axis
-                if Logscale:            #if True
-                    plt.yscale('log') 
-                    plt.xscale('log') 
-                plt.minorticks_on()             #enabling minor grid lines
-                plt.grid(which = 'minor', linestyle=':', linewidth=0.5) 
-                        #which both to plot major and minor grid lines
-                plt.grid(which = 'major')
-                plt.legend(fontsize = Font)
-                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +
-                        '.png', format='png', bbox_inches='tight')
-            #
-            else:        #if the element is not relevant
-                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
-                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                    plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], fontsize=22, wrap=True)     #title
-                    if Blank_here:  #If Blank is here, to plot it
-                        plt.hlines(df_mean_cps_T.loc[df_mean_cps_T.index[i]][0],
-                                   min(x_T), max(x_T), color = Bent_color['Tur'],
-                                   label = 'MS Tur')
-                        plt.errorbar(x_T[1:], df_mean_cps_T.loc[df_mean_cps_T.index[i]][1:], 
-                                 df_std_cps_T.loc[df_mean_cps_T.index[i] ][1:],
-                             std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'],
-                             label = '<Tur>')    #Tur bentonite
-                        plt.hlines(df_mean_cps_BK.loc[df_mean_cps_T.index[i]][0],
-                                   min(x_BK), max(x_BK), color = Bent_color['BK'],
-                                   label = 'MS BK')
-                        plt.errorbar(x_BK[1:], df_mean_cps_BK.loc[df_mean_cps_BK.index[i]][1:], 
-                                 df_std_cps_BK.loc[df_mean_cps_BK.index[i] ][1:],
-                             std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'],
-                             label = '<BK>')    #BK bentonite
-                        plt.hlines(df_mean_cps_S.loc[df_mean_cps_S.index[i]][0],
-                                   min(x_T), max(x_T), color = Bent_color['Sard'],
-                                   label = 'MS Sar')
-                        plt.errorbar(x_S[1:], df_mean_cps_S.loc[df_mean_cps_S.index[i]][1:], 
-                                 df_std_cps_S.loc[df_mean_cps_S.index[i] ][1:],
-                             std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'],
-                             label = '<Sar>')    #Sar bentonite
-                    else:               #no blank plot
-                        plt.errorbar(x_T, df_mean_cps_T.loc[df_mean_cps_T.index[i]], 
-                                 df_std_cps_T.loc[df_mean_cps_T.index[i] ],
-                             std_x_T, 'o--', markersize = 5, color = Bent_color['Tur'],
-                             label = '<Tur>')    #Tur bentonite
-                        plt.errorbar(x_BK, df_mean_cps_BK.loc[df_mean_cps_BK.index[i]], 
-                                 df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
-                             std_x_BK, 'ro--', markersize = 5, color = Bent_color['BK'],
-                             label = '<BK>')    #BK bentonite
-                        plt.errorbar(x_S, df_mean_cps_S.loc[df_mean_cps_S.index[i]], 
-                                 df_std_cps_S.loc[df_mean_cps_S.index[i] ],
-                             std_x_S, 'ro--', markersize = 5, color = Bent_color['Sard'],
-                             label = '<Sar>')    #Sar bentoniteplt.ylabel(y_label, fontsize= Font)                #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
-                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
-                    if Logscale:        #if True, do it
-                        plt.yscale('log') 
-                        plt.xscale('log') 
-                    plt.minorticks_on()             #enabling minor grid lines
-                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
-                    plt.grid(which = 'major')
-                    plt.legend(fontsize = Font)            
-                    plt.savefig(folder_name +'/' +  
-                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +
-                        '.png', format='png', bbox_inches='tight')
-                    #To save plot in folder
-        
-            plt.close()             #to clsoe the plot not to consume too much resources
-            
-    elif isinstance(x_T, pd.DataFrame):       #######if x, std_x are df DF!!
-        for i in list( range(df_mean_cps_T.shape[0] ) ): #Loop thorugh all rows (elements)
-
-            if df_mean_cps_T.index[i] in Nucl_rel: #if the element is relevant
-            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
-            #in order to check with the list!
-                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], 
-                          fontsize=22, wrap=True)     #title
-                if Blank_here:      #To plot the blank
-                    plt.errorbar(x_T.loc[x_T.index[i]][1:], 
-                             df_mean_cps_T.loc[df_mean_cps_T.index[i]][1:], 
-                             df_std_cps_T.loc[df_mean_cps_T.index[i]][1:],
-                         std_x_T.loc[std_x_T.index[i]][1:], 'o--', markersize = 5, 
-                         color = Bent_color['Tur'], label = '<Tur>') 
-                    plt.hlines(df_mean_cps_T.loc[df_mean_cps_T.index[i]][0],
-                               min(x_T.loc[x_T.index[i]]), max(x_T.loc[x_T.index[i]]),
-                               color = Bent_color['Tur'], label = 'MS Tur')
-                    plt.errorbar(x_BK.loc[x_BK.index[i]][1:], 
-                             df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ][1:], 
-                             df_std_cps_BK.loc[df_mean_cps_BK.index[i] ][1:],
-                         std_x_BK.loc[std_x_BK.index[i]][1:], 'o--', markersize = 5, 
-                         color = Bent_color['BK'], label = '<BK>')    #BK bentonite
-                    plt.hlines(df_mean_cps_BK.loc[df_mean_cps_BK.index[i]][0],
-                               min(x_BK.loc[x_BK.index[i]]), max(x_BK.loc[x_BK.index[i]])
-                               ,color = Bent_color['BK'], label = 'MS BK')
-                    plt.errorbar(x_S.loc[x_S.index[i]][1:], 
-                             df_mean_cps_S.loc[df_mean_cps_S.index[i] ][1:], 
-                             df_std_cps_S.loc[df_mean_cps_S.index[i] ][1:],
-                         std_x_S.loc[std_x_S.index[i]][1:], 'o--', 
-                         markersize = 5, color = Bent_color['Sard'], label = '<Sar>')
-                    plt.hlines(df_mean_cps_S.loc[df_mean_cps_S.index[i]][0],
-                               min(x_S.loc[x_S.index[i]]), max(x_S.loc[x_S.index[i]])
-                               ,color = Bent_color['Sard'], label = 'MS S')
-                else:       #no blank plot
-                    plt.errorbar(x_T.loc[x_T.index[i]], 
-                             df_mean_cps_T.loc[df_mean_cps_T.index[i] ], 
-                             df_std_cps_T.loc[df_mean_cps_T.index[i] ],
-                         std_x_T.loc[std_x_T.index[i]], 'o--', markersize = 5, 
-                         color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
-                    plt.errorbar(x_BK.loc[x_BK.index[i]], 
-                             df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], 
-                             df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
-                         std_x_BK.loc[std_x_BK.index[i]], 'o--', markersize = 5, 
-                         color = Bent_color['BK'], label = '<BK>')    #BK bentonite
-                    plt.errorbar(x_S.loc[x_S.index[i]], 
-                             df_mean_cps_S.loc[df_mean_cps_S.index[i] ], 
-                             df_std_cps_S.loc[df_mean_cps_S.index[i] ],
-                         std_x_S.loc[std_x_S.index[i]], 'o--', 
-                         markersize = 5, color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
-            #
-                plt.ylabel(y_label, fontsize= Font)              #ylabel
-                plt.xlabel(x_label, fontsize = Font)
-                plt.tick_params(axis='both', labelsize= Font)   #size of axis
-                if Logscale:            #if True
-                    plt.yscale('log') 
-                    plt.xscale('log') 
-                plt.minorticks_on()             #enabling minor grid lines
-                plt.grid(which = 'minor', linestyle=':', linewidth=0.5) #which both to plot major and minor grid lines
-                plt.grid(which = 'major')
-                plt.legend(fontsize = Font)
-                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] + '.png', format='png', bbox_inches='tight')
-            #
-            else:        #if the element is not relevant
-                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
-                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                    plt.title(pre_title_plt + df_mean_cps_T.index[i][:-4], 
-                              fontsize=22, wrap=True)     #title
-                    plt.errorbar(x_T.loc[x_T.index[i]], 
-                                 df_mean_cps_T.loc[df_mean_cps_T.index[i] ], 
-                                 df_std_cps_T.loc[df_mean_cps_T.index[i] ],
-                         std_x_T.loc[std_x_T.index[i]], 'o--', markersize = 5, 
-                         color = Bent_color['Tur'], label = '<Tur>')    #Tur bentonite
-                    plt.errorbar(x_BK.loc[x_BK.index[i]], 
-                                 df_mean_cps_BK.loc[df_mean_cps_BK.index[i] ], 
-                                 df_std_cps_BK.loc[df_mean_cps_BK.index[i] ],
-                         std_x_BK.loc[std_x_BK.index[i]], 'o--', 
-                         markersize = 5, color = Bent_color['BK'], label = '<BK>')    #BK bentonite
-                    plt.errorbar(x_S.loc[x_S.index[i]], 
-                                 df_mean_cps_S.loc[df_mean_cps_S.index[i] ], 
-                                 df_std_cps_S.loc[df_mean_cps_S.index[i] ],
-                         std_x_S.loc[std_x_S.index[i]], 'o--', markersize = 5,
-                         color = Bent_color['Sard'], label = '<Sar>')    #Sar bentonite
-                    #
-                    plt.ylabel(y_label, fontsize= Font)                #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
-                    plt.tick_params(axis='both', labelsize= Font)  #size of axis
-                    if Logscale:        #if True, do it
-                        plt.yscale('log') 
-                        plt.xscale('log') 
-                    plt.minorticks_on()             #enabling minor grid lines
-                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5) #which both to plot major and minor grid lines
-                    plt.grid(which = 'major')
-                    plt.legend(fontsize = Font)            
-                    plt.savefig(folder_name +'/' +  
-                        pre_save_name + '_'  + df_mean_cps_T.index[i][:-4] +
-                        '.png', format='png', bbox_inches='tight')
-                    #To save plot in folder
-        
-            plt.close()     #to clsoe the plot not to consume too much resources
-            
-        
-
-    else:           #errro case
-        print('Wrong type of x, std (T, BK, S), what did u put bro? xD')
-        
-        
-    ######### 3) Running time displaying ###############
-    '''
-    The last thing will be to see and display the time needed
-    '''
-    
-    t_run = tr.time() - t_start     #Running time
-
-    print('###############################################')
-    print('Plotting running time: ' + str(t_run) + 's')
-    print('###############################################')
-
-    
-
-
-
-#%%### 1.20) ICPMS plotter blank Average of replicates, 2 datasets #############
-#####################################
-
-def ICPMS_Plotter_mean_2_blk (x_1, std_x_1, df_mean_cps_1, df_std_cps_1,
-        x_2, std_x_2, df_mean_cps_2, df_std_cps_2,
-        x_label, y_label, folder_name = 'Plots', Logscale = False,
-        Blank_here = False, plot_everything = False, 
-        pre_title_plt = "Concentration of ", 
-        pre_save_name = 'Conc', Nucl_rel = Isot_rel,
-        Label_MS_1 = 'MS 1', Label_1 = 'Data 1',
-        Label_MS_2 = 'MS 2', Label_2 = 'Data 2'):
+def ICPMS_Plotter_mean_blk_N (
+    x_list, std_x_list,
+    y_list, std_y_list,
+    element_index,
+    x_label, y_label,
+    labels=None, colors=None, markers=None,
+    folder_name='Plots', pre_title_plt='Concentration of ',
+    pre_save_name='Conc', Nucl_rel=None,
+    Logscale=False, Blank_here=False, plot_everything=False,
+    font_size=18 ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, 
     initially time, the cps and the rstd, for the 2 bentonites, plotting the average 
@@ -5007,17 +4742,16 @@ def ICPMS_Plotter_mean_2_blk (x_1, std_x_1, df_mean_cps_1, df_std_cps_1,
     blank as a horizontal line, if desired.
     
     *Inputs:
-        .x_1/2: x axis variable in the plot (mean values) for each bentonite. 
-        This should be a df series
-        .std_x_1/2: df Series with the std of the x variable for each bentonite
-        .df_mean_cps_1/2: dataframes containing the cps, but average values 
-            (1,2,3,4, etc) for the 3 benotnites
-            .From run of the mean and std calc
-        .df_std_cps_1/2: df containing the std of the mean values of the cps 
-            of the 3 benotnites
+        .x_list: list with the x variable (df or series)
+        .std_x_list: list with the x std variables (df or series). If None is provided,
+        no error will be assigned
+        .y_list: list with the y variable
+        .std_y_list: list with the y std variables
         .x_label: string that will be the x label for the plot (for math stuff, 
                                     use $$. eg: '$\Delta t[h]$')
         .y_label: string that will be the y label for the plot
+        .label: list with the labels. The hline will be: Label name + MS (if 
+            there is blank)
         .folder_name: string defining the name of the folder to create to store 
             the plots default value: 'Plots'
         .Blank_here: True if the df contain the blank, to plot it. Default: False
@@ -5034,6 +4768,7 @@ def ICPMS_Plotter_mean_2_blk (x_1, std_x_1, df_mean_cps_1, df_std_cps_1,
             value: (see above in the script)   
         .Logscale: string to say if you want the x and y axis in logscale or not.
             Default: False
+        .font_size: font_size for the plot. Default: 18
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!
@@ -5045,228 +4780,86 @@ def ICPMS_Plotter_mean_2_blk (x_1, std_x_1, df_mean_cps_1, df_std_cps_1,
     '''
     
     
-    ############# 1) Folder creation ###############
+   # === 1. Folder Setup ===
+    path_main = os.path.join(os.getcwd(), folder_name)
+    path_relevant = os.path.join(path_main, 'Relevants')
+    os.makedirs(path_relevant, exist_ok=True)
+
+    # === 2. Dataset Setup ===
+    N = len(x_list)
+    labels = labels or [f'Data {i+1}' for i in range(N)]
+    colors = colors or ['blue', 'red', 'green', 'orange'][:N]
+    markers = markers or ['o', 's', '^', 'D'][:N]
+
+    # === 3. Resolve Accessors ===
     '''
-    First the folder to store the plots will be created. IN the main folder a 
-    subfolder
-    with the relevant elements, to be given, will be created
-    '''
-    
-    path_bar_pl = os.getcwd() + '/' + folder_name + '/'
-        #Note os.getcwd() give current directory. With that structure we are able
-        #to automatize the plotting!!!
-        
-    if not os.path.exists(path_bar_pl):
-        os.makedirs(path_bar_pl)
-
-    #Subfolder with relevant plots:
-    path_bar_pl_rel = os.getcwd() + '/' + folder_name + '/' + 'Relevants' + '/' 
-        #folder path for the relevant plots
-    
-    if not os.path.exists(path_bar_pl_rel):
-        os.makedirs(path_bar_pl_rel)   
-    
-    
-    ######### 2) plotting ###############
-    '''
-    This is a loop plot, so beware, will take long if you plot all the elements 
-    (280) (2-3mins!).I inlcude in if statement the numer of replicates, currently
-    only 2 and 3!I need to do a for loop with an index, since I have several df here!
-
-    28/3/24 I generalize this making x variable (and std) a df df, not only a 
-    df.series
-    '''
-    t_start = tr.time()       #[s] start time of the plot execution
-    
-    ######if all x and std are pd.series
-    if isinstance(x_1, pd.Series):          #if x, std_x are df.series (base case)
-            #Note I check only one, but I assume the 3 are the same type
-        for i in list( range(df_mean_cps_1.shape[0] ) ): 
-                            #Loop thorugh all rows (elements)
-
-            if df_mean_cps_1.index[i] in Nucl_rel: #if the element is relevant
-            #note the -4 is so that that element contain only name and number, 
-            #like Mg26, not Mg26 (MR), in order to check with the list!
-                plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + df_mean_cps_1.index[i][:-4], fontsize=22,
-                          wrap=True)     #title
-                if Blank_here:  #If Blank is here, to plot it
-                    plt.hlines(df_mean_cps_1.loc[df_mean_cps_1.index[i]][0],
-                               min(x_1), max(x_1), label = Label_MS_1)
-                    plt.errorbar(x_1[1:], df_mean_cps_1.loc[df_mean_cps_1.index[i]][1:], 
-                             df_std_cps_1.loc[df_mean_cps_1.index[i] ][1:],
-                         std_x_1[1:], 'o--', markersize = 5, label = Label_1)    #Tur bentonite
-                    plt.hlines(df_mean_cps_2.loc[df_mean_cps_1.index[i]][0],
-                               min(x_2), max(x_2), label = Label_MS_2)
-                    plt.errorbar(x_2[1:], df_mean_cps_2.loc[df_mean_cps_2.index[i]][1:], 
-                             df_std_cps_2.loc[df_mean_cps_2.index[i] ][1:],
-                         std_x_2[1:], 'ro--', markersize = 5, label = Label_2)    #BK bentonite
-
-                else:               #no blank plot
-                    plt.errorbar(x_1, df_mean_cps_1.loc[df_mean_cps_1.index[i]], 
-                             df_std_cps_1.loc[df_mean_cps_1.index[i] ],
-                         std_x_1, 'o--', markersize = 5, label = Label_1)    #Tur bentonite
-                    plt.errorbar(x_2, df_mean_cps_2.loc[df_mean_cps_2.index[i]], 
-                             df_std_cps_2.loc[df_mean_cps_2.index[i] ],
-                         std_x_2, 'ro--', markersize = 5, label = Label_2)    #BK bentonite
-                #[1:] not to plot sample 1, the blank, which will be a horizontal line!
-            #
-                plt.ylabel(y_label, fontsize= Font)              #ylabel
-                plt.xlabel(x_label, fontsize = Font)
-                plt.tick_params(axis='both', labelsize= Font)    #size of axis
-                if Logscale:            #if True
-                    plt.yscale('log') 
-                    plt.xscale('log') 
-                plt.minorticks_on()             #enabling minor grid lines
-                plt.grid(which = 'minor', linestyle=':', linewidth=0.5) 
-                        #which both to plot major and minor grid lines
-                plt.grid(which = 'major')
-                plt.legend(fontsize = Font)
-                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + df_mean_cps_1.index[i][:-4] +
-                        '.png', format='png', bbox_inches='tight')
-            #
-            else:        #if the element is not relevant
-                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
-                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                    plt.title(pre_title_plt + df_mean_cps_1.index[i][:-4], fontsize=22, wrap=True)     #title
-                    if Blank_here:  #If Blank is here, to plot it
-                        plt.hlines(df_mean_cps_1.loc[df_mean_cps_1.index[i]][0],
-                                   min(x_1), max(x_1), label = Label_MS_1)
-                        plt.errorbar(x_1[1:], df_mean_cps_1.loc[df_mean_cps_1.index[i]][1:], 
-                                 df_std_cps_1.loc[df_mean_cps_1.index[i] ][1:],
-                             std_x_1, 'o--', markersize = 5,  label = Label_1)    #Tur bentonite
-                        plt.hlines(df_mean_cps_2.loc[df_mean_cps_1.index[i]][0],
-                                   min(x_2), max(x_2), label = Label_MS_2)
-                        plt.errorbar(x_2[1:], df_mean_cps_2.loc[df_mean_cps_2.index[i]][1:], 
-                                 df_std_cps_2.loc[df_mean_cps_2.index[i] ][1:],
-                             std_x_2, 'ro--', markersize = 5, label = Label_2)    #BK bentonite
-                    else:               #no blank plot
-                        plt.errorbar(x_1, df_mean_cps_1.loc[df_mean_cps_1.index[i]], 
-                                 df_std_cps_1.loc[df_mean_cps_1.index[i] ],
-                             std_x_1, 'o--', markersize = 5, label = Label_1)    #Tur bentonite
-                        plt.errorbar(x_2, df_mean_cps_2.loc[df_mean_cps_2.index[i]], 
-                                 df_std_cps_2.loc[df_mean_cps_2.index[i] ],
-                             std_x_2, 'ro--', markersize = 5,  label = Label_2)    #BK bentonite
-                    plt.xlabel(x_label, fontsize = Font)
-                    plt.tick_params(axis='both', labelsize= Font)              #size of axis
-                    if Logscale:        #if True, do it
-                        plt.yscale('log') 
-                        plt.xscale('log') 
-                    plt.minorticks_on()             #enabling minor grid lines
-                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
-                    plt.grid(which = 'major')
-                    plt.legend(fontsize = Font)            
-                    plt.savefig(folder_name +'/' +  
-                        pre_save_name + '_'  + df_mean_cps_1.index[i][:-4] +
-                        '.png', format='png', bbox_inches='tight')
-                    #To save plot in folder
-        
-            plt.close()             #to clsoe the plot not to consume too much resources
-            
-    elif isinstance(x_1, pd.DataFrame):       #######if x, std_x are df DF!!
-        for i in list( range(df_mean_cps_1.shape[0] ) ): #Loop thorugh all rows (elements)
-
-            if df_mean_cps_1.index[i] in Nucl_rel: #if the element is relevant
-            #note the -4 is so that that element contain only name and number, like Mg26, not Mg26 (MR),
-            #in order to check with the list!
-                plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                plt.title(pre_title_plt + df_mean_cps_1.index[i][:-4], 
-                          fontsize=22, wrap=True)     #title
-                if Blank_here:      #To plot the blank
-                    plt.errorbar(x_1.loc[x_1.index[i]][1:], 
-                             df_mean_cps_1.loc[df_mean_cps_1.index[i]][1:], 
-                             df_std_cps_1.loc[df_mean_cps_1.index[i]][1:],
-                         std_x_1.loc[std_x_1.index[i]][1:], 'o--', markersize = 5, 
-                          label = Label_1) 
-                    plt.hlines(df_mean_cps_1.loc[df_mean_cps_1.index[i]][0],
-                               min(x_1.loc[x_1.index[i]]), max(x_1.loc[x_1.index[i]]),
-                                label = Label_MS_1)
-                    plt.errorbar(x_2.loc[x_2.index[i]][1:], 
-                             df_mean_cps_2.loc[df_mean_cps_2.index[i] ][1:], 
-                             df_std_cps_2.loc[df_mean_cps_2.index[i] ][1:],
-                         std_x_2.loc[std_x_2.index[i]][1:], 'o--', markersize = 5, 
-                         label = Label_2)    #BK bentonite
-                    plt.hlines(df_mean_cps_2.loc[df_mean_cps_2.index[i]][0],
-                               min(x_2.loc[x_2.index[i]]), max(x_2.loc[x_2.index[i]])
-                               , label = Label_MS_2)
-                else:       #no blank plot
-                    plt.errorbar(x_1.loc[x_1.index[i]], 
-                             df_mean_cps_1.loc[df_mean_cps_1.index[i] ], 
-                             df_std_cps_1.loc[df_mean_cps_1.index[i] ],
-                         std_x_1.loc[std_x_1.index[i]], 'o--', markersize = 5, 
-                         label = Label_1)    #Tur bentonite
-                    plt.errorbar(x_2.loc[x_2.index[i]], 
-                             df_mean_cps_2.loc[df_mean_cps_2.index[i] ], 
-                             df_std_cps_2.loc[df_mean_cps_2.index[i] ],
-                         std_x_2.loc[std_x_2.index[i]], 'o--', markersize = 5, 
-                         label = Label_2)    #BK bentonite
-            #
-                plt.ylabel(y_label, fontsize= Font)              #ylabel
-                plt.xlabel(x_label, fontsize = Font)
-                plt.tick_params(axis='both', labelsize= Font)   #size of axis
-                if Logscale:            #if True
-                    plt.yscale('log') 
-                    plt.xscale('log') 
-                plt.minorticks_on()             #enabling minor grid lines
-                plt.grid(which = 'minor', linestyle=':', linewidth=0.5) #which both to plot major and minor grid lines
-                plt.grid(which = 'major')
-                plt.legend(fontsize = Font)
-                plt.savefig(folder_name + '/' + 'Relevants' + '/' +
-                        pre_save_name + '_'  + df_mean_cps_1.index[i][:-4] + '.png', format='png', bbox_inches='tight')
-            #
-            else:        #if the element is not relevant
-                if plot_everything == True :     #if you want to plot all the elements (may be desired?)
-                #    
-                    plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
-                    plt.title(pre_title_plt + df_mean_cps_1.index[i][:-4], 
-                              fontsize=22, wrap=True)     #title
-                    plt.errorbar(x_1.loc[x_1.index[i]], 
-                                 df_mean_cps_1.loc[df_mean_cps_1.index[i] ], 
-                                 df_std_cps_1.loc[df_mean_cps_1.index[i] ],
-                         std_x_1.loc[std_x_1.index[i]], 'o--', markersize = 5, 
-                         label = Label_1)    #Tur bentonite
-                    plt.errorbar(x_2.loc[x_2.index[i]], 
-                                 df_mean_cps_2.loc[df_mean_cps_2.index[i] ], 
-                                 df_std_cps_2.loc[df_mean_cps_2.index[i] ],
-                         std_x_2.loc[std_x_2.index[i]], 'o--', 
-                         markersize = 5, label = Label_2)    #BK bentonite
-                    plt.ylabel(y_label, fontsize= Font)                #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
-                    plt.tick_params(axis='both', labelsize= Font)  #size of axis
-                    if Logscale:        #if True, do it
-                        plt.yscale('log') 
-                        plt.xscale('log') 
-                    plt.minorticks_on()             #enabling minor grid lines
-                    plt.grid(which = 'minor', linestyle=':', linewidth=0.5) #which both to plot major and minor grid lines
-                    plt.grid(which = 'major')
-                    plt.legend(fontsize = Font)            
-                    plt.savefig(folder_name +'/' +  
-                        pre_save_name + '_'  + df_mean_cps_1.index[i][:-4] +
-                        '.png', format='png', bbox_inches='tight')
-                    #To save plot in folder
-        
-            plt.close()     #to clsoe the plot not to consume too much resources
-            
-        
-
-    else:           #errro case
-        print('Wrong type of x, std (T, BK, S), what did u put bro? xD')
-        
-        
-    ######### 3) Running time displaying ###############
-    '''
-    The last thing will be to see and display the time needed
+    in case std x has no error (None), I will asign a low error, but not 0, so
+    the loops can be executed. If I state 0, they would not work
     '''
     
-    t_run = tr.time() - t_start     #Running time
+    if std_x_list == None:  #setting a error close to 0, but not being 0
+        std_x_list = [x/9999999 for x in x_list]
+    
+    is_series = isinstance(x_list[0], pd.Series)
+    def get_x(x, i): return x if is_series else x.loc[i]
+    def get_std(std, i): return std if is_series else std.loc[i]
 
+    # === 4. Plotting Loop ===
+    t_start = tr.time()
+
+    for i in element_index:
+        element_name = i[:-4]
+        relevant = i in Nucl_rel if Nucl_rel is not None else False
+
+        if relevant or plot_everything:
+            plt.figure(figsize=(11, 8))
+            plt.title(pre_title_plt + element_name, fontsize=22, wrap=True)
+
+            for k in range(N):      #loop plotting, for all the datasets
+                x = get_x(x_list[k], i)
+                y = y_list[k].loc[i]
+                sx = get_std(std_x_list[k], i)
+                sy = std_y_list[k].loc[i]
+
+                color = colors[k % len(colors)]
+                marker = markers[k % len(markers)]
+                label = labels[k]
+
+                if Blank_here:
+                    plt.hlines(y[0], min(x), max(x), color=color, linestyle='-', 
+                               label=label + ' MS')
+                    plt.errorbar(x[1:], y[1:], yerr=sy[1:], xerr=sx[1:], 
+                                 fmt=f'{marker}--', color=color, label=label, markersize=5)
+                else:
+                    plt.errorbar(x, y, yerr=sy, xerr=sx, fmt=f'{marker}--', 
+                                 color=color, label=label, markersize=5)
+
+            plt.xlabel(x_label, fontsize=font_size)
+            plt.ylabel(y_label, fontsize=font_size)
+            plt.tick_params(axis='both', labelsize=font_size)
+            if Logscale:
+                plt.xscale('log')
+                plt.yscale('log')
+            plt.minorticks_on()
+            plt.grid(which='minor', linestyle=':', linewidth=0.5)
+            plt.grid(which='major')
+            plt.legend(fontsize=font_size)
+
+            # Save
+            save_path = os.path.join(
+                path_relevant if relevant else path_main,
+                f"{pre_save_name}_{element_name}.png"
+            )
+            plt.savefig(save_path, format='png', bbox_inches='tight')
+            plt.close()
+
+    # === 5. Report Timing ===
+    t_run = tr.time() - t_start
     print('###############################################')
-    print('Plotting running time: ' + str(t_run) + 's')
+    print(f'Plotting completed for {N} datasets in {t_run:.2f} seconds.')
     print('###############################################')
-        
-
+    
+    
     
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@

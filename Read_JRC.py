@@ -2705,9 +2705,8 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
 #%% ######## 1.17 Ratio based correction Bentonite leached ##############
 #################################################################    
 
-def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
-                             return_leached = False, Nucl_rel = Elem_rel,
-                             N_repl = 3):
+def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
+    Nucl_rel=None, N_repl=3):
     '''
     This function will remove the nuclides leached by bentonite from the ICPMS
     data, but in a ratio based way. Having the ppb data and the MS 
@@ -2733,12 +2732,14 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
         ...
         
     *INPUTS
-        .df_ppb: df with the ppb data. It should have the replicates in order:
-            1_1, 1_2,1_3,...,2_1,2_2,2_3,...,3_1,3_2,...
-        .df_ppb_std: df with the std of the ppb data. Same order
-        .df_MS: df with the mother solutions. In the order:
-            0_1, 0_2,...
-        .df_MS_std: df with the std of the MS
+        .data_dict: dictionary containig the input df in the order:
+            ppb/M data
+            ppb/M std data
+            MS ppb/M data
+            MS ppb/M std data
+            (keys not read)
+        All DataFrames must have isotopes as index and samples as columns. They
+        should be in order: 1,2,3,...
         .return_leached: boolean, to indicate wether df with the ppb (and 
             their std) leached by bentonite should be returned or not. Default:
             False
@@ -2753,142 +2754,89 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
         .df_ppb_br_std: df of the std of the ppb_br
     '''
 
-    if N_repl == 3:         #Case of 3 replicates 
-        ############### 1) Data preparation #######################
-        #We need to separate the replicates, in order to perform the substraction
-        df_1 = df_ppb.iloc[:, : round(df_ppb.shape[1] / 3)]
-        #1st replicate
-        df_2 = df_ppb.iloc[:, round(df_ppb.shape[1] / 3): 2*round(df_ppb.shape[1] / 3)]
-        df_3 = df_ppb.iloc[:, 2*round(df_ppb.shape[1] / 3) :]    
-        #Also their std are needed:    
-        df_1_std = df_ppb_std.iloc[:, : round(df_ppb_std.shape[1] / 3)]
-        df_2_std = df_ppb_std.iloc[:, round(df_ppb_std.shape[1] / 3): 2*round(df_ppb_std.shape[1] / 3)]
-        df_3_std = df_ppb_std.iloc[:, 2*round(df_ppb_std.shape[1] / 3) :]      
-        #
-        ############## 2) Calc of the contribution of bentonite
-        #This will be a df Series!
-        Ser_ppb_leach_1 = df_1.iloc[:,0] - df_MS.iloc[:,0]
-            #df series, with 1 column, named 0, and all indexes (nuclei)
-        Ser_ppb_leach_2 = df_2.iloc[:,0] - df_MS.iloc[:,0]               
-        Ser_ppb_leach_3 = df_3.iloc[:,0] - df_MS.iloc[:,0]
-        #And their std:
-        Ser_ppb_std_leach_1 = np.sqrt(df_1_std.iloc[:,0]**2 + df_MS_std.iloc[:,0]**2)
-        Ser_ppb_std_leach_2 = np.sqrt(df_2_std.iloc[:,0]**2 + df_MS_std.iloc[:,0]**2)
-        Ser_ppb_std_leach_3 = np.sqrt(df_3_std.iloc[:,0]**2 + df_MS_std.iloc[:,0]**2)
-        '''
-        Okay, this data I could print, and even store it and give it as an output,
-        if desired.
+# === 1. Extract input DataFrames ===
+    df_dat, df_dat_std, df_MS, df_std_MS = list(data_dict.values())
     
-        First I will join them in a df, and then printing it and saving it
-        '''
-        df_leached = pd.concat([Ser_ppb_leach_1, Ser_ppb_leach_2, 
-                            Ser_ppb_leach_3], axis = 1)
-        df_leached.columns = ['Repl 1','Repl 2','Repl 3']
-        df_leached_std = pd.concat([Ser_ppb_std_leach_1, Ser_ppb_std_leach_2, 
-                            Ser_ppb_std_leach_3], axis = 1)
-        df_leached_std.columns = ['Repl 1','Repl 2','Repl 3']
-        #This data will be printed at the end of the function..
-    ############# 3) Correction ##################
-        #I need fist to compute the correction factor:
-        corr_1 = df_MS/(df_MS + Ser_ppb_leach_1.values[:, None]) 
-                #correction for replicate 1
-        corr_2 = df_MS/(df_MS + Ser_ppb_leach_2.values[:, None])
-        corr_3 = df_MS/(df_MS + Ser_ppb_leach_3.values[:, None])        
-        Delta_corr_1 = corr_1*np.sqrt(
-            (df_MS_std/df_MS)**2 + (df_MS_std**2 + Ser_ppb_std_leach_1.values[:, None]**2)/(
-            df_MS**2+Ser_ppb_leach_1.values[:, None]**2) ) #uncertainty of the corr
-        Delta_corr_2 = corr_2*np.sqrt(
-            (df_MS_std/df_MS)**2 + (df_MS_std**2 + Ser_ppb_std_leach_2.values[:, None]**2)/(
-            df_MS**2+Ser_ppb_leach_2.values[:, None]**2) )
-        Delta_corr_3 = corr_3*np.sqrt(
-            (df_MS_std/df_MS)**2 + (df_MS_std**2 + Ser_ppb_std_leach_3.values[:, None]**2)/(
-            df_MS**2+Ser_ppb_leach_3.values[:, None]**2) )
-        #
-        #Applying them:
-        df_1_br = df_1*corr_1.values
-        df_2_br = df_2*corr_2.values
-        df_3_br = df_3*corr_3.values
-        df_1_br_std = df_1_br*np.sqrt( (df_1_std/df_1)**2 + (Delta_corr_1/corr_1).values**2)
-        df_2_br_std = df_2_br*np.sqrt( (df_2_std/df_2)**2 + (Delta_corr_2/corr_2).values**2)
-        df_3_br_std = df_3_br*np.sqrt( (df_3_std/df_3)**2 + (Delta_corr_3/corr_3).values**2)
-        '''
-    The uncertainty will be more complicate, since I need to do the sqrt of the
-    sum of the squares. The simples thing, 
-    np.sqrt(df_1_std**2 + Ser_ppb_std_leach_1**2)
-    
-    ofc does not work, because it treated the series as a row vector, not
-    a column one. Asking chatgpt, it gave me a solution that seemed to work
-    
-        '''
-        ################ 4) Output #############
-        #First we need to mergue them
-        df_ppb_br = pd.concat([df_1_br, df_2_br, df_3_br], axis = 1)
-        df_ppb_std_br = pd.concat([df_1_br_std, df_2_br_std, df_3_br_std], axis = 1)
-        #
-        #
-    elif N_repl == 2:           #2 replc
-        df_1 = df_ppb.iloc[:, : round(df_ppb.shape[1] / 2)]   #1st replicate
-        df_2 = df_ppb.iloc[:, 2*round(df_ppb.shape[1] / 2) :]    
-        #Also their std are needed:    
-        df_1_std = df_ppb_std.iloc[:, : round(df_ppb_std.shape[1] / 2)]
-        df_2_std = df_ppb_std.iloc[:, 2*round(df_ppb_std.shape[1] / 2) :]      
-        #
-        ############## 2) Calc of the contribution of bentonite
-        #This will be a df Series!
-        Ser_ppb_leach_1 = df_1.iloc[:,0] - df_MS.iloc[:,0]
-            #df series, with 1 column, named 0, and all indexes (nuclei)
-        Ser_ppb_leach_2 = df_2.iloc[:,0] - df_MS.iloc[:,0]               
-        #And their std:
-        Ser_ppb_std_leach_1 = np.sqrt(df_1_std.iloc[:,0]**2 + df_MS_std.iloc[:,0]**2)
-        Ser_ppb_std_leach_2 = np.sqrt(df_2_std.iloc[:,0]**2 + df_MS_std.iloc[:,0]**2)
-        #
-        df_leached = pd.concat([Ser_ppb_leach_1, Ser_ppb_leach_2], axis = 1)
-        df_leached.columns = ['Repl 1','Repl 2']
-        df_leached_std = pd.concat([Ser_ppb_std_leach_1, Ser_ppb_std_leach_2],
-                                   axis = 1)
-        df_leached_std.columns = ['Repl 1','Repl 2']
-    #I could print these data, or at least for the relevant Nuclei
-    ############# 3) Correction ##################
-        #I need fist to compute the correction factor:
-        corr_1 = df_MS/(df_MS + Ser_ppb_leach_1.values[:, None]) 
-                #correction for replicate 1
-        corr_2 = df_MS/(df_MS + Ser_ppb_leach_2.values[:, None])     
-        Delta_corr_1 = corr_1*np.sqrt(
-            (df_MS_std/df_MS)**2 + (df_MS_std**2 + Ser_ppb_std_leach_1.values[:, None]**2)/(
-            df_MS**2+Ser_ppb_leach_1.values[:, None]**2) ) #uncertainty of the corr
-        Delta_corr_2 = corr_2*np.sqrt(
-            (df_MS_std/df_MS)**2 + (df_MS_std**2 + Ser_ppb_std_leach_2.values[:, None]**2)/(
-            df_MS**2+Ser_ppb_leach_2.values[:, None]**2) )
-        #
-        #Applying them:
-        df_1_br = df_1*corr_1.values
-        df_2_br = df_2*corr_2.values
-        df_1_br_std = df_1_br*np.sqrt( (df_1_std/df_1)**2 + (Delta_corr_1/corr_1).values**2)
-        df_2_br_std = df_2_br*np.sqrt( (df_2_std/df_2)**2 + (Delta_corr_2/corr_2).values**2)
-    else:
-        print('Number of replicates different from 2 or 3? nothing done bro!')
+    # === 2. Split replicates ===
+    n_cols = df_dat.shape[1]
+    samples_per_repl = n_cols // N_repl
+    repl_dat = []
+    repl_std_dat = []
 
-    
-    ###Note that those include the procedural blank, shall I remove it?
-    #Nooo, because it is needed for the Qe calc, since I did the funciton in
-    #the way I did. SO just keep it!
-    
-    #After the loop, I can print that
-    print('####### Concentration in ppb of leached relevant nuclides from the bentonites to the BIC solution')
-    print(df_leached.loc[Nucl_rel])
-    print('######################################\n')
+    for r in range(N_repl):
+        start = r * samples_per_repl
+        end = (r + 1) * samples_per_repl
+        repl_dat.append(df_dat.iloc[:, start:end])
+        repl_std_dat.append(df_dat_std.iloc[:, start:end])
 
-    print('########## Uncertainty of those: ########')
-    print(df_leached_std.loc[Nucl_rel])
-    print('######################################\n')
-    
-    ########### Output ###################
-    
-    if return_leached:      #True, so return it
-        return df_ppb_br, df_ppb_std_br, df_leached, df_leached_std
-    else:       #False, dont return it
-        return df_ppb_br, df_ppb_std_br
+    # === 3. Compute leached concentration per replicate ===
+    C_leach = []
+    C_leach_std = []
 
+    for r in range(N_repl):
+        leach = repl_dat[r].iloc[:, 0] - df_MS.iloc[:, 0]
+        std_leach = np.sqrt(
+            repl_std_dat[r].iloc[:, 0] ** 2 + df_std_MS.iloc[:, 0] ** 2
+        )
+        C_leach.append(leach)
+        C_leach_std.append(std_leach)
+
+    df_C_leach = pd.concat(C_leach, axis=1)
+    df_C_leach.columns = [f'Repl {r+1}' for r in range(N_repl)]
+
+    df_C_leach_std = pd.concat(C_leach_std, axis=1)
+    df_C_leach_std.columns = [f'Repl {r+1}' for r in range(N_repl)]
+
+    # === 4. Compute correction factors and apply them ===
+    df_dat_br_list = []
+    df_dat_std_br_list = []
+
+    for r in range(N_repl):
+        leach = C_leach[r].values[:, None]
+        leach_std = C_leach_std[r].values[:, None]
+
+        corr = df_MS / (df_MS + leach)
+
+        # Error propagation for correction factor
+        delta_corr = corr * np.sqrt(
+            (df_std_MS / df_MS) ** 2 +
+            (df_std_MS**2 + leach_std**2) /
+            (df_MS**2 + leach**2)
+        )
+
+        # Apply correction
+        df_corr = repl_dat[r] * corr.values
+        df_corr_std = df_corr * np.sqrt(
+            (repl_std_dat[r] / repl_dat[r]) ** 2 +
+            (delta_corr / corr).values ** 2
+        )
+
+        df_dat_br_list.append(df_corr)
+        df_dat_std_br_list.append(df_corr_std)
+
+    # === 5. Concatenate all corrected data ===
+    df_dat_br = pd.concat(df_dat_br_list, axis=1)
+    df_dat_std_br = pd.concat(df_dat_std_br_list, axis=1)
+
+    # === 6. Reporting ===
+    if Nucl_rel is not None:
+        print('####### Leached concentrations (dat) of relevant nuclides:')
+        print(df_C_leach.loc[Nucl_rel])
+        print('########## Their uncertainties:')
+        print(df_C_leach_std.loc[Nucl_rel])
+        print('######################################\n')
+
+    # === 7. Return ===
+    result = {
+        'dat_br': df_dat_br,
+        'std_br': df_dat_std_br
+    }
+
+    if return_leached:      #add the df with the Cleached and its std
+        result['C_leach'] = df_C_leach
+        result['std_C_leach'] = df_C_leach_std
+
+    return result
 
 
     

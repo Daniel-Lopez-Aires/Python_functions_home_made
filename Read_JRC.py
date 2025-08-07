@@ -2706,7 +2706,7 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
 #################################################################    
 
 def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
-                             return_leached = False, Nucl_rel = Isot_rel,
+                             return_leached = False, Nucl_rel = Elem_rel,
                              N_repl = 3):
     '''
     This function will remove the nuclides leached by bentonite from the ICPMS
@@ -2743,7 +2743,7 @@ def ICPMS_Removal_Bent_leach_ratio(df_ppb, df_ppb_std, df_MS, df_MS_std,
             their std) leached by bentonite should be returned or not. Default:
             False
         .Nucl_rel: array containing the name of the relevant nuclides.
-        Eg: np.array(['U238(LR)', 'Sr88(LR)'])
+        Eg: np.array(['U238(LR)', 'Sr88(LR)']). For printing the df of Cleach
         .N_repl: number of replicates. Default: 3
         
     *OUTPUTS
@@ -3286,6 +3286,30 @@ def ICPMS_Isot_to_Elem(df):
     return df_grouped
     
     
+######## %% ######### 1.19.1) Isotopes to elements, dictionary version ###########################
+#The same but for a dictionary as input:
+def ICPMS_Isot_to_Elem_from_dict(df_dict):
+    """
+    Scholargpt created
+    Applies isotope-to-element merging to multiple DataFrames stored in a dictionary.
+
+    Parameters
+    ----------
+    df_dict : dict
+        Dictionary of DataFrames, where keys are labels and values are isotope-indexed DataFrames.
+
+    Returns
+    -------
+    dict
+        Dictionary with the same keys, and values as merged elemental DataFrames.
+    """
+    result = {}
+    for label, df in df_dict.items():
+        merged = ICPMS_Isot_to_Elem(df)  # Your existing function
+        result[label] = merged
+    return result
+    
+    
     
     
     
@@ -3294,6 +3318,7 @@ def ICPMS_Isot_to_Elem(df):
 #################################################################
 #%% ########## 1.20 )ICPMS Homogeneizer ###########################
 ###############################################
+
     
 def ICPMS_Homogenize(df_ref, df, Return_extra_mass = 0):
     '''
@@ -3346,8 +3371,6 @@ def ICPMS_Homogenize(df_ref, df, Return_extra_mass = 0):
         
     else:                   #not desired to retrieve df_extra
         return df_homo
-    
-    
     
     
     

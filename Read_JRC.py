@@ -85,6 +85,9 @@ At_we = pd.read_excel('C:/Users/Administrator/Desktop/Python/at_wt_natural_eleme
                       index_col=0)     
         #Path from guest laptop from JRC)       
               
+Rad_dat = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx', 
+                      index_col=0)      #half lifes and masses of radionuclides
+
         
 #############################################################            
 #%%## ## 1.1) ICPMS excel reader #############
@@ -2726,12 +2729,14 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
                             Ba138_fis_ab = 64.04):
     '''
     This function will apply the corrections to compute, for a SNF leachate ICPMS:
-        .Natural and fission Ba
-        .Fission Cs (no natural Cs, it was removed with the ICPMS Blk corr)
+        .Natural and fission Ba 136, 138 determination (Ba136,138 stable!)
+        .Calc of Ba134,5,6,7 based on previous calcs
+        .Fission-produced Cs133,4,5,7 (no natural Cs, it was removed with the
+            ICPMS Blk corr)
     The data should be Xe corrected, since Xe interfere with Ba and Cs. ORIGEN
     calcs from the fuel are also need.
     
-    Note that for the std calcs, it was asssumed:
+    Note that for the std calcs, it was ASSUMED:
         i) NO std to natural abundances
         ii) NO std to ORIGEN calcs (fission abundances, etc)
         
@@ -2745,9 +2750,10 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
         . .._ab: fission abundances of those nuclei [%]
         
     *OUTPUTS
-        .df_ppb: including Ba, Cs 
-        .df_ppb_std: including the rstd
-        .df with the Cs abundances [%]
+        .dicitonary containing 3 df:
+            .df_ppb: including Ba, Cs 
+            .df_ppb_std: including the rstd
+            .df with the Cs abundances [%]
         
         
         
@@ -2786,8 +2792,8 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     #f for decimals, e for scientific notation
     print(rat_Ba138136)
     print('#################################')
-    print('If they are close (9.something), it indicates that little fission Ba present')
-    print('More change, such as 11.something indicates fission Ba present')
+    print('If they are close (9.something), indicates that little fission-produced Ba present')
+    print('More change, such as 11.something indicates fission-produced Ba present')
     print('#####################################################\n')
     
     
@@ -2837,7 +2843,8 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     #Using natural abundances data!
     
     Ba134_nat = 2.417 * Ba138_nat/71.698
-    Ba134_nat_std = Ba134_nat * Ba138_nat_std/Ba138_nat      #std
+    Ba134_nat_std = Ba134_nat * Ba138_nat_std/Ba138_nat      
+            #std
     
     Ba135_nat = 6.592 * Ba138_nat/71.698
     Ba135_nat_std = Ba135_nat * Ba138_nat_std/Ba138_nat 
@@ -3040,8 +3047,10 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     df_ppb_std.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133_std
     df_ppb_std.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137_std
     
-    ######
-    return df_ppb, df_ppb_std, df_Cs_ab
+    ###### Returning #########
+    #A dictionary with the 3 df will be returned, to keep it more gathered
+    output = {'dat': df_ppb, 'std': df_ppb_std, 'Cs_Ab': df_Cs_ab}
+    return output
 
 
 
@@ -3195,6 +3204,92 @@ def ICPMS_Homogenize(df_ref, df, Return_extra_mass = 0):
         
     else:                   #not desired to retrieve df_extra
         return df_homo
+    
+    
+
+#################################################################
+#%% ########## 1.21 )ICPMS Get activity ###########################
+###############################################
+    
+def ICPMS_Get_Activity (df_ppb, df_ppb_std ):
+    '''
+    Function that, starting from the df with the ICPMS concentrations, will
+    compute the totala activity of the desired radionuclides. Assuming concentration
+    in ppb. Note that the Activity (A) is related to the specific activity (a) as:
+        A = m * a
+    
+    Since we do not have m, rather we have concentrations, g /gtot, we would get
+    the activity in Bq/g tot! This funciton will perform the calculation for all
+    the isotopes defined in the excel "Rad_dat_DLA". For the others, nothing will 
+    be done, removing them from the output df
+    
+    The uncertainties will also be given, ASSUMING no uncertainty in specific 
+    activities (reasonable since ppb std will be way bigger)
+    
+    This function will also print the total activity, and its std
+        
+    *Inputs:
+        .df_ppb: df with the ICPMS data in the typical format:
+            .index = masses (U238(LR), etc)
+            .each column is a sample
+        .df_ppb_std: df with the ppb std, in the same format
+        
+    *Output
+        .dictionary with 2 df containing the activity and its ucnertainty
+    '''
+    
+    
+    ################ 0) Pre calcs
+    N_A = 6.022e23                              #[part/mol] Avogadro Number
+    
+    #Gettind theisotopes of the df, removving (LR)/(MR)
+    
+    base_isotopes = df_ppb.index.str.extract(r"^([A-Z][a-z]?\d+)")[0]
+    #base_isotopes = [a[:-4] for a in df_ppb.index]
+# Map to specific activity (Rad_dat must have isotopes as index)
+
+
+    a_values = Rad_dat['a (Bq/g)'].reindex(base_isotopes).to_numpy() 
+                #specific activity
+
+    # Compute activity: conc(ppb) × SA(Bq/g) × 1e-9 (ppb → g/g)
+    A = df_ppb.multiply(a_values * 1e-9, axis=0)  
+    
+    A_std = df_ppb_std.multiply(a_values * 1e-9, axis=0)  #std of A
+    
+    #The columns with no radioactive data will be removed (have NaN as values)
+    A.dropna(axis = 0, inplace = True, how = 'all')
+            #how = all indicates only removing when all values are NaN ! 
+            #(error in Astd otherwise, since for BIC NaN in ppb
+    A_std.dropna(axis = 0, inplace = True, how = 'all')
+    
+    #Finally we will also get the total activity:
+    A.loc['A_tot[Bq/gtot]'] = A.sum(axis = 0, skipna = True)
+    A_std.loc['A_tot[Bq/gtot]'] = A_std.sum(axis = 0, skipna = True)
+    
+    #Lets print the total activity, with no decimals
+    print('#-------------------------------------------------------#')
+    print('Total activity/total mass [Bq/g tot]:')
+    print(A.loc["A_tot[Bq/gtot]"].round() )
+    print('----- And its uncertainty: -------------\n')
+    print(A_std.loc["A_tot[Bq/gtot]"].round() )
+    print('#------------------End of the function --------------------------#')
+    ############## Returning ######################
+    #Returning a df
+    result = {'Act [Bq/gtot]': A, 'Delta[Act[Bq/gtot]]': A_std}
+    
+    return result
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     

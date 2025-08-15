@@ -2627,10 +2627,7 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
         .N_repl: number of replicates. Default: 3
         
     *OUTPUTS
-        .df_ppb_br: df with the ICPMS data with the bentonite contribution 
-            removed (br). Note the procedural blank will still be there. Though
-            they may not be useful, at least for the Qe function they will
-        .df_ppb_br_std: df of the std of the ppb_br
+        .Dictionary containing the ppb, std, and %rsd values
     '''
 
 # === 1. Extract input DataFrames ===
@@ -2708,13 +2705,14 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
     # === 7. Return ===
     result = {
         'dat_br': df_dat_br,
-        'std_br': df_dat_std_br
+        'std_br': df_dat_std_br,
+        '%rsd': df_dat_std_br/df_dat_br*100 #returning %rsd also!
     }
 
     if return_leached:      #add the df with the Cleached and its std
         result['C_leach'] = df_C_leach
         result['std_C_leach'] = df_C_leach_std
-
+        result['%rsd_C_leach'] = df_C_leach_std/df_C_leach*100
     return result
 
 
@@ -2734,7 +2732,8 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
         .Fission-produced Cs133,4,5,7 (no natural Cs, it was removed with the
             ICPMS Blk corr)
     The data should be Xe corrected, since Xe interfere with Ba and Cs. ORIGEN
-    calcs from the fuel are also need.
+    calcs from the fuel are also need. Some rsd will be also printed throughout
+    the function to check what makes the uncertainty rises a lot
     
     Note that for the std calcs, it was ASSUMED:
         i) NO std to natural abundances
@@ -2759,8 +2758,9 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
         
             #### To Do:
                 .Link with abundance excel??
-                .Check why uncertantiy calc so high/solve it somehow??
-                Maybe depends on ICPMS data, so complicate
+                .Problem with uncertainties, from fis ratio on, std> variable,
+                since we do variable = 1- var 2, delta var = delta var 2, and 
+                there the problem arises!
     '''
 
     ######## 0) 
@@ -2776,11 +2776,16 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     rat_Ba138136_nat = 71.698/7.854        #nat abundance ratio of Ba138/ba 136
     
     rat_Ba138136 = df_ppb.loc['Ba138(LR)'] / df_ppb.loc['Ba136(LR)']
-            #measured ratio of Ba138/Ba136
+                                #measured ratio of Ba138/Ba136
     rat_Ba138136_std = rat_Ba138136 * np.sqrt(
         (df_ppb_std.loc['Ba138(LR)']/df_ppb.loc['Ba138(LR)'])**2 + 
-        (df_ppb_std.loc['Ba136(LR)']/df_ppb.loc['Ba136(LR)'])**2 ) #std
-    #Bro, this is so huge that fuck up all the
+        (df_ppb_std.loc['Ba136(LR)']/df_ppb.loc['Ba136(LR)'])**2 ) #std of the 
+                #measured ratio
+                
+    print('------- %rsd of the Ba138/Ba136 ratio-----------')
+    print((rat_Ba138136_std / rat_Ba138136 *100).round())
+    print('-------------------------------------------')
+    
     
     rat_Ba138136_fis = Ba138_fis_ab / Ba136_fis_ab  #fission ratio (ORIGEN)
         #no std, assumed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
@@ -2790,7 +2795,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     print('##############################################')
     print('Natural ratio Ba138/Ba136:' + f'{rat_Ba138136_nat: .3f}. Measured ratio:')
     #f for decimals, e for scientific notation
-    print(rat_Ba138136)
+    print(rat_Ba138136.round(3))
     print('#################################')
     print('If they are close (9.something), indicates that little fission-produced Ba present')
     print('More change, such as 11.something indicates fission-produced Ba present')
@@ -2809,7 +2814,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     
     frac_Ba136_nat = (rat_Ba138136 - rat_Ba138136_fis)/(
         rat_Ba138136_nat -rat_Ba138136_fis)     #fraction of nat Ba136
-    frac_Ba136_nat_std = frac_Ba136_nat * rat_Ba138136_std/(rat_Ba138136 
+    frac_Ba136_nat_std = frac_Ba136_nat * rat_Ba138136_std/np.abs(rat_Ba138136 
                                                             - rat_Ba138136_fis)
                         #std
     '''
@@ -2820,8 +2825,23 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     frac_Ba136_nat.iloc[columns_blks] = 1        #no fission, is a blank!
     frac_Ba136_nat_std.iloc[columns_blks] = 0            #std
     
+    
     frac_Ba136_fis = 1- frac_Ba136_nat      #Fission fraction = 1 - natural fraction
     frac_Ba136_fis_std = frac_Ba136_nat_std      #std
+    
+    print('--------- %rsd of fraction of Ba136 natural created:')
+    print( (frac_Ba136_nat_std / frac_Ba136_nat*100).round() )
+    print('%rsd of fraction of Ba136 fission created:')
+    print( (frac_Ba136_fis_std / frac_Ba136_fis*100).round() )
+    print('-----------------------------------------')
+    '''
+    Note rsd blow up here, in the fission rsd, since variable close to 0, being
+    smaller than the uncertainty!
+    if A = 1-B, delta A = delta B, but if A<<<, delta B = Delta A > A, making this
+    results strange. At this point, I do not know what to do with this :/
+    !!!!!!!!!!!!!
+    !!!!!!!!!!!
+    '''
     
     Ba136_nat = frac_Ba136_nat * df_ppb.loc['Ba136(LR)']    #nat Ba136!
     Ba136_nat_std = Ba136_nat * np.sqrt( (frac_Ba136_nat_std/frac_Ba136_nat)**2 +
@@ -2838,7 +2858,19 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     Ba138_fis_std = Ba138_fis * Ba136_fis_std/Ba136_fis #std (fis ratio no std!)
     #Checked!
     
-
+    #Printing rsd of Ba136, Ba138 natural and fission generated (both stable isotopes)
+    
+    print('----%rsd of natural-produced Ba136------------')
+    print( (Ba136_nat_std/Ba136_nat * 100).round() )
+    print('---------- %rsd of natural-produced Ba138-----------')
+    print( (Ba138_nat_std/Ba138_nat * 100).round() )
+    print('--------------------------------------------------')
+    print('------------ %rsd of fission-produced Ba136')
+    print( (Ba136_fis_std/Ba136_fis * 100).round() )
+    print('------------ %rsd of fission-produced Ba138')
+    print( (Ba138_fis_std/Ba138_fis * 100).round() )
+            #Note they have same rsd, despite being different!
+    
     ########### 3) Ba134,5,6,7, nat calc from Ba138
     #Using natural abundances data!
     
@@ -2849,14 +2881,26 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     Ba135_nat = 6.592 * Ba138_nat/71.698
     Ba135_nat_std = Ba135_nat * Ba138_nat_std/Ba138_nat 
     
-    Ba136_nat = 7.854 * Ba138_nat/71.698
-    Ba136_nat_std = Ba136_nat * Ba138_nat_std/Ba138_nat 
+    # Ba136_nat = 7.854 * Ba138_nat/71.698
+    # Ba136_nat_std = Ba136_nat * Ba138_nat_std/Ba138_nat 
     
     Ba137_nat = 11.232 * Ba138_nat/71.698
     Ba137_nat_std = Ba137_nat * Ba138_nat_std/Ba138_nat 
     #Checked! (std no checked, computing here for 1st time)
 
 
+    #rsd printing
+    print('--------- %rsd of nat Ba134 ---------')
+    print( (Ba134_nat_std/Ba134_nat * 100).round() )
+    print('--------- %rsd of nat Ba135 ---------')
+    print( (Ba135_nat_std/Ba135_nat * 100).round() )
+    # print('--------- %rsd of nat Ba136 ---------')
+    # print( (Ba136_nat_std/Ba136_nat * 100).round() )
+    print('--------- %rsd of nat Ba137 ---------')
+    print( (Ba137_nat_std/Ba137_nat * 100).round() )
+    print('----------------------------------------')
+    
+    
     ########## 4) Fission Ba134, 137 #####################
     #ORIGEN dependant!
     
@@ -2870,7 +2914,13 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     Ba137_fis_std = Ba137_fis * np.sqrt(Ba136_fis_std**2 + Ba138_fis_std**2)/ (
         Ba136_fis + Ba138_fis)          #std        
 
-
+    #rsd printing
+    print('-------- rsd Ba134 fission generated ------------')
+    print( (Ba134_fis_std/Ba134_fis *100).round() )
+    print('-------- rsd Ba137 fission generated ------------')
+    print( (Ba137_fis_std/Ba137_fis *100).round() )
+    print('--------------------------------------------------')
+    
     ############ 5) Cs (fission only, no natural) calc ########
     '''
     #Note no natural Cs since it was removed with the ICPMS Blk substraction,
@@ -2893,7 +2943,16 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     Cs135_fis_std = np.sqrt(df_ppb_std.loc['Ba135(LR)']**2 + Ba135_nat_std**2)
                 #no Ba 135 fis created!!
     #checked!
-
+    
+    #Cs rsd printing
+    print('------------- Cs134 fission-generated rsd')
+    print( (Cs134_fis_std/Cs134_fis *100).round() )
+    print('------------- Cs135 fission-generated rsd')
+    print( (Cs135_fis_std/Cs135_fis *100).round() )
+    print('------------- Cs137 fission-generated rsd')
+    print( (Cs137_fis_std/Cs137_fis *100).round() )
+    
+    
     '''
     Their abundances will also be computed, since they are really useful to 
     understand the data. We would expect similar Cs133 as Cs137 production, or
@@ -3009,6 +3068,8 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     
     Note I all (LR) to all the names, which will be useful for plotting, since
     I plot and save name removing 4 last digits [:-4], which removed (LR)
+    
+    The %rsd will also be computed and stored!
     '''
     
     ##### ppb
@@ -3047,9 +3108,13 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     df_ppb_std.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133_std
     df_ppb_std.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137_std
     
+    #rsd
+    df_rsd = df_ppb_std/df_ppb * 100
+    
     ###### Returning #########
     #A dictionary with the 3 df will be returned, to keep it more gathered
-    output = {'dat': df_ppb, 'std': df_ppb_std, 'Cs_Ab': df_Cs_ab}
+    output = {'dat': df_ppb, 'std': df_ppb_std, '%rsd': df_rsd,
+              'Cs_Ab': df_Cs_ab}
     return output
 
 
@@ -3275,8 +3340,12 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std ):
     print(A_std.loc["A_tot[Bq/gtot]"].round() )
     print('#------------------End of the function --------------------------#')
     ############## Returning ######################
+    #THe rsd will also be computed an returned
+    
+    A_rsd = A_std/A * 100           #rsd
+    
     #Returning a df
-    result = {'Act [Bq/gtot]': A, 'Delta[Act[Bq/gtot]]': A_std}
+    result = {'Act [Bq/gtot]': A, 'Delta[Act[Bq/gtot]]': A_std, '%rsd': A_rsd}
     
     return result
     

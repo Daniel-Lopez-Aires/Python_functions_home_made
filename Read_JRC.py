@@ -1958,15 +1958,16 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, N_repl = 2,
 
 #%% ########## 1.13) Kd calculaor, Adsorption version #############
 #####################################
-def ICPMS_KdQe_calc_Ad (df_MS, df_samples, df_VoM_disol, df_m_be, 
-                        df_m_liq = False, ret_Co__Ceq = False, N_repl = 3):
+def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol, 
+        df_m_be, df_VoM_disol_std = 1, df_m_be_std = 0.0001, 
+        ret_Co__Ceq = False, N_repl = 3):
     '''
     Function that will compute the distribution constant Kd and the adsorption 
-    quantity Q_e from the ppb data obtained with ICPMS. Note that data must be
-    corrected for the dilutions factors. This function was made for 3 replicates,
-    beware!!!!
+    quantity Q_e from the ppb data obtained with ICPMS. Their std deviation will
+    also be computed, following the quadratic order propagation. Initial vs
+    final concentration will also be returned, if desired. 
     
-    Based on the blk corrector function. The sorbed quantity Q_e is:
+    The sorbed quantity Q_e is:
         Q_e = (C_0 - C_e) * V/m
     
     THe distribution constant Kd is:
@@ -2007,25 +2008,28 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_samples, df_VoM_disol, df_m_be,
 
 
     *Inputs:
-        .df_samples: dataframe containing the data, the full data, with the 3 
+        .df_dat: dataframe containing the data, the full data, with the 3 
         replicates. Should be Dfs corrected
             Format: isotopes as index, columns the samples, 1st 1st replicate, 
             then 2nd replicate.
+        .df_dat_std: similar df but with their std
         .df_MS: df containng the mother solution data, C_0
+        .df_MS_std= similar df but with their std
         .df_VoM_disol: pd series containing the volume [mL] added to the bottle 
         of the solution, BIC, or whatever. normally 50ml OR the total mass of 
-        the solution [g]. If df_samples in ppb, this must be the total mass
+        the solution [g]. If df_dat in ppb, this must be the total mass
         so that Q_e is in g/g !
+        .df_VOM_disol_std: value of the error of V or mL. Default: 1 [mL] 
+                Liquid assumed!!!
         .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle 
         (normally 250mg)
-        .Nrepl: number of replicates. Default value = 2. 3 also accepted
+        .df_m_bent_std: value of the error of m_be. Default: 0.001g
         ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
         .Nrepl: number of replicates. Default: 3
     
-    *Outputs (in that order):
-        .df with the Kd data
-        .df with q_e data
-        .if desired, df with the C0-Ceq
+    *Outputs:
+        .Dictionary with Qe, Qe_std, Kd, Kd_std
+        .If desired, dictionary including also Co-Ce and its std
         '''
     
     ########## 0) Precalcs ##########
@@ -2039,38 +2043,39 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_samples, df_VoM_disol, df_m_be,
     put NaN instead, since that will not give the Div0 error when computing Kd
     '''
     
-    df_samples_aux = df_samples.copy()
-    df_samples_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
+    df_dat_aux = df_dat.copy()
+    df_dat_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
                                               #to avoid Div0 error!    
     
-    if df_m_liq== False:    #if no data for the volume of the liquid provided, 
-                            #then set the mass of the liquid initially
-        df_m_liq = df_VoM_disol - df_m_be 
-    
+    df_dat_std_aux = df_dat_std.copy()
+    df_dat_std_aux.replace(0, np.nan, inplace=True)
     
     '''
     We will make it more efficient by doing the calcs on a replicate base, so
     in a for loop per replicate, the calcs will be done (gpt based)
     '''
-    print('######################################')
+    print('############# Qe calc comment: #########################')
     print('Are all the variable in order? It is mandatory since we will split them!')
     print('######################################\n')
     
     #Splitting replicates
-    N_sa = df_samples.shape[1]      #number of samples
+    N_sa = df_dat.shape[1]      #number of samples
     samples_per_repl = N_sa // N_repl       #samples per repl = number of MS
     
     #lets get the replicates data in a list:
     repl_dat = []           #ppb/M data per repl
+    repl_dat_std = []           #[ppb/M] std of the data
     repl_VoM_disol = []     #V disol (or mas)
     repl_m_be = []      #bentonite mass per replc
     
     for r in range(N_repl):
-        start = r * samples_per_repl        #1st sample of the replicate
-        end = (r + 1) * samples_per_repl    #Last sample of the replicate
-        repl_dat.append(df_samples_aux.iloc[:, start:end])
-        repl_VoM_disol.append(df_VoM_disol.iloc[start:end]) #is a series, so less index
-        repl_m_be.append(df_m_be.iloc[start:end]) #same 
+        start = r * samples_per_repl            #1st sample of the replicate
+        end = (r + 1) * samples_per_repl        #Last sample of the replicate
+        repl_dat.append(df_dat_aux.iloc[:, start:end])          #dat
+        repl_dat_std.append(df_dat_std_aux.iloc[:, start:end])      #dat std
+        repl_VoM_disol.append(df_VoM_disol.iloc[start:end]) 
+            #it is a series, so less index
+        repl_m_be.append(df_m_be.iloc[start:end])                   #same 
     
     #Now we can proceed with the calcs
     ########### 1) Calcs ###########
@@ -2105,8 +2110,12 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_samples, df_VoM_disol, df_m_be,
     
     #storing variables
     repl_C0__Ceq = []    
+    repl_C0__Ceq_std = []           #std
     repl_Qe = []
+    repl_Qe_std = []                        #std
     repl_Kd = []
+    repl_Kd_std = []
+    
     for r in range(N_repl):             #calcs per replicate
         '''
         Note that I have N different mother solutions, which also means N different
@@ -2115,38 +2124,58 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_samples, df_VoM_disol, df_m_be,
         '''
         Ceq__C0 = pd.DataFrame(repl_dat[r].values - 
             df_MS.values, index = df_MS.index, columns = repl_dat[r].columns)
+        Ceq__C0_std = pd.DataFrame( np.sqrt(repl_dat_std[r].values**2 - 
+            df_MS_std.values**2), index = df_MS.index, columns = repl_dat[r].columns)
         C0__Ceq = -Ceq__C0      #Obtaining C0-C_eq
+        C0__Ceq_std = -Ceq__C0_std      #Obtaining C0- std
         #With that I can get Qe, Kd
         Qe = C0__Ceq * repl_VoM_disol[r] / repl_m_be[r]
+        Qe_std = Qe * np.sqrt( (df_VoM_disol_std / df_VoM_disol[r])**2 + 
+                              ( df_m_be_std / df_m_be[r])**2 ) 
         Kd = Qe/ repl_dat[r]
+        Kd_std = Kd * np.sqrt( (Qe_std/Qe)**2 + (repl_dat_std[r]/repl_dat[r])**2 )
         
         #Before storing them, I will remova back the NaN, by doing Qe to 9999999999,
         #since it
         #could give errors (like that the number is easy noticeable!)
         Qe.fillna(99999999999, inplace = True)
+        Qe_std.fillna(99999999999, inplace = True)
         Kd.fillna(99999999999, inplace = True)
+        Kd_std.fillna(99999999999, inplace = True)
         
         #Finally, lets store it
-        repl_C0__Ceq.append(C0__Ceq)   
+        repl_C0__Ceq.append(C0__Ceq)
+        repl_C0__Ceq_std.append(C0__Ceq_std)
         repl_Qe.append(Qe)
+        repl_Qe_std.append(Qe_std)
         repl_Kd.append(Kd)
+        repl_Kd_std.append(Kd_std)
         
     #Now we create a df out of them, concatenating them
         #we convert to numeric, in case it is needed
     df_Qe = pd.concat(repl_Qe, axis=1)
-    df_Qe = df_Qe.apply(pd.to_numeric) 
+    df_Qe_std = pd.concat(repl_Qe_std, axis=1)
     df_Kd = pd.concat(repl_Kd, axis=1)  
-    df_Kd = df_Kd.apply(pd.to_numeric)
+    df_Kd_std = pd.concat(repl_Kd_std, axis=1)
     df_C0__Ceq = pd.concat(repl_C0__Ceq, axis = 1)
+    df_C0__Ceq_std = pd.concat(repl_C0__Ceq_std, axis = 1)
+    
+    df_Qe = df_Qe.apply(pd.to_numeric)
+    df_Qe_std = df_Qe_std.apply(pd.to_numeric)
+    df_Kd = df_Kd.apply(pd.to_numeric)
+    df_Kd_std = df_Kd_std.apply(pd.to_numeric)
     df_C0__Ceq =df_C0__Ceq.apply(pd.to_numeric) 
+    df_C0__Ceq_std =df_C0__Ceq_std.apply(pd.to_numeric) 
          
 
     ########### 2) Return #############
     #Here the if for returning or not C_0 - C(t) applies
     
-    results = {'Qe': df_Qe, 'Kd': df_Kd}
+    results = {'Qe': df_Qe, 'Qe_std': df_Qe_std, 'Kd': df_Kd, 'Kd_std': df_Kd_std}
     if ret_Co__Ceq:            #if you want to retreieve it
         results['C0-Ceq'] = df_C0__Ceq
+        results['C0-Ceq_std'] = df_C0__Ceq_std
+        
     
     return results
 

@@ -1959,7 +1959,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, N_repl = 2,
 #%% ########## 1.13) Kd calculaor, Adsorption version #############
 #####################################
 def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol, 
-        df_m_be, df_VoM_disol_std = 1, df_m_be_std = 0.0001, 
+        df_m_be, df_VoM_disol_std = 0.001, df_m_be_std = 0.0001, 
         ret_Co__Ceq = False, N_repl = 3):
     '''
     Function that will compute the distribution constant Kd and the adsorption 
@@ -2019,11 +2019,11 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         of the solution, BIC, or whatever. normally 50ml OR the total mass of 
         the solution [g]. If df_dat in ppb, this must be the total mass
         so that Q_e is in g/g !
-        .df_VOM_disol_std: value of the error of V or mL. Default: 1 [mL] 
+        .df_VOM_disol_std: value of the error of V or mL. Default: 0.001 [L] 
                 Liquid assumed!!!
         .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle 
         (normally 250mg)
-        .df_m_bent_std: value of the error of m_be. Default: 0.001g
+        .df_m_bent_std: value of the error of m_be. Default: 0.0001g
         ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
         .Nrepl: number of replicates. Default: 3
     
@@ -2130,10 +2130,10 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         C0__Ceq_std = -Ceq__C0_std      #Obtaining C0- std
         #With that I can get Qe, Kd
         Qe = C0__Ceq * repl_VoM_disol[r] / repl_m_be[r]
-        Qe_std = Qe * np.sqrt( (df_VoM_disol_std / df_VoM_disol[r])**2 + 
+        Qe_std = np.abs(Qe) * np.sqrt( (df_VoM_disol_std / df_VoM_disol[r])**2 + 
                               ( df_m_be_std / df_m_be[r])**2 ) 
         Kd = Qe/ repl_dat[r]
-        Kd_std = Kd * np.sqrt( (Qe_std/Qe)**2 + (repl_dat_std[r]/repl_dat[r])**2 )
+        Kd_std = np.abs(Kd) * np.sqrt( (Qe_std/Qe)**2 + (repl_dat_std[r]/repl_dat[r])**2 )
         
         #Before storing them, I will remova back the NaN, by doing Qe to 9999999999,
         #since it

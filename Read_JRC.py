@@ -2028,7 +2028,7 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         .Nrepl: number of replicates. Default: 3
     
     *Outputs:
-        .Dictionary with Qe, Qe_std, Kd, Kd_std
+        .Dictionary with Qe, Qe_std, Kd, Kd_std, rsq, rsq_std
         .If desired, dictionary including also Co-Ce and its std
         '''
     
@@ -2115,6 +2115,8 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     repl_Qe_std = []                        #std
     repl_Kd = []
     repl_Kd_std = []
+    repl_rsq = []
+    repl_rsq_std = []
     
     for r in range(Nrepl):             #calcs per replicate
         '''
@@ -2135,6 +2137,11 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         Kd = Qe/ repl_dat[r]
         Kd_std = np.abs(Kd) * np.sqrt( (Qe_std/Qe)**2 + (repl_dat_std[r]/repl_dat[r])**2 )
         
+        rsq = C0__Ceq / df_MS.values * 100
+                #They have different row names, thats why the .values
+        rsq_std = np.abs(rsq) * np.sqrt( (C0__Ceq_std/ C0__Ceq)**2 + 
+                                        (df_MS_std/df_MS).values**2)
+        
         #Before storing them, I will remova back the NaN, by doing Qe to 9999999999,
         #since it
         #could give errors (like that the number is easy noticeable!)
@@ -2150,6 +2157,8 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         repl_Qe_std.append(Qe_std)
         repl_Kd.append(Kd)
         repl_Kd_std.append(Kd_std)
+        repl_rsq.append(rsq)
+        repl_rsq_std.append(rsq_std)
         
     #Now we create a df out of them, concatenating them
         #we convert to numeric, in case it is needed
@@ -2159,6 +2168,8 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     df_Kd_std = pd.concat(repl_Kd_std, axis=1)
     df_C0__Ceq = pd.concat(repl_C0__Ceq, axis = 1)
     df_C0__Ceq_std = pd.concat(repl_C0__Ceq_std, axis = 1)
+    df_rsq = pd.concat(repl_rsq, axis = 1)
+    df_rsq_std = pd.concat(repl_rsq_std, axis = 1)
     
     df_Qe = df_Qe.apply(pd.to_numeric)
     df_Qe_std = df_Qe_std.apply(pd.to_numeric)
@@ -2166,12 +2177,14 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     df_Kd_std = df_Kd_std.apply(pd.to_numeric)
     df_C0__Ceq =df_C0__Ceq.apply(pd.to_numeric) 
     df_C0__Ceq_std =df_C0__Ceq_std.apply(pd.to_numeric) 
-         
+    df_rsq =df_rsq.apply(pd.to_numeric) 
+    df_rsq_std =df_rsq_std.apply(pd.to_numeric)     
 
     ########### 2) Return #############
     #Here the if for returning or not C_0 - C(t) applies
     
-    results = {'Qe': df_Qe, 'Qe_std': df_Qe_std, 'Kd': df_Kd, 'Kd_std': df_Kd_std}
+    results = {'Qe': df_Qe, 'Qe_std': df_Qe_std, 'Kd': df_Kd, 'Kd_std': df_Kd_std,
+               'rsq' : df_rsq, 'rsq_std': df_rsq_std}
     if ret_Co__Ceq:            #if you want to retreieve it
         results['C0-Ceq'] = df_C0__Ceq
         results['C0-Ceq_std'] = df_C0__Ceq_std

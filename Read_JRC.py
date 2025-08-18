@@ -527,7 +527,7 @@ def ICPMS_Sens_finder(Excel_name, Excel_sheet = 'Calib', Sens_column = 12):
 #%% ##### 1.4) ICPMS Dilution factor corrector #############
 #####################################
 
-def ICPMS_Df_corrector (df_data, Df):
+def ICPMS_Df_corrector (df_dat, Df):
     '''
     Function that will apply the correction for the dilution factor to the ICPMS results.
     Note There is 2 dilution factors involved:
@@ -543,14 +543,14 @@ def ICPMS_Df_corrector (df_data, Df):
                                                                             
     The correction is essentially scalatin for that factor, so the results takes 
     into account that only a portion was measuring. So:
-            df_data * Df (Df >=1)
+            df_dat * Df (Df >=1)
     
     Its fundamental the labelling is appropiate! The data_exp sheet AND 
     Sample_prep sheet must have same labels as the ICPMS output!!!!! Once the 
     ICPMS resutls are there, change name to both, otherwise will return NaN!!!!
 
     *Inputs:
-        .df_data: dataframe containing the cleaned data, to which the correction 
+        .df_dat: dataframe containing the cleaned data, to which the correction 
         should be applied.  the isotopes are the index, so all columns are data!
         .D_f: pandas series containing the dilution factor to apply. Note the 
         labelling is crutial, both inputs should have same labels (remember 
@@ -570,9 +570,9 @@ def ICPMS_Df_corrector (df_data, Df):
     the Df indexes so they matched the Df ones, and then that calc is straightforward
     '''
     
-    df_corrected = pd.DataFrame(df_data * Df,
-                                columns = df_data.columns, 
-                                index = df_data.index)  #computing the correction
+    df_corrected = pd.DataFrame(df_dat * Df,
+                                columns = df_dat.columns, 
+                                index = df_dat.index)  #computing the correction
     
     #Just in case that df is not numeric (depends on Df mostly), I will convert
     #it to numeric
@@ -587,7 +587,7 @@ def ICPMS_Df_corrector (df_data, Df):
 #%% ######## 1.5) ICPMS Sample blank substraction #############
 #####################################
 
-def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
+def ICPMS_Sample_Blk_corrector (df_dat, Nrepl = 2):
     '''
     Function that will apply the sample blank correction to the other samples in
     the ICPMS results df. This version is the 2 replicates version. Remember we
@@ -603,7 +603,7 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
 
 
     *Inputs:
-        .df_data: dataframe containing the data, the full data, with the 2 replicates.
+        .df_dat: dataframe containing the data, the full data, with the 2 replicates.
         This is the  output fromt he reader function. You could apply this before
         or after Df corrections. Format: isotopes as index, columns the samples, 
         1st 1st replicate, then 2nd replicate. 2 replicates assume this function!!!!
@@ -632,8 +632,8 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
     '''
 
     if Nrepl ==2:               #2 replicates, standard case
-        df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]   #1st replicate
-        df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]   #replicate 2
+        df_1 = df_dat.iloc[ :, 0: round( ( df_dat.shape[1] ) / 2 ) ]   #1st replicate
+        df_2 = df_dat.iloc[ :, round( ( df_dat.shape[1] ) / 2 ) :  ]   #replicate 2
     
         #The next step is blank substraction
         df_1_blk = df_1.subtract(df_1.iloc[:,0], axis = 0 ) 
@@ -658,9 +658,9 @@ def ICPMS_Sample_Blk_corrector (df_data, Nrepl = 2):
     
     elif Nrepl == 3:         #3 replicates case
         #Copy paste the before code, now for 3 replicates
-        df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
-        df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
-        df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
+        df_1 = df_dat.iloc[:, : round(df_dat.shape[1] / 3)]
+        df_2 = df_dat.iloc[:, round(df_dat.shape[1] / 3): 2*round(df_dat.shape[1] / 3)]
+        df_3 = df_dat.iloc[:, 2*round(df_dat.shape[1] / 3) :]
 
         df_1_blk = df_1.subtract(df_1.iloc[:,0], axis = 0 ) 
         df_2_blk = df_2.subtract(df_2.iloc[:,0], axis = 0 ) 
@@ -1787,7 +1787,7 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 #%%############ 1.12) Kd calculaor #############
 #####################################
 
-def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, N_repl = 2, 
+def ICPMS_KdQe_calc (df_dat, df_VoM_disol, df_m_be, Nrepl = 2, 
                      ret_Co__Ceq = False):
     '''
     Function that will compute the distribution constant Kd and the adsorption 
@@ -1822,18 +1822,18 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, N_repl = 2,
 
 
     *Inputs:
-        .df_data: dataframe containing the ICPMS data, the full data, with the 2 or 3 
+        .df_dat: dataframe containing the ICPMS data, the full data, with the 2 or 3 
             replicates. Should be Dfs corrected. Format: isotopes as index, 
             columns the samples, 1st 1st replicate, then 2nd replicate. Note 
             the 1st sample in each replicate must be the sample blank! This
             samples will be removed from the Qe and Kd df!
         .df_VoM_disol: pd series containing the volume [mL] added to the bottle
             of the solution, BIC, or whatever. normally 50ml or the total 
-            mass of the solution [g]. If df_data in ppb, this must be the total
+            mass of the solution [g]. If df_dat in ppb, this must be the total
             mass so that Q_e is in g/g !
         .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle
         (normally 250mg)
-        .N_repl: number of replicates. Default value = 2. 3 also accepted
+        .Nrepl: number of replicates. Default value = 2. 3 also accepted
         ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
     
     *Outputs (in that order):
@@ -1850,7 +1850,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, N_repl = 2,
     put NaN instead, since that will not give the Div0 error when computing Kd
     
     13/2/25, To do this, I was doing:
-        df_data.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
+        df_dat.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
                                                   #to avoid Div0 error!
         
     But that introduced a problem, NaN in the ppb values, since I do inplace =
@@ -1858,23 +1858,23 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, N_repl = 2,
     variable.
     '''
     
-    df_data_aux = df_data.copy()
-    df_data_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
+    df_dat_aux = df_dat.copy()
+    df_dat_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
                                               #to avoid Div0 error!
     
     #Splitting replicates
-    N_sa = df_data.shape[1]      #number of samples
-    samples_per_repl = N_sa // N_repl       #samples per repl = number of MS
+    N_sa = df_dat.shape[1]      #number of samples
+    samples_per_repl = N_sa // Nrepl       #samples per repl = number of MS
     
     #lets get the replicates data in a list:
     repl_dat = []           #ppb/M data per repl
     repl_VoM_disol = []     #V disol (or mas)
     repl_m_be = []      #bentonite mass per replc
     
-    for r in range(N_repl):
+    for r in range(Nrepl):
         start = r * samples_per_repl        #1st sample of the replicate
         end = (r + 1) * samples_per_repl    #Last sample of the replicate
-        repl_dat.append(df_data_aux.iloc[:, start:end])
+        repl_dat.append(df_dat_aux.iloc[:, start:end])
         repl_VoM_disol.append(df_VoM_disol.iloc[start+1:end]) #is a series, so less index
                 #start+1 not to count the blank, which has 0 as value (same for mbe)
         repl_m_be.append(df_m_be.iloc[start+1:end]) #same 
@@ -1912,7 +1912,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, N_repl = 2,
     repl_C0__Ceq = []    
     repl_Qe = []
     repl_Kd = []
-    for r in range(N_repl):             #calcs per replicate
+    for r in range(Nrepl):             #calcs per replicate
         '''
         Note that the 1st sample per replicate is the blank. There masses = 0,
         so the calc can not be made. Hence, I omit the blank in Qe, Kd calc
@@ -1960,7 +1960,7 @@ def ICPMS_KdQe_calc (df_data, df_VoM_disol, df_m_be, N_repl = 2,
 #####################################
 def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol, 
         df_m_be, df_VoM_disol_std = 0.001, df_m_be_std = 0.0001, 
-        ret_Co__Ceq = False, N_repl = 3):
+        ret_Co__Ceq = False, Nrepl = 3):
     '''
     Function that will compute the distribution constant Kd and the adsorption 
     quantity Q_e from the ppb data obtained with ICPMS. Their std deviation will
@@ -2060,7 +2060,7 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     
     #Splitting replicates
     N_sa = df_dat.shape[1]      #number of samples
-    samples_per_repl = N_sa // N_repl       #samples per repl = number of MS
+    samples_per_repl = N_sa // Nrepl       #samples per repl = number of MS
     
     #lets get the replicates data in a list:
     repl_dat = []           #ppb/M data per repl
@@ -2068,7 +2068,7 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     repl_VoM_disol = []     #V disol (or mas)
     repl_m_be = []      #bentonite mass per replc
     
-    for r in range(N_repl):
+    for r in range(Nrepl):
         start = r * samples_per_repl            #1st sample of the replicate
         end = (r + 1) * samples_per_repl        #Last sample of the replicate
         repl_dat.append(df_dat_aux.iloc[:, start:end])          #dat
@@ -2116,7 +2116,7 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     repl_Kd = []
     repl_Kd_std = []
     
-    for r in range(N_repl):             #calcs per replicate
+    for r in range(Nrepl):             #calcs per replicate
         '''
         Note that I have N different mother solutions, which also means N different
         samples. I could do that with a for loop, but I found a better version. 
@@ -2127,7 +2127,7 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         Ceq__C0_std = pd.DataFrame( np.sqrt(repl_dat_std[r].values**2 - 
             df_MS_std.values**2), index = df_MS.index, columns = repl_dat[r].columns)
         C0__Ceq = -Ceq__C0      #Obtaining C0-C_eq
-        C0__Ceq_std = -Ceq__C0_std      #Obtaining C0- std
+        C0__Ceq_std = np.abs(Ceq__C0_std)      #Obtaining C0- std
         #With that I can get Qe, Kd
         Qe = C0__Ceq * repl_VoM_disol[r] / repl_m_be[r]
         Qe_std = np.abs(Qe) * np.sqrt( (df_VoM_disol_std / df_VoM_disol[r])**2 + 
@@ -2184,7 +2184,7 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
 #####################################
 
 
-def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
+def ICPMS_MeanStd_calculator (df_dat, Nrepl = 2):
     '''
     Function that will compute the mean and std of:
         .the measuring sequence (df). Note we measure 2 or 3 replicates,
@@ -2201,27 +2201,66 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
     
 
     *Inputs:
-        .df_data: dataframe containing the data, the full data, with the 2 
+        .df_dat: dataframe containing the data, the full data, with the 2 
         or 3 replicates. Should be Dfs corrected
             Format: isotopes as index, columns the samples, 1st 1st replicate, 
             then 2nd replicate.
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
     
-    *Outputs (in that order):
-        .df with the < >
-        .df with the std
-        Both df have same column names: Data + number. Data and not sample, 
+    *Output:
+        .Dictionary containing df with
+            .< >
+            .std
+            .%rsd
+        The df have same column names: Data + number. Data and not sample, 
         not to mix it, since the Data 1 may be from replicates 2 for ex, in 
         case of Qe, kd. But could be from replicates 1 for variables like 
         Conc for ex
         
-    **TO Do:
-        .Simplify, removing unncesary variables! There are many!!!!
         '''
     
-    #df_data.replace(0, np.nan, inplace=True)     
+    #df_dat.replace(0, np.nan, inplace=True)     
                 #replace 0 values with NaN, to avoid Div0 error!
     
+    ######### 0) Data processing ##############
+    #We are converting the data into a df, so if it is a series, will be converted
+    #to a DF:
+    is_series = isinstance(df_dat, pd.Series)
+    if is_series:
+        df_dat = df_dat.to_frame(name="value").T  # make it a 1-row DataFrame
+
+    ncols = df_dat.shape[1]             #number of samples
+    if ncols % Nrepl != 0:
+        raise ValueError(f"Number of columns ({ncols}) not divisible by Nrepl={Nrepl}")
+
+    # Reshape into (n_rows, N_sa, Nrepl)
+    N_sa = ncols // Nrepl           #number of samples per repl
+    colnames = [f"Data {i+1}" for i in range(N_sa)]     #names of the columns
+        #for the new df
+        
+    ########### 1) compute and collect mean and std ###########
+    means, stds = [], []
+    for i in range(N_sa):
+        cols = [i + j*N_sa for j in range(Nrepl)]
+        df_temp = df_dat.iloc[:, cols]
+        means.append(df_temp.mean(axis=1))
+        stds.append(df_temp.std(axis=1, ddof=1))
+
+    df_mean = pd.concat(means, axis=1)
+    df_mean.columns = colnames
+    df_std = pd.concat(stds, axis=1)
+    df_std.columns = colnames
+
+
+    # If original was Series, return as Series
+    if is_series:
+        df_mean = df_mean.iloc[0]
+        df_std = df_std.iloc[0]
+
+    ## Returning a dictionary
+    Output = {'< >': df_mean, 'std': df_std, '%rsd' : df_std/df_mean*100}
+
+    return Output
     
     ########### 1) Calcs ###########
     '''
@@ -2236,92 +2275,101 @@ def ICPMS_MeanStd_calculator (df_data, Nrepl = 2):
     
     '''
     
-    if type(df_data) == pd.core.frame.DataFrame :         #If True data is a df
 
-        df_mean = pd.DataFrame()         #Empty df to store the values
-        df_std = pd.DataFrame()        #Empty df to store the std
     
-        if Nrepl == 2:          #Standard case, 2 replicates
-             df_1 = df_data.iloc[ :, 0: round( ( df_data.shape[1] ) / 2 ) ]      
-                         #1st replicate
-             df_2 = df_data.iloc[ :, round( ( df_data.shape[1] ) / 2 ) :  ]       
-                         #replicate 2
-        #
-             for i in range(df_1.shape[1]):   
-                 #loop thorugh all elements, but with index to work with 2 df
-                 df_temp = df_data.iloc[:, [i, i+ df_1.shape[1] ] ]        
-                         #df containing the 2 replicates of the number i
+    
+    
+#     if type(df_dat) == pd.core.frame.DataFrame :         #If True data is a df
+
+#         df_mean = pd.DataFrame()         #Empty df to store the values
+#         df_std = pd.DataFrame()        #Empty df to store the std
+    
+#         if Nrepl == 2:          #Standard case, 2 replicates
+#               df_1 = df_dat.iloc[ :, 0: round( ( df_dat.shape[1] ) / 2 ) ]      
+#                           #1st replicate
+#               df_2 = df_dat.iloc[ :, round( ( df_dat.shape[1] ) / 2 ) :  ]       
+#                           #replicate 2
+#         #
+#               for i in range(df_1.shape[1]):   
+#                   #loop thorugh all elements, but with index to work with 2 df
+#                   df_temp = df_dat.iloc[:, [i, i+ df_1.shape[1] ] ]        
+#                           #df containing the 2 replicates of the number i
             
-                #TO store temporarily those values I create an auxiliary df
-                 df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )
-                 df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )
+#                 #TO store temporarily those values I create an auxiliary df
+#                   df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )
+#                   df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )
 
-                #And I add that to the storing df (add as columns)
-                 df_mean['Data ' + str(i +1) ] = df_aux1
-                 df_std['Data ' + str(i +1) ] = df_aux2
+#                 #And I add that to the storing df (add as columns)
+#                   df_mean['Data ' + str(i +1) ] = df_aux1
+#                   df_std['Data ' + str(i +1) ] = df_aux2
         
 
-        elif Nrepl == 3:            #3 replicates
-        #Gathering the replicates sepparately    
-            df_1 = df_data.iloc[:, : round(df_data.shape[1] / 3)]
-            df_2 = df_data.iloc[:, round(df_data.shape[1] / 3): 2*round(df_data.shape[1] / 3)]
-            df_3 = df_data.iloc[:, 2*round(df_data.shape[1] / 3) :]
+#         elif Nrepl == 3:            #3 replicates
+#         #Gathering the replicates sepparately    
+#             df_1 = df_dat.iloc[:, : round(df_dat.shape[1] / 3)]
+#             df_2 = df_dat.iloc[:, round(df_dat.shape[1] / 3): 2*round(df_dat.shape[1] / 3)]
+#             df_3 = df_dat.iloc[:, 2*round(df_dat.shape[1] / 3) :]
         
-            for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
-                df_temp = df_data.iloc[:, [i, i+ df_1.shape[1], i+ 2 * df_1.shape[1] ] ]        
-                                                #df containing the 3 replicates of the number i
+#             for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
+#                 df_temp = df_dat.iloc[:, [i, i+ df_1.shape[1], i+ 2 * df_1.shape[1] ] ]        
+#                                                 #df containing the 3 replicates of the number i
             
-                #TO store temporarily those values I create an auxiliary df
-                df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )      #< >. 1 indicates compute by columns
-                df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )       # Std 
+#                 #TO store temporarily those values I create an auxiliary df
+#                 df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )      #< >. 1 indicates compute by columns
+#                 df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )       # Std 
 
-                #And I add that to the storing df (add as columns)
-                df_mean['Data ' + str(i +1) ] = df_aux1
-                df_std['Data ' + str(i +1) ] = df_aux2
+#                 #And I add that to the storing df (add as columns)
+#                 df_mean['Data ' + str(i +1) ] = df_aux1
+#                 df_std['Data ' + str(i +1) ] = df_aux2
 
-    elif type(df_data) == pd.core.frame.Series :      #if data is a serie
-        df_mean = pd.Series()         #Empty df to store the values
-        df_std = pd.Series()        #Empty df to store the std
+#     elif type(df_dat) == pd.core.frame.Series :      #if data is a serie
+#         df_mean = pd.Series()         #Empty df to store the values
+#         df_std = pd.Series()        #Empty df to store the std
         
-        if Nrepl == 2:          #Standard case, 2 replicates
-             df_1 = df_data.iloc[ 0: round( ( df_data.shape[0] ) / 2 ) ]      #1st replicate
-             df_2 = df_data.iloc[ round( ( df_data.shape[0] ) / 2 ) :  ]       #replicate 2
-            #
-             for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
-                df_temp = df_data.iloc[[i, i+ df_1.shape[0] ] ]        #df containing the 2 replicates of the number i
+#         if Nrepl == 2:          #Standard case, 2 replicates
+#               df_1 = df_dat.iloc[ 0: round( ( df_dat.shape[0] ) / 2 ) ]      #1st replicate
+#               df_2 = df_dat.iloc[ round( ( df_dat.shape[0] ) / 2 ) :  ]       #replicate 2
+#             #
+#               for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
+#                 df_temp = df_dat.iloc[[i, i+ df_1.shape[0] ] ]        #df containing the 2 replicates of the number i
                 
-                #TO store temporarily those values I create an auxiliary df
-                #df_temp.mean and .std gives mean and std
+#                 #TO store temporarily those values I create an auxiliary df
+#                 #df_temp.mean and .std gives mean and std
                 
-                df_mean['Data ' + str(i +1 ) ] = df_temp.mean()      #<>
-                df_std['Data ' + str(i +1 ) ] = df_temp.std()         #std
+#                 df_mean['Data ' + str(i +1 ) ] = df_temp.mean()      #<>
+#                 df_std['Data ' + str(i +1 ) ] = df_temp.std()         #std
 
         
-        elif Nrepl == 3:            #3 replicates
-        #Gathering the replicates sepparately    
-            df_1 = df_data.iloc[: round(df_data.shape[0] / 3)]
-            df_2 = df_data.iloc[round(df_data.shape[0] / 3): 2*round(df_data.shape[0] / 3)]
-            df_3 = df_data.iloc[ 2*round(df_data.shape[0] / 3) :]
+#         elif Nrepl == 3:            #3 replicates
+#         #Gathering the replicates sepparately    
+#             df_1 = df_dat.iloc[: round(df_dat.shape[0] / 3)]
+#             df_2 = df_dat.iloc[round(df_dat.shape[0] / 3): 2*round(df_dat.shape[0] / 3)]
+#             df_3 = df_dat.iloc[ 2*round(df_dat.shape[0] / 3) :]
             
-            for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
-                df_temp = df_data.iloc[ [i, i+ df_1.shape[0], i+ 2 * df_1.shape[0] ] ]        
-                                                    #df containing the 3 replicates of the number i
+#             for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
+#                 df_temp = df_dat.iloc[ [i, i+ df_1.shape[0], i+ 2 * df_1.shape[0] ] ]        
+#                                                     #df containing the 3 replicates of the number i
 
-                #And I add that to the storing df (add as columns)
-                df_mean['Data ' + str(i +1) ] = df_temp.mean()
-                df_std['Data ' + str(i +1) ] = df_temp.std()    
+#                 #And I add that to the storing df (add as columns)
+#                 df_mean['Data ' + str(i +1) ] = df_temp.mean()
+#                 df_std['Data ' + str(i +1) ] = df_temp.std()    
     
     
-    else:       #weird data
-        print('############################')
-        print('\n Bro WTF? Wrong data type! pd.Series or pd.DataFrame only!')
-        print('############################')
+#     else:       #weird data
+#         print('############################')
+#         print('\n Bro WTF? Wrong data type! pd.Series or pd.DataFrame only!')
+#         print('############################')
         
-        df_mean = False
-        df_std = False
+#         df_mean = False
+#         df_std = False
     
-########### 2) Return #############
-    return df_mean, df_std             #return
+# ########### 2) Return #############
+#     #Returning a dictionary
+    
+#     Output = {'< >': df_mean, 'std': df_std, '%rsd' : df_std/df_mean*100}
+
+#     return Output    
+           #return
 
 
 
@@ -2455,7 +2503,7 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
 
 def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
                              return_leached = False, Nucl_rel = Isot_rel,
-                             N_repl = 3):
+                             Nrepl = 3):
     '''
     This function will remove the nuclides leached by bentonite from the ICPMS
     data. Having the ppb data and the MS (with their errors), ASSUMING the
@@ -2487,7 +2535,7 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
             False
         .Nucl_rel: array containing the name of the relevant nuclides.
         Eg: np.array(['U238(LR)', 'Sr88(LR)'])
-        .N_repl: number of replicates. Default: 3
+        .Nrepl: number of replicates. Default: 3
         
     *OUTPUTS
         .df_ppb_br: df with the ICPMS data with the bentonite contribution 
@@ -2496,7 +2544,7 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
         .df_ppb_br_std: df of the std of the ppb_br
     '''
 
-    if N_repl == 3:         #Case of 3 replicates 
+    if Nrepl == 3:         #Case of 3 replicates 
         ############### 1) Data preparation #######################
         #We need to separate the replicates, in order to perform the substraction
         df_1 = df_ppb.iloc[:, : round(df_ppb.shape[1] / 3)]
@@ -2553,7 +2601,7 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
         df_ppb_std_br = pd.concat([df_1_br_std, df_2_br_std, df_3_br_std], axis = 1)
         #
         #
-    elif N_repl == 2:           #2 replc
+    elif Nrepl == 2:           #2 replc
         df_1 = df_ppb.iloc[:, : round(df_ppb.shape[1] / 2)]   #1st replicate
         df_2 = df_ppb.iloc[:, 2*round(df_ppb.shape[1] / 2) :]    
         #Also their std are needed:    
@@ -2614,7 +2662,7 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
 #################################################################    
 
 def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
-    Nucl_rel=None, N_repl=3):
+    Nucl_rel=None, Nrepl=3):
     '''
     This function will remove the nuclides leached by bentonite from the ICPMS
     data, but in a ratio based way. Having the ppb data and the MS 
@@ -2653,7 +2701,7 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
             False
         .Nucl_rel: array containing the name of the relevant nuclides.
         Eg: np.array(['U238(LR)', 'Sr88(LR)']). For printing the df of Cleach
-        .N_repl: number of replicates. Default: 3
+        .Nrepl: number of replicates. Default: 3
         
     *OUTPUTS
         .Dictionary containing the ppb, std, and %rsd values
@@ -2664,11 +2712,11 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
     
     # === 2. Split replicates ===
     n_cols = df_dat.shape[1]
-    samples_per_repl = n_cols // N_repl
+    samples_per_repl = n_cols // Nrepl
     repl_dat = []
     repl_std_dat = []
 
-    for r in range(N_repl):
+    for r in range(Nrepl):
         start = r * samples_per_repl
         end = (r + 1) * samples_per_repl
         repl_dat.append(df_dat.iloc[:, start:end])
@@ -2678,7 +2726,7 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
     C_leach = []
     C_leach_std = []
 
-    for r in range(N_repl):
+    for r in range(Nrepl):
         leach = repl_dat[r].iloc[:, 0] - df_MS.iloc[:, 0]
         std_leach = np.sqrt(
             repl_std_dat[r].iloc[:, 0] ** 2 + df_std_MS.iloc[:, 0] ** 2
@@ -2687,16 +2735,16 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
         C_leach_std.append(std_leach)
 
     df_C_leach = pd.concat(C_leach, axis=1)
-    df_C_leach.columns = [f'Repl {r+1}' for r in range(N_repl)]
+    df_C_leach.columns = [f'Repl {r+1}' for r in range(Nrepl)]
 
     df_C_leach_std = pd.concat(C_leach_std, axis=1)
-    df_C_leach_std.columns = [f'Repl {r+1}' for r in range(N_repl)]
+    df_C_leach_std.columns = [f'Repl {r+1}' for r in range(Nrepl)]
 
     # === 4. Compute correction factors and apply them ===
     df_dat_br_list = []
     df_dat_std_br_list = []
 
-    for r in range(N_repl):
+    for r in range(Nrepl):
         leach = C_leach[r].values[:, None]
         leach_std = C_leach_std[r].values[:, None]
 

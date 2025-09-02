@@ -101,7 +101,8 @@ def Read_ICPMS_excel (excel_name, Sheet_name = 'To_read', Numbering_row = 1,
     will return a df with the relevant information, for easier handling /plotting. 
     The sheet could have any format, raw cps from Stef could be read.
     Assumptions for the function:
-        .Sample names (colums) in row 4 (excel count)
+        .Numbering row right before the hearde row (row with names)
+        .4 rows after the header, data starts!
         
     
     You could use this function to get the raw data (output from ICPMS) or to 
@@ -948,8 +949,9 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     axM.tick_params(axis='both', labelsize= Font)              #size of axis
     pltL.savefig(name_IS_sens_LR_plot + '.png', format='png', bbox_inches='tight')    
             #note I call plt, not ax!
+    pltL.show()                         #showing the plot
     pltM.savefig(name_IS_sens_MR_plot + '.png', format='png', bbox_inches='tight')
-    
+    pltM.show()
          
     ############## Return of values ##########################
     return df_IS_sens, df_IS_sens_std            #mass is an string!
@@ -1524,6 +1526,7 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     dimensions!
     
     Important notes:
+        . Ensure no blank is here!!
         . To do 2), its needed that the ppb data table begins with IS conc [ppb]! 
         Befpre there must be only the cps data, nothing else, no text nor anything!!
         . To do 3), you define the IS cases (which IS are to be used), so beware, 
@@ -1553,7 +1556,7 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
         output. Default: 'df_IS_Blks_corr.xlsx'
         
     *Output:
-        .df containing the data applying the ICPMS blanks and sensitivity 
+        .Dictionary containing the data applying the ICPMS blanks and sensitivity 
         corrections :)
     
     
@@ -1719,11 +1722,22 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
 
     ################ Return ####################
     '''
-    I return the df with the Blk corrected data, although I only need the excel,
-    which is what I will use for the calib
+    I return all the df:
+        .ppb and ppb std IS corrected
+        .ppb and std Blk corrected
+    Althought I mainly need the excel to continue with the calib
     '''
     
-    return df_Blks_co, df_Blks_co_std, df_IS_co, df_IS_co_std
+    To_save = {'ppb_Blk_co' : df_Blks_co, 'ppb_std_Blk_co' : df_Blks_co_std,
+               'ppb_Is_co' : df_IS_co, 'ppb_std_co': df_IS_co_std} #to return
+    
+    
+    print('------------------------------------------------------')
+    print('Finished the Data Process succesfully :) ')
+    print('------------------------------------------------------')
+    
+    
+    return To_save
 
 
 
@@ -2271,7 +2285,10 @@ def ICPMS_MeanStd_calculator (df_dat, Nrepl = 2):
         df_std = df_std.iloc[0]
 
     ## Returning a dictionary
-    Output = {'< >': df_mean, 'std': df_std, '%rsd' : df_std/df_mean*100}
+    # Compute %RSD safely (NaN where mean == 0)
+    df_rsd = df_std / df_mean.replace(0, np.nan) * 100 
+    
+    Output = {'< >': df_mean, 'std': df_std, '%rsd' : df_rsd}
 
     return Output
     
@@ -4747,7 +4764,7 @@ def ICPMS_Plotter_mean_blk_N (
 ####################################################
 #%% ######### 2.1) PSO fit #############################
 ###################################################
-def PSO_fit(t, Q, delta_1=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
+def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
             y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
     '''
     Function to do and compute some variables relevant to the PSO (pseudo second 
@@ -4802,11 +4819,20 @@ def PSO_fit(t, Q, delta_1=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
         os.makedirs(path_bar_pl)
 
 
+    
     ############## 1) Calcs #################
     #I need to compute t/Q(t) to do the PSO fit!
     
+    '''
+    As a pre-step, to avoid issues (delta t = 0, when replciates are the same, etc)
+    I will redefine in those cases the std, adding a small value, epsilon = 1e-12
+    '''
+    delta_t = delta_t.replace(0, np.nan)
+    
+    
     t__Q = t / Q          #t/Q(t) for S
-    Delta_t__Q = np.abs(t__Q) * np.sqrt((delta_Q / Q )**2 + (delta_t /t )**2 )  
+    Delta_t__Q = np.abs(t__Q) * np.sqrt((delta_Q / Q )**2 + 
+                                        (delta_t /t )**2 )  
                 #error, unused!!
     
     ############# 2)Fit ######################

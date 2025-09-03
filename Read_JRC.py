@@ -1801,12 +1801,12 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 #%%############ 1.12) Kd calculaor #############
 #####################################
 
-def ICPMS_KdQe_calc (df_dat, df_VoM_disol, df_m_be, Nrepl = 2, 
+def ICPMS_KdQe_calc (df_dat, df_dat_std, df_VoM_disol, df_m_be, 
+                     df_VoM_disol_std = 0.0001, df_m_be_std = 0.0001, Nrepl = 2, 
                      ret_Co__Ceq = False):
     '''
     Function that will compute the distribution constant Kd and the adsorption 
-    quantity Q_e from the ppb data obtained with ICPMS. Note that data must be 
-    corrected for the dilutions factors. 
+    quantity Q_e from the ppb data obtained with ICPMS. 
     
     Based on the blk corrector function.
     
@@ -1824,7 +1824,7 @@ def ICPMS_KdQe_calc (df_dat, df_VoM_disol, df_m_be, Nrepl = 2,
     equilibirum since its kinetic, so Qe, Ke ==> Q(t), K(t). 
     
     ICPMS data sorted in replicates order: 1_1, 1_2,... 2_1, 2_2,...
-    being sample 1 the blank.
+    being sample 1 the blank (C_0)
 
     Necessary that the data contain no Div0, ensure in the excel by using the 
     iferror(operation, 0) function!
@@ -1841,23 +1841,35 @@ def ICPMS_KdQe_calc (df_dat, df_VoM_disol, df_m_be, Nrepl = 2,
             columns the samples, 1st 1st replicate, then 2nd replicate. Note 
             the 1st sample in each replicate must be the sample blank! This
             samples will be removed from the Qe and Kd df!
+        .d_dat_std: similar df but with the std
         .df_VoM_disol: pd series containing the volume [mL] added to the bottle
             of the solution, BIC, or whatever. normally 50ml or the total 
             mass of the solution [g]. If df_dat in ppb, this must be the total
             mass so that Q_e is in g/g !
+        .df_VoM_disol_std: same but with the std. Default value: 0.0001g
+            (balance uncertainty)
         .df_m_bent: pd series contaning the mass of bentonite [g] in the bottle
         (normally 250mg)
+        .df_m_bent_std: same but witht he std. Default: 0.0001g
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
         ret_Co__Ceq: if True, returns a df with C_0 - C_eq = False
     
-    *Outputs (in that order):
+    *Outputs: dictionary with:
         .df with the Kd data
         .df with q_e data
+        .Df qith rsq
+        .Df with their std
         
         '''
     
     
     ########## 0) Precalcs ##########
+    
+    #1st lets convert the df to numeric, in case they are not:
+    df_m_be = df_m_be.apply(pd.to_numeric)
+    df_VoM_disol = df_VoM_disol.apply(pd.to_numeric)
+    
+    #
     '''
     To avoid the div0 error, which occurs when I have 0 as a values in the df, 
     which I have for all the elements that were not found by ICPMS, I can just 
@@ -1875,6 +1887,8 @@ def ICPMS_KdQe_calc (df_dat, df_VoM_disol, df_m_be, Nrepl = 2,
     df_dat_aux = df_dat.copy()
     df_dat_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
                                               #to avoid Div0 error!
+    df_dat_std_aux = df_dat_std.copy()
+    df_dat_std_aux.replace(0, np.nan, inplace=True)
     
     #Splitting replicates
     N_sa = df_dat.shape[1]      #number of samples
@@ -1882,6 +1896,7 @@ def ICPMS_KdQe_calc (df_dat, df_VoM_disol, df_m_be, Nrepl = 2,
     
     #lets get the replicates data in a list:
     repl_dat = []           #ppb/M data per repl
+    repl_dat_std = []           #ppb/M data per repl
     repl_VoM_disol = []     #V disol (or mas)
     repl_m_be = []      #bentonite mass per replc
     
@@ -1889,6 +1904,7 @@ def ICPMS_KdQe_calc (df_dat, df_VoM_disol, df_m_be, Nrepl = 2,
         start = r * samples_per_repl        #1st sample of the replicate
         end = (r + 1) * samples_per_repl    #Last sample of the replicate
         repl_dat.append(df_dat_aux.iloc[:, start:end])
+        repl_dat_std.append(df_dat_std_aux.iloc[:, start:end])
         repl_VoM_disol.append(df_VoM_disol.iloc[start+1:end]) #is a series, so less index
                 #start+1 not to count the blank, which has 0 as value (same for mbe)
         repl_m_be.append(df_m_be.iloc[start+1:end]) #same 
@@ -1924,47 +1940,87 @@ def ICPMS_KdQe_calc (df_dat, df_VoM_disol, df_m_be, Nrepl = 2,
     
     #storing variables
     repl_C0__Ceq = []    
+    repl_C0__Ceq_std = []           #std
     repl_Qe = []
+    repl_Qe_std = []                        #std
     repl_Kd = []
+    repl_Kd_std = []
+    repl_rsq = []
+    repl_rsq_std = []
+    
     for r in range(Nrepl):             #calcs per replicate
         '''
         Note that the 1st sample per replicate is the blank. There masses = 0,
         so the calc can not be made. Hence, I omit the blank in Qe, Kd calc
         '''
-        Ceq__C0 = repl_dat[r].subtract(repl_dat[r].iloc[:,0], axis = 0 )
+        C_0 = repl_dat[r].iloc[:,0]          #C0, blank concentration
+        C_0_std = repl_dat_std[r].iloc[:,0]         #std of C_0
+        Ceq__C0 = repl_dat[r].subtract(C_0, axis = 0 )
+        Ceq__C0_std = np.sqrt( (repl_dat_std[r]**2).add(C_0_std**2, axis = 0) )
+                    #std, using the pd functions, better and easier to understand!
         C0__Ceq = -Ceq__C0      #Obtaining C0-C_eq
+        C0__Ceq_std = Ceq__C0_std 
+        #
         #With that I can get Qe, Kd
-        Qe = C0__Ceq.iloc[:,1:] * repl_VoM_disol[r] / repl_m_be[r]
-        Kd = Qe/ repl_dat[r].iloc[:,1:]
+        Qe = C0__Ceq.iloc[:,1:] * repl_VoM_disol[r] / repl_m_be[r]  #Qe
+        Qe_std = np.abs(Qe)* np.sqrt( (df_VoM_disol_std / repl_VoM_disol[r])**2 + 
+                              ( df_m_be_std / repl_m_be[r])**2 )
+        Kd = Qe/ repl_dat[r].iloc[:,1:]                    #Kd
+        Kd_std = np.abs(Kd) * np.sqrt( (Qe_std/Qe)**2 + 
+                    (repl_dat_std[r].iloc[:,1:] /repl_dat[r].iloc[:,1:] )**2 )
+        
+        rsq = C0__Ceq.div(C_0.values, axis = 0)*100           #rsq [%]
+        rsq_std = np.abs(rsq) * np.sqrt( ( (C0__Ceq_std/ C0__Ceq)**2).add( 
+                                        (C_0_std/C_0)**2, axis = 0) ) 
         
         #Before storing them, I will remova back the NaN, by doing Qe to 9999999999,
         #since it
         #could give errors (like that the number is easy noticeable!)
         Qe.fillna(99999999999, inplace = True)
+        Qe_std.fillna(99999999999, inplace = True)
         Kd.fillna(99999999999, inplace = True)
+        Kd_std.fillna(99999999999, inplace = True)
         
         #Finally, lets store it
         repl_C0__Ceq.append(C0__Ceq)   
+        repl_C0__Ceq_std.append(C0__Ceq_std) 
         repl_Qe.append(Qe)
+        repl_Qe_std.append(Qe_std)
         repl_Kd.append(Kd)
+        repl_Kd_std.append(Kd_std)
+        repl_rsq.append(rsq)
+        repl_rsq_std.append(rsq_std)
         
     #Now we create a df out of them, concatenating them
         #we convert to numeric, in case it is needed
     df_Qe = pd.concat(repl_Qe, axis=1)
-    df_Qe = df_Qe.apply(pd.to_numeric) 
+    df_Qe_std = pd.concat(repl_Qe_std, axis=1)
     df_Kd = pd.concat(repl_Kd, axis=1)  
-    df_Kd = df_Kd.apply(pd.to_numeric)
+    df_Kd_std = pd.concat(repl_Kd_std, axis=1)
     df_C0__Ceq = pd.concat(repl_C0__Ceq, axis = 1)
+    df_C0__Ceq_std = pd.concat(repl_C0__Ceq_std, axis = 1)
+    df_rsq = pd.concat(repl_rsq, axis = 1)
+    df_rsq_std = pd.concat(repl_rsq_std, axis = 1)
+    
+    df_Qe = df_Qe.apply(pd.to_numeric)
+    df_Qe_std = df_Qe_std.apply(pd.to_numeric)
+    df_Kd = df_Kd.apply(pd.to_numeric)
+    df_Kd_std = df_Kd_std.apply(pd.to_numeric)
     df_C0__Ceq =df_C0__Ceq.apply(pd.to_numeric) 
-         
+    df_C0__Ceq_std =df_C0__Ceq_std.apply(pd.to_numeric) 
+    df_rsq =df_rsq.apply(pd.to_numeric) 
+    df_rsq_std =df_rsq_std.apply(pd.to_numeric)    
+
 
     ########### 2) Return #############
     #Here the if for returning or not C_0 - C(t) applies
     
-    results = {'Qe': df_Qe, 'Kd': df_Kd}
+    results = {'Qe': df_Qe, 'Qe_std': df_Qe_std, 'Kd': df_Kd, 'Kd_std': df_Kd_std,
+               'rsq' : df_rsq, 'rsq_std': df_rsq_std}
     if ret_Co__Ceq:            #if you want to retreieve it
         results['C0-Ceq'] = df_C0__Ceq
-    
+        results['C0-Ceq_std'] = df_C0__Ceq_std
+        
     return results
     
    

@@ -1885,10 +1885,10 @@ def ICPMS_KdQe_calc (df_dat, df_dat_std, df_VoM_disol, df_m_be,
     '''
     
     df_dat_aux = df_dat.copy()
-    df_dat_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
+    #df_dat_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
                                               #to avoid Div0 error!
     df_dat_std_aux = df_dat_std.copy()
-    df_dat_std_aux.replace(0, np.nan, inplace=True)
+    #df_dat_std_aux.replace(0, np.nan, inplace=True)
     
     #Splitting replicates
     N_sa = df_dat.shape[1]      #number of samples
@@ -1965,9 +1965,10 @@ def ICPMS_KdQe_calc (df_dat, df_dat_std, df_VoM_disol, df_m_be,
         Qe = C0__Ceq.iloc[:,1:] * repl_VoM_disol[r] / repl_m_be[r]  #Qe
         Qe_std = np.abs(Qe)* np.sqrt( (df_VoM_disol_std / repl_VoM_disol[r])**2 + 
                               ( df_m_be_std / repl_m_be[r])**2 )
-        Kd = Qe/ repl_dat[r].iloc[:,1:]                    #Kd
+        Kd =  Qe.div(repl_dat[r].iloc[:,1:]).replace(0, np.nan)
+                    #changing 0s in Conc for nan, not to have div0 errrors!
         Kd_std = np.abs(Kd) * np.sqrt( (Qe_std/Qe)**2 + 
-                    (repl_dat_std[r].iloc[:,1:] /repl_dat[r].iloc[:,1:] )**2 )
+        (repl_dat_std[r].iloc[:,1:] /(repl_dat[r].iloc[:,1:]).replace(0, np.nan) )**2 )
         
         rsq = C0__Ceq.div(C_0.values, axis = 0)*100           #rsq [%]
         rsq_std = np.abs(rsq) * np.sqrt( ( (C0__Ceq_std/ C0__Ceq)**2).add( 
@@ -4677,7 +4678,7 @@ def ICPMS_Plotter_mean_blk_N (
     y_list, std_y_list,
     element_index,
     x_label, y_label,
-    labels=None, colors=None, markers=None,
+    labels=None, colors=None, linestyles=None,
     folder_name='Plots', pre_title_plt='Concentration of ',
     pre_save_name='Conc', Nucl_rel=Elem_rel,
     Logscale=False, Blank_here=False, plot_everything=False,
@@ -4716,6 +4717,10 @@ def ICPMS_Plotter_mean_blk_N (
         .Logscale: string to say if you want the x and y axis in logscale or not.
             Default: False
         .font_size: font_size for the plot. Default: 18
+        .colors: array with the colors to use. Eg: ['red', 'green', 'blue',
+                'orange', 'olive', 'pink', 'purple', 'yellow']. Defalut: None (random)
+        .lynestly: similar but with the linestyle. Eg:
+            ['-', '--', '-.', ':', '-.']. Default: None
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!
@@ -4736,7 +4741,7 @@ def ICPMS_Plotter_mean_blk_N (
     N = len(x_list)
     labels = labels or [f'Data {i+1}' for i in range(N)]
     colors = colors or ['blue', 'red', 'green', 'orange'][:N]
-    markers = markers or ['o', 's', '^', 'D'][:N]
+    linestyles = linestyles or ['-', '--', '-.', ':'][:N]
 
     # === 3. Resolve Accessors ===
     '''
@@ -4769,17 +4774,18 @@ def ICPMS_Plotter_mean_blk_N (
                 sy = std_y_list[k].loc[i]
 
                 color = colors[k % len(colors)]
-                marker = markers[k % len(markers)]
+                linestyle = linestyles[k % len(linestyles)]
                 label = labels[k]
 
                 if Blank_here:
                     plt.hlines(y[0], min(x), max(x), color=color, linestyle='-', 
                                label=label + ' MS')
                     plt.errorbar(x[1:], y[1:], yerr=sy[1:], xerr=sx[1:], 
-                                 fmt=f'{marker}--', color=color, label=label, markersize=5)
+                        linestyle=linestyle, color=color, label=label, 
+                        marker="o", markersize=5)
                 else:
-                    plt.errorbar(x, y, yerr=sy, xerr=sx, fmt=f'{marker}--', 
-                                 color=color, label=label, markersize=5)
+                    plt.errorbar(x, y, yerr=sy, xerr=sx, linestyle=linestyle, 
+                                 color=color, label=label, marker="o", markersize=5)
 
             plt.xlabel(x_label, fontsize=font_size)
             plt.ylabel(y_label, fontsize=font_size)

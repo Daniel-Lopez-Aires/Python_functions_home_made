@@ -319,12 +319,15 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     print('###########################################\n')
     
     #Now to apply it I would need a loop
-    for i in range(df_ppb.shape[0] ): 
-        #loop through all isotopes, loop and stop when u see IS conc
-        df_M.loc[df_ppb.index[i], :]= df_ppb.loc[df_ppb.index[i],
-                df_ppb.columns[:]] * 10**-9 / At_we["atomic mass (u)"][
-                At_we.index==df_ppb.index[i][:-4]].values * rho
-        #print('Iter ' + str(i) + ' performed successfully')
+    for isotope in df_ppb.index:
+        elem = isotope[:-4]  # remove isotope number suffix (MR) or (LR)
+        if elem not in At_we.index:
+            print(f"⚠️ Skipping {isotope}: not found in At_we")
+            continue  # skip this isotope
+        
+        At_mass = At_we.loc[elem, "atomic mass (u)"]
+        df_M.loc[isotope, :] = (
+            df_ppb.loc[isotope, :] * 1e-9 / At_mass * rho)
     
     #It is not numeric, so lets convert it:
     df_M = df_M.apply(pd.to_numeric)  
@@ -1880,15 +1883,9 @@ def ICPMS_KdQe_calc (df_dat, df_dat_std, df_VoM_disol, df_m_be,
                                                   #to avoid Div0 error!
         
     But that introduced a problem, NaN in the ppb values, since I do inplace =
-    True. I want to do that mod only for this calcs, so I should create a new
-    variable.
+    True. Best option is just to do that replcamente for the operation!
     '''
     
-    df_dat_aux = df_dat.copy()
-    #df_dat_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
-                                              #to avoid Div0 error!
-    df_dat_std_aux = df_dat_std.copy()
-    #df_dat_std_aux.replace(0, np.nan, inplace=True)
     
     #Splitting replicates
     N_sa = df_dat.shape[1]      #number of samples
@@ -1903,8 +1900,8 @@ def ICPMS_KdQe_calc (df_dat, df_dat_std, df_VoM_disol, df_m_be,
     for r in range(Nrepl):
         start = r * samples_per_repl        #1st sample of the replicate
         end = (r + 1) * samples_per_repl    #Last sample of the replicate
-        repl_dat.append(df_dat_aux.iloc[:, start:end])
-        repl_dat_std.append(df_dat_std_aux.iloc[:, start:end])
+        repl_dat.append(df_dat.iloc[:, start:end])
+        repl_dat_std.append(df_dat_std.iloc[:, start:end])
         repl_VoM_disol.append(df_VoM_disol.iloc[start+1:end]) #is a series, so less index
                 #start+1 not to count the blank, which has 0 as value (same for mbe)
         repl_m_be.append(df_m_be.iloc[start+1:end]) #same 
@@ -2111,15 +2108,10 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     '''
     To avoid the div0 error, which occurs when I have 0 as a values in the df, 
     which I have for all the elements that were not found by ICPMS, I can just
-    put NaN instead, since that will not give the Div0 error when computing Kd
+    put NaN instead, since that will not give the Div0 error when computing Kd.
+    This is done but only in the Kd calc, to avoid any error (in C0-Ceq for ex)
     '''
     
-    df_dat_aux = df_dat.copy()
-    df_dat_aux.replace(0, np.nan, inplace=True)  #replace 0 values with NaN, 
-                                              #to avoid Div0 error!    
-    
-    df_dat_std_aux = df_dat_std.copy()
-    df_dat_std_aux.replace(0, np.nan, inplace=True)
     
     '''
     We will make it more efficient by doing the calcs on a replicate base, so
@@ -2142,8 +2134,8 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     for r in range(Nrepl):
         start = r * samples_per_repl            #1st sample of the replicate
         end = (r + 1) * samples_per_repl        #Last sample of the replicate
-        repl_dat.append(df_dat_aux.iloc[:, start:end])          #dat
-        repl_dat_std.append(df_dat_std_aux.iloc[:, start:end])      #dat std
+        repl_dat.append(df_dat.iloc[:, start:end])          #dat
+        repl_dat_std.append(df_dat_std.iloc[:, start:end])      #dat std
         repl_VoM_disol.append(df_VoM_disol.iloc[start:end]) 
             #it is a series, so less index
         repl_m_be.append(df_m_be.iloc[start:end])                   #same 
@@ -2205,8 +2197,11 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         Qe = C0__Ceq * repl_VoM_disol[r] / repl_m_be[r]
         Qe_std = np.abs(Qe) * np.sqrt( (df_VoM_disol_std / df_VoM_disol[r])**2 + 
                               ( df_m_be_std / df_m_be[r])**2 ) 
-        Kd = Qe/ repl_dat[r]
-        Kd_std = np.abs(Kd) * np.sqrt( (Qe_std/Qe)**2 + (repl_dat_std[r]/repl_dat[r])**2 )
+        Kd =  Qe.div(repl_dat[r].iloc[:,1:]).replace(0, np.nan)
+                    #changing 0s in Conc for nan, not to have div0 errrors!
+        Kd_std = np.abs(Kd) * np.sqrt( (Qe_std/Qe)**2 + 
+        (repl_dat_std[r].iloc[:,1:] /(repl_dat[r].iloc[:,1:]).replace(0, np.nan) )**2 )
+        
         
         rsq = C0__Ceq / df_MS.values * 100
                 #They have different row names, thats why the .values

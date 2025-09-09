@@ -4755,7 +4755,7 @@ def ICPMS_Plotter_mean_blk_N (
     t_start = tr.time()
 
     for i in element_index:
-        element_name = i[:-4]
+        element_name = i#[:-4]
         relevant = i in Nucl_rel if Nucl_rel is not None else False
 
         if relevant or plot_everything:
@@ -4794,9 +4794,11 @@ def ICPMS_Plotter_mean_blk_N (
             plt.legend(fontsize=font_size)
 
             # Save
+            safe_name = element_name.replace("(LR)", "_LR").replace("(MR)", "_MR")
+                    #replacing (MR) with _MR, not to save ( in the name
             save_path = os.path.join(
                 path_relevant if relevant else path_main,
-                f"{pre_save_name}_{element_name}.png"
+                f"{pre_save_name}_{safe_name}.png"
             )
             plt.savefig(save_path, format='png', bbox_inches='tight')
             plt.close()

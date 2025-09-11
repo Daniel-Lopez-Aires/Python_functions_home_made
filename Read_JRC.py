@@ -2070,6 +2070,8 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     Necessary that the data contain no Div0, ensure in the excel by using the 
     iferror(operation, 0) function!
     
+    Note that Qe, Kd will be calculated for all the samples, even for 1 (blanks)!
+    
     Note this requires a df series with the volume, that you were not measuring
     in the first exp (up to 8/23). Note ten that units are involved!. If 
     measuring mass ing and volumes in L, Q.
@@ -2191,17 +2193,16 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
             df_MS.values, index = df_MS.index, columns = repl_dat[r].columns)
         Ceq__C0_std = pd.DataFrame( np.sqrt(repl_dat_std[r].values**2 + 
             df_MS_std.values**2), index = df_MS.index, columns = repl_dat[r].columns)
-                    #std
         C0__Ceq = -Ceq__C0      #Obtaining C0-C_eq
         C0__Ceq_std = np.abs(Ceq__C0_std)      #Obtaining C0- std
         #With that I can get Qe, Kd
         Qe = C0__Ceq * repl_VoM_disol[r] / repl_m_be[r]
         Qe_std = np.abs(Qe) * np.sqrt( (df_VoM_disol_std / df_VoM_disol[r])**2 + 
                               ( df_m_be_std / df_m_be[r])**2 ) 
-        Kd =  Qe.div(repl_dat[r].iloc[:,1:]).replace(0, np.nan)
+        Kd =  Qe.div(repl_dat[r] ).replace(0, np.nan)
                     #changing 0s in Conc for nan, not to have div0 errrors!
         Kd_std = np.abs(Kd) * np.sqrt( (Qe_std/Qe)**2 + 
-        (repl_dat_std[r].iloc[:,1:] /(repl_dat[r].iloc[:,1:]).replace(0, np.nan) )**2 )
+        (repl_dat_std[r] /(repl_dat[r] ).replace(0, np.nan) )**2 )
         
         
         rsq = C0__Ceq / df_MS.values * 100

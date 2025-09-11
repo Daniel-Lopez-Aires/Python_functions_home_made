@@ -2189,8 +2189,9 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         '''
         Ceq__C0 = pd.DataFrame(repl_dat[r].values - 
             df_MS.values, index = df_MS.index, columns = repl_dat[r].columns)
-        Ceq__C0_std = pd.DataFrame( np.sqrt(repl_dat_std[r].values**2 - 
+        Ceq__C0_std = pd.DataFrame( np.sqrt(repl_dat_std[r].values**2 + 
             df_MS_std.values**2), index = df_MS.index, columns = repl_dat[r].columns)
+                    #std
         C0__Ceq = -Ceq__C0      #Obtaining C0-C_eq
         C0__Ceq_std = np.abs(Ceq__C0_std)      #Obtaining C0- std
         #With that I can get Qe, Kd
@@ -2263,7 +2264,7 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
 #####################################
 
 
-def ICPMS_MeanStd_calculator (df_dat, Nrepl = 2):
+def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
     '''
     Function that will compute the mean and std of:
         .the measuring sequence (df). Note we measure 2 or 3 replicates,
@@ -2278,12 +2279,18 @@ def ICPMS_MeanStd_calculator (df_dat, Nrepl = 2):
     The std is 
         std = sqrt(var)/N-1 
     
+    A modification will be done, since, if replicates are consitent, the std
+    of the average will be low. But maybe each replciate have a non negligible
+    std, making the average std wrong. In this case, the std of the average will
+    be the average of the std of the replicates. That will be done for each
+    element.
 
     *Inputs:
         .df_dat: dataframe containing the data, the full data, with the 2 
         or 3 replicates. Should be Dfs corrected
             Format: isotopes as index, columns the samples, 1st 1st replicate, 
             then 2nd replicate.
+        .df_dat_std: same but with the std. Default: None (so older code works)
         .Nrepl: number of replicates. Default value = 2. 3 also accepted
     
     *Output:
@@ -2318,31 +2325,58 @@ def ICPMS_MeanStd_calculator (df_dat, Nrepl = 2):
         #for the new df
         
     ########### 1) compute and collect mean and std ###########
-    means, stds = [], []
+    #GPT based
+    
+    means, stds = [], []            #to store the values, mean and std of repl
+    std_repl = []       #to accumulat the average of the std between replicates
+    
     for i in range(N_sa):
-        cols = [i + j*N_sa for j in range(Nrepl)]
-        df_temp = df_dat.iloc[:, cols]
-        means.append(df_temp.mean(axis=1))
-        stds.append(df_temp.std(axis=1, ddof=1))
-
+        cols = [i + j*N_sa for j in range(Nrepl)] #column numbers for the 3 replicates
+                    #of a given sample
+        df_temp = df_dat.iloc[:, cols]  #df with the 3 replicates for each sample
+        means.append(df_temp.mean(axis=1) )
+        stds.append(df_temp.std(axis=1) ) #store the std of the mean
+        
+        if df_dat_std is not None:      #if dat_std is provided
+            df_temp_std = df_dat_std.iloc[:, cols]      #same but for the std
+            std_repl.append(df_temp_std.mean(axis = 1) )    #doing mean of stds
+        else:      #no dat_std provided, so using the other value
+             std_repl.append(df_temp.std(axis=1) )      #using the value of the < > calc
+             
+             
+    #------ Final storing in df ------------
     df_mean = pd.concat(means, axis=1)
     df_mean.columns = colnames
     df_std = pd.concat(stds, axis=1)
     df_std.columns = colnames
-
-
+    df_std_repl = pd.concat(std_repl, axis=1)
+    df_std_repl.columns = colnames
+    
+    #Now I will chose the higher one, or std (from mean calc), or <stds (repl)>
+    
+    df_final_std = pd.DataFrame( np.maximum(df_std.values, df_std_repl.values),
+        index=df_std.index, columns=colnames )      #the final std to be used
+    
     # If original was Series, return as Series
     if is_series:
         df_mean = df_mean.iloc[0]
-        df_std = df_std.iloc[0]
+        df_final_std = df_final_std.iloc[0]
+
 
     ## Returning a dictionary
     # Compute %RSD safely (NaN where mean == 0)
-    df_rsd = df_std / df_mean.replace(0, np.nan) * 100 
+    df_rsd = df_final_std / df_mean.replace(0, np.nan) * 100 
     
-    Output = {'< >': df_mean, 'std': df_std, '%rsd' : df_rsd}
+    if Debug:           #return both stds to compare them!
+        Output = {'< >': df_mean, 'std': df_final_std, '%rsd' : df_rsd,
+                  'std_repls' : df_std_repl, 'std_from_mean' : df_std}
+
+    else:
+        Output = {'< >': df_mean, 'std': df_final_std, '%rsd' : df_rsd}
+
 
     return Output
+        
     
     ########### 1) Calcs ###########
     '''

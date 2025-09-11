@@ -2315,6 +2315,8 @@ def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
     is_series = isinstance(df_dat, pd.Series)
     if is_series:
         df_dat = df_dat.to_frame(name="value").T  # make it a 1-row DataFrame
+        if df_dat_std is not None:  #do the same for df_std if it exist
+            df_dat_std = df_dat_std.to_frame(name="value").T
 
     ncols = df_dat.shape[1]             #number of samples
     if ncols % Nrepl != 0:

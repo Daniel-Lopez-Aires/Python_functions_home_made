@@ -314,15 +314,15 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     df_M = pd.DataFrame( index =df_ppb.index, columns = df_ppb.columns )
                     #empty df, but with defined columns and rows
     
-    print('###########################################')
+    print('------------- Converting from ppb to M...-------------------------')
     print('Beware with the atomic weight df, if unproperly read will give problems! ')
-    print('###########################################\n')
+    print('--------------------------------\n')
     
     #Now to apply it I would need a loop
     for isotope in df_ppb.index:
         elem = isotope[:-4]  # remove isotope number suffix (MR) or (LR)
         if elem not in At_we.index:
-            print(f"⚠️ Skipping {isotope}: not found in At_we")
+            print(f" ! Skipping {isotope}: not found in At_we")
             continue  # skip this isotope
         
         At_mass = At_we.loc[elem, "atomic mass (u)"]
@@ -330,7 +330,7 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
             df_ppb.loc[isotope, :] * 1e-9 / At_mass * rho)
     
     #It is not numeric, so lets convert it:
-    df_M = df_M.apply(pd.to_numeric)  
+    df_M = df_M.apply(pd.to_numeric)            #conversion to numeric
     
     #The uncertainty calc can be outside the loop
     df_M_std = df_M * np.sqrt((Delta_rho/rho)**2 + (df_ppb_std/df_ppb)**2)
@@ -339,7 +339,9 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
 
     ############# 2) Output ##########
 
-    return df_M, df_M_std              
+    Output= {'dat' : df_M, 'dat_std': df_M_std, 'dat_%rsd': df_M_std/df_M*100}
+    
+    return Output             
                     
                     
 #%%########## 1.2) Future std computer!!!!!!!!!!!!!!!!!!!!!! #############
@@ -2962,10 +2964,10 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     ######## 0) 
     columns_blks = columns_blks - 1 
         #to adapt the counting system, python starts at0, not 1!
-    print('##############################')
-    print('###### Start fo the Cs calibration function ##########')
+    print('\n------------------------------------------------')
+    print('------------ Start fo the Cs calibration function ------------')
     print('Did you calibrate properly Ba masses? is mandatory!!!')
-    print('#####################################################\n')
+    print('-------------------------------------------------\n')
 
 
     ######### 1) Ratio Ba 138/Ba 136 calc
@@ -3168,11 +3170,11 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     df_Cs_ab = pd.DataFrame([Cs133_ab, Cs134_ab, Cs135_ab, Cs137_ab], 
                 index = ['Cs133', 'Cs134', 'Cs135', 'Cs137']) #abundances [%]
     
-    print('###############################################')
+    print('-------------------------------------------------------')
     print('Fission Cs abundances [%]:')
     print(df_Cs_ab)
     print('Ab of Cs133 should be <= Cs137. Huge discrepancies indicate untrustworthy data')
-    print('#####################################################\n')
+    print('-----------------------------------------------------------\n')
     
     
     
@@ -3233,25 +3235,25 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
                     #Assumes no error on Cs137abundance!!!
     rat_Cstot_OR137 = Cs_tot/Cs_tot_OR137
     
-    print('##################################################')
+    print('--------------------------------------------------------------#')
     print('Total Cs measured [ppb]: ')
-    print(Cs_tot)
-    print('##################################################\n')
+    print(Cs_tot.round(3) )
+    print('--------------------------------------------------\n')
     print('Total Cs from ORIGEN using Cs133 [ppb]: ')
-    print(Cs_tot_OR133)
-    print('##################################################\n')
+    print(Cs_tot_OR133.round(3))
+    print('--------------------------------------------------\n')
     print('Ratio total Cs measured/ORIGEN using Cs133: ')
-    print(rat_Cstot_OR133)
-    print('##################################################\n')
+    print(rat_Cstot_OR133.round(3))
+    print('--------------------------------------------------\n')
     print('Total Cs from ORIGEN using Cs137 [ppb]: ')
-    print(Cs_tot_OR137)
-    print('##################################################\n')
+    print(Cs_tot_OR137.round(3))
+    print('--------------------------------------------------\n')
     print('Ratio total Cs measured/ORIGEN using Cs137: ')
-    print(rat_Cstot_OR137)
+    print(rat_Cstot_OR137.round(3))
     print('Huge discrepancies (>= 2/3) indicate untrustworthy measurements, use ORIGEN data!')
-    print('################################################')
-    print('################## End of the function ###########################')
-    print('################################################\n')
+    print('--------------------------------------------------------------#')
+    print('------------------------ End of the function ----------------')
+    print('--------------------------------------------------\n')
 
     
     
@@ -3260,7 +3262,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     Okay, I will return the df_ppb, but I will add it the info. I will add all, 
     and with time I will know if I need more or less info xD
     
-    Cs tot from origen will also be included.
+    Cs tot will not be saved!!!
     
     Note I all (LR) to all the names, which will be useful for plotting, since
     I plot and save name removing 4 last digits [:-4], which removed (LR)
@@ -3269,40 +3271,40 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     '''
     
     ##### ppb
-    df_ppb.loc['Ba134_nat(LR)'] = Ba134_nat
-    df_ppb.loc['Ba134_fis(LR)'] = Ba134_fis
-    df_ppb.loc['Cs134_fis(LR)'] = Cs134_fis_co
-    df_ppb.loc['Ba135_nat(LR)'] = Ba135_nat
-    df_ppb.loc['Cs135_fis(LR)'] = Cs135_fis_co
-    df_ppb.loc['Ba136_nat(LR)'] = Ba136_nat
-    df_ppb.loc['Ba136_fis(LR)'] = Ba136_fis
-    df_ppb.loc['Ba137_nat(LR)'] = Ba137_nat
-    df_ppb.loc['Ba137_fis(LR)'] = Ba137_fis
-    df_ppb.loc['Cs137_fis(LR)'] = Cs137_fis_co
-    df_ppb.loc['Ba138_nat(LR)'] = Ba138_nat
-    df_ppb.loc['Ba138_fis(LR)'] = Ba138_fis
+    df_ppb.loc['Ba134(LR)_nat'] = Ba134_nat
+    df_ppb.loc['Ba134(LR)_fis'] = Ba134_fis
+    df_ppb.loc['Cs134(LR)_fis'] = Cs134_fis_co
+    df_ppb.loc['Ba135(LR)_nat'] = Ba135_nat
+    df_ppb.loc['Cs135(LR)_fis'] = Cs135_fis_co
+    df_ppb.loc['Ba136(LR)_nat'] = Ba136_nat
+    df_ppb.loc['Ba136(LR)_fis'] = Ba136_fis
+    df_ppb.loc['Ba137(LR)_nat'] = Ba137_nat
+    df_ppb.loc['Ba137(LR)_fis'] = Ba137_fis
+    df_ppb.loc['Cs137(LR)_fis'] = Cs137_fis_co
+    df_ppb.loc['Ba138(LR)_nat'] = Ba138_nat
+    df_ppb.loc['Ba138(LR)_fis'] = Ba138_fis
     # The total Cs will also be given as output!
-    df_ppb.loc['Cs_tot(LR)'] = Cs_tot
-    df_ppb.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133
-    df_ppb.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137
+    #df_ppb.loc['Cs_tot(LR)'] = Cs_tot
+    #df_ppb.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133
+    #df_ppb.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137
     
     #### ppb_std
-    df_ppb_std.loc['Ba134_nat(LR)'] = Ba134_nat_std
-    df_ppb_std.loc['Ba134_fis(LR)'] = Ba134_fis_std
-    df_ppb_std.loc['Cs134_fis(LR)'] = Cs134_fis_co_std
-    df_ppb_std.loc['Ba135_nat(LR)'] = Ba135_nat_std
-    df_ppb_std.loc['Cs135_fis(LR)'] = Cs135_fis_co_std
-    df_ppb_std.loc['Ba136_nat(LR)'] = Ba136_nat_std
-    df_ppb_std.loc['Ba136_fis(LR)'] = Ba136_fis_std
-    df_ppb_std.loc['Ba137_nat(LR)'] = Ba137_nat_std
-    df_ppb_std.loc['Ba137_fis(LR)'] = Ba137_fis_std
-    df_ppb_std.loc['Cs137_fis(LR)'] = Cs137_fis_co_std
-    df_ppb_std.loc['Ba138_nat(LR)'] = Ba138_nat_std
-    df_ppb_std.loc['Ba138_fis(LR)'] = Ba138_fis_std    
+    df_ppb_std.loc['Ba134(LR)_nat'] = Ba134_nat_std
+    df_ppb_std.loc['Ba134(LR)_fis'] = Ba134_fis_std
+    df_ppb_std.loc['Cs134(LR)_fis'] = Cs134_fis_co_std
+    df_ppb_std.loc['Ba135(LR)_nat'] = Ba135_nat_std
+    df_ppb_std.loc['Cs135(LR)_fis'] = Cs135_fis_co_std
+    df_ppb_std.loc['Ba136(LR)_nat'] = Ba136_nat_std
+    df_ppb_std.loc['Ba136(LR)_fis'] = Ba136_fis_std
+    df_ppb_std.loc['Ba137(LR)_nat'] = Ba137_nat_std
+    df_ppb_std.loc['Ba137(LR)_fis'] = Ba137_fis_std
+    df_ppb_std.loc['Cs137(LR)_fis'] = Cs137_fis_co_std
+    df_ppb_std.loc['Ba138(LR)_nat'] = Ba138_nat_std
+    df_ppb_std.loc['Ba138(LR)_fis'] = Ba138_fis_std    
     #
-    df_ppb_std.loc['Cs_tot(LR)'] = Cs_tot_std
-    df_ppb_std.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133_std
-    df_ppb_std.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137_std
+    #df_ppb_std.loc['Cs_tot(LR)'] = Cs_tot_std
+    #df_ppb_std.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133_std
+    #df_ppb_std.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137_std
     
     #rsd
     df_rsd = df_ppb_std/df_ppb * 100
@@ -3347,10 +3349,11 @@ def ICPMS_Isot_to_Elem(df):
         will return "U(LR)", getting element and resolution (string)
         '''
         
-        match = re.match(r"([A-Za-z]+)[0-9]*(?:\((LR|MR)\))", label)
+        match = re.match(r"([A-Za-z]+)[0-9]*(?:\((LR|MR)\))(?:_.*)?", label)
             #Match pattern
             #r"[A-Za-z] to find any letter
             #r"\d for a digit
+            #(?:_.*)? for _something at the end
         if match:       #If a match is found:
             element = match.group(1)
             resolution = match.group(2)

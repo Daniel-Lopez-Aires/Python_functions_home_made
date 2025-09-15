@@ -280,7 +280,8 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     record any mass, since all the solution I put was either BIC, or the CL.
     Then, I will replace 0 and NaN, by the average value.
     '''
-    if isinstance(m_s, float) == False: #Case m_s is not a float, a series
+    if isinstance(m_s, float) == False and isinstance(m_s, int) == False: 
+                    #Case m_s is not a float/integer, a series
         m_s = m_s.apply(pd.to_numeric) 
         #
         #To replace 0 and NaN by the average, 1st I need to replcae 0 to NaN,
@@ -288,7 +289,8 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
         m_s.replace(0, np.nan, inplace = True)
         m_s.replace(np.nan, m_s.mean(), inplace = True)
     
-    if isinstance(V_s, float) == False:       #Case V_s is not a flot
+    if isinstance(V_s, float) == False and isinstance(V_s, int) == False:
+                        #Case V_s is not a float
         V_s = V_s.apply(pd.to_numeric) 
         #
         V_s.replace(0, np.nan, inplace = True)

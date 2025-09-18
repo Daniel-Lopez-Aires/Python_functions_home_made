@@ -2022,12 +2022,13 @@ def ICPMS_KdQe_calc (df_dat, df_dat_std, df_VoM_disol, df_m_be,
     ########### 2) Return #############
     #Here the if for returning or not C_0 - C(t) applies
     
-    results = {'Qe': df_Qe, 'Qe_std': df_Qe_std, 'Kd': df_Kd, 'Kd_std': df_Kd_std,
-               'rsq' : df_rsq, 'rsq_std': df_rsq_std}
+    results = {'Qe': df_Qe, 'Qe_std': df_Qe_std, 'Qe_%rsd' : df_Qe_std/df_Qe*100, 
+               'Kd': df_Kd, 'Kd_std': df_Kd_std,'Kd_%rsd' : df_Kd_std/df_Kd*100, 
+               'rsq' : df_rsq, 'rsq_std': df_rsq_std, 'rsq_%rsd' : df_rsq_std/df_rsq*100, }
     if ret_Co__Ceq:            #if you want to retreieve it
         results['C0-Ceq'] = df_C0__Ceq
         results['C0-Ceq_std'] = df_C0__Ceq_std
-        
+        results['C0-Ceq_%rsd'] = df_C0__Ceq_std/df_C0__Ceq*100
     return results
     
    
@@ -2260,11 +2261,14 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     ########### 2) Return #############
     #Here the if for returning or not C_0 - C(t) applies
     
-    results = {'Qe': df_Qe, 'Qe_std': df_Qe_std, 'Kd': df_Kd, 'Kd_std': df_Kd_std,
-               'rsq' : df_rsq, 'rsq_std': df_rsq_std}
+    results = {'Qe': df_Qe, 'Qe_std': df_Qe_std, 'Qe_%rsd' : df_Qe_std/df_Qe*100, 
+               'Kd': df_Kd, 'Kd_std': df_Kd_std,'Kd_%rsd' : df_Kd_std/df_Kd*100, 
+               'rsq' : df_rsq, 'rsq_std': df_rsq_std, 'rsq_%rsd' : df_rsq_std/df_rsq*100, }
     if ret_Co__Ceq:            #if you want to retreieve it
         results['C0-Ceq'] = df_C0__Ceq
         results['C0-Ceq_std'] = df_C0__Ceq_std
+        results['C0-Ceq_%rsd'] = df_C0__Ceq_std/df_C0__Ceq*100
+    return results
         
     
     return results
@@ -3327,7 +3331,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
 #######################################################################
 # %% ######### 1.19) Isotopes to elements ###########################
 ######################################################################
-def ICPMS_Isot_to_Elem(df, df_std, Debug = False):
+def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     '''
     Function that will take an ICP-MS datasheet (in df format) and will merge 
     all the isotopes to have elemental data. That is:
@@ -3341,13 +3345,13 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False):
     those, you should not take those masses into acccount, rather use the other
     isotopes to stimate elemental conc: for Sr, Sr87 has interefernces (Rb87), so
     if we do [Sr] = sum (Sr), the value will be high. YOu should do (Stef)
-        [Sr] = sum (isot without inter) / sum (at% of those isotopes) * 100
+        [Sr] = sum (isot without inter) / sum (wt% of those isotopes) * 100
         
-    That I will do. Hence I need to read at%, from the excel. This funciton also
+    That I will do. Hence I need to read wt%, from the excel. This funciton also
     contains the list with all the interferences, from ICPMS excels (Calib sheets)
     
     Note that calculations would also needed for the other interefering isotopes.
-    Eg, Mo92. Int he excel it is writen Zr92, so for Zr is computed with the at%. 
+    Eg, Mo92. Int he excel it is writen Zr92, so for Zr is computed with the wt%. 
     But for Mo would also need to be done, since not all the isotopes are written,
     Mo92 is missing (interferni).
     
@@ -3361,6 +3365,8 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False):
             -indexes are isotopes
             -Each column is a sample
         .df_std: same but with their stds
+        .Radiaoct_here: boolean to indicate wheather radioactive isotopes could be 
+            found or not. TO use wt% data with those or not
         .Debug: boolean to indicate if you want the output not considering the 
             interferences
     *Outputs
@@ -3383,10 +3389,13 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False):
                    'Gd156(LR)','Gd158(LR)','Gd160(LR)','Dy162(LR)','Dy164(LR)',
                    'Er168(LR)','Yb170(LR)','Yb174(LR)','Yb176(LR)',
                    'Ti48(MR)','Ti50(MR)','Cr54(MR)','Ni58(MR)','Zn64(MR)',
-                   'Ge70(MR)','Ge74(MR)','Se76(MR)']
+                   'Ge70(MR)','Ge74(MR)','Se76(MR)',
+                   #Repeatitions beggin for MR
+                   'Sr87(MR)','Zr92(MR)', 'Zr94(MR)', 'Zr96(MR)']
             #Element having isotopes with interferences!! In115 excluded (IS)
-            #Not repeating the ones in MR. This are isotope list in icpms excel
+            #This are isotope list in icpms excel
             #From excel spot, comparing Isotpes used for calib
+            
     Elem_Interf = ['Rb(LR)', 'Mo(LR)', 'Pd(LR)', 'Te(LR)', 'Rb(LR)', 'Nd(LR)',
                    'Sm(LR)', 'Gd(LR)', 'Dy(LR)','Er(LR)','Yb(LR)','Hf(LR)',
                    'Lu(LR)','Ca(MR)','V(MR)','Cr(MR)','Fe(MR)','Ni(MR)',
@@ -3394,6 +3403,13 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False):
         #elements with conflicintg isotopes, but that not appear in the icpms index list
         #eg: Sr87 appear and is Sr87 Rb87, hence Rb is written here.
         
+    
+    #Are we dfealing with radioactive material? If so use at we radioact
+    
+    if Radiaoct_here == True:
+            excel_dat = At_we_rad       #use data with radioactive material
+    else:
+            excel_dat = At_we_nat   #use data with natural material
      
     #The interefernces present in the give df we can get easily:
     Interf_here = []     #to sotre the intereferences present in the df given
@@ -3473,12 +3489,12 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False):
             Isotopes_inter_free_std = Isotopes_std.drop(Iso_inter, axis = 0)
             #
             #Then I need to do sum isotopes * 100/sum abundances
-            At_mass = At_we_nat.loc[[x[:-4] for x in Isotopes_inter_free.index],
-                        "at%"]          #getting at% of those isotopes (inter free)
+            At_mass = excel_dat.loc[[x[:-4] for x in Isotopes_inter_free.index],
+                        "wt%"]          #getting wt% of those isotopes (inter free)
                 #Now we can compute the elemental conc:
             df_Elem.loc[index] = Isotopes_inter_free.drop('Element(Res)', 
                             axis = 1).sum(axis = 0)/ At_mass.sum(axis = 0) * 100
-                    #elemental conc = sum isotopes/at% * 100. I remove the elem(REs) column
+                    #elemental conc = sum isotopes/wt% * 100. I remove the elem(REs) column
             df_Elem_std.loc[index] = np.sqrt(Isotopes_inter_free_std.drop('Element(Res)', 
                             axis = 1)**2).sum(axis = 0) / At_mass.sum(axis = 0) * 100
                             #quadratic std prop

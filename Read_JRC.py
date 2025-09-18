@@ -3327,7 +3327,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
 #######################################################################
 # %% ######### 1.19) Isotopes to elements ###########################
 ######################################################################
-def ICPMS_Isot_to_Elem(df, Debug = False):
+def ICPMS_Isot_to_Elem(df, df_std, Debug = False):
     '''
     Function that will take an ICP-MS datasheet (in df format) and will merge 
     all the isotopes to have elemental data. That is:
@@ -3345,17 +3345,29 @@ def ICPMS_Isot_to_Elem(df, Debug = False):
         
     That I will do. Hence I need to read at%, from the excel. This funciton also
     contains the list with all the interferences, from ICPMS excels (Calib sheets)
+    
+    Note that calculations would also needed for the other interefering isotopes.
+    Eg, Mo92. Int he excel it is writen Zr92, so for Zr is computed with the at%. 
+    But for Mo would also need to be done, since not all the isotopes are written,
+    Mo92 is missing (interferni).
+    
+    Uncertainty computed using quadratic propagation.
         
     Created by scholargpt, adapted by me. AI works for me bro!
+    Function checked with excel (F vs NF)
     
     *Inputs
         .df: df containing the icpms data. Typical format;
             -indexes are isotopes
             -Each column is a sample
+        .df_std: same but with their stds
         .Debug: boolean to indicate if you want the output not considering the 
             interferences
     *Outputs
-        .df with the index being the elemnts
+        .Dictionary with:
+            .df
+            .df_std
+            .df_%rsd
         
     '''
     
@@ -3373,8 +3385,15 @@ def ICPMS_Isot_to_Elem(df, Debug = False):
                    'Ti48(MR)','Ti50(MR)','Cr54(MR)','Ni58(MR)','Zn64(MR)',
                    'Ge70(MR)','Ge74(MR)','Se76(MR)']
             #Element having isotopes with interferences!! In115 excluded (IS)
-            #Not repeating the ones in MR
-        #From excel spot, comparing Isotpes used for calib
+            #Not repeating the ones in MR. This are isotope list in icpms excel
+            #From excel spot, comparing Isotpes used for calib
+    Elem_Interf = ['Rb(LR)', 'Mo(LR)', 'Pd(LR)', 'Te(LR)', 'Rb(LR)', 'Nd(LR)',
+                   'Sm(LR)', 'Gd(LR)', 'Dy(LR)','Er(LR)','Yb(LR)','Hf(LR)',
+                   'Lu(LR)','Ca(MR)','V(MR)','Cr(MR)','Fe(MR)','Ni(MR)',
+                   'Zn(MR)','Ge(MR)']   #Interfering elements. These are the 
+        #elements with conflicintg isotopes, but that not appear in the icpms index list
+        #eg: Sr87 appear and is Sr87 Rb87, hence Rb is written here.
+        
      
     #The interefernces present in the give df we can get easily:
     Interf_here = []     #to sotre the intereferences present in the df given
@@ -3407,95 +3426,88 @@ def ICPMS_Isot_to_Elem(df, Debug = False):
     df2 = df.copy()
     df2['Element(Res)'] = df2.index.to_series().apply(parse_label)
             #create the parsed label: U(LR), Si(MR), etc as index
-
+    df2_std = df_std.copy()    
+    df2_std['Element(Res)'] = df2_std.index.to_series().apply(parse_label)    
     # Drop rows with unparsed labels
     df_clean = df2.dropna(subset=['Element(Res)'])
         #This essentially removes Ar40Ar40(MR) and the U238O16(MR) and (LR)
-
+    df_clean_std = df2_std.dropna(subset=['Element(Res)'])
 
     #Grouping by it, to get elemental indexes
     df_grouped = df_clean.groupby('Element(Res)')
     df_grouped = df_clean.groupby('Element(Res)', sort = False).sum()
-            #thats the sum of all the isotopes. Forgetting about interf
+    #   numeric_only=True)
+   #group by the index. Adding the values. With num_only you avoid errors
+   #of addding string values and so!
+   #sort = False not so sort them alphabetically, keeping previous order
+   #thats the sum of all the isotopes. Forgetting about interf
+    
     '''
     Now the magic should start. For non interferences elemtns, sum them, what I
     was doing before. For interferences, different, using the %at data.
     
-    Lets identify interference-free elements
+    XYou need to identify interference-free isotopes for the interference cases
+    
     '''
     df_Elem = pd.DataFrame(index = df_grouped.index,
                     columns = df.columns)    #Df to fill with elemental data
+    df_Elem_std = pd.DataFrame(index = df_grouped.index,
+                    columns = df.columns)    #Df to fill with elemental data std
     #
     for index in df_Elem.index:        #loop throught all elements in the df
         Isotopes = df_clean.loc[df_clean['Element(Res)'] == index] 
                         #df with the isotopes for the given element
-        if any(Isotope in Interf_here for Isotope in Isotopes.index):   #check if any 
-                #of the isotopes in the Isotopes is a interference one!
+        Isotopes_std = df_clean_std.loc[df_clean_std['Element(Res)'] == index] 
+        #
+        if any(Isotope in Interf_here for Isotope in Isotopes.index
+               ) or index in Elem_Interf:   #check if any 
+                #of the isotopes of that element is a interfering isotope
+            #(index) in the df, OR if the element is in the interfering eleemnt list
+            #for the interfering isotopes not in the icpms index.
+            #the 
             #The interferences are:
             Iso_inter = [iso for iso in Isotopes.index if iso in Interf_here]
                     #that have the isotopes with interferences. We remove them:
             Isotopes_inter_free = Isotopes.drop(Iso_inter, axis = 0)
-                #Then I need to do sum isotopes * 100/sum abundances
+                            #isotopes removing the interferences
+            Isotopes_inter_free_std = Isotopes_std.drop(Iso_inter, axis = 0)
+            #
+            #Then I need to do sum isotopes * 100/sum abundances
             At_mass = At_we_nat.loc[[x[:-4] for x in Isotopes_inter_free.index],
                         "at%"]          #getting at% of those isotopes (inter free)
                 #Now we can compute the elemental conc:
             df_Elem.loc[index] = Isotopes_inter_free.drop('Element(Res)', 
-                            axis = 1).sum(axis = 0)/At_mass.sum(axis = 0) * 100
-            #elemental conc = sum isotopes/at% * 100. I remove the elem(REs) column
+                            axis = 1).sum(axis = 0)/ At_mass.sum(axis = 0) * 100
+                    #elemental conc = sum isotopes/at% * 100. I remove the elem(REs) column
+            df_Elem_std.loc[index] = np.sqrt(Isotopes_inter_free_std.drop('Element(Res)', 
+                            axis = 1)**2).sum(axis = 0) / At_mass.sum(axis = 0) * 100
+                            #quadratic std prop
         
         else:       # no intereferences, just sum the isotopes
             df_Elem.loc[index] = Isotopes.drop('Element(Res)', 
                                                axis = 1).sum(axis = 0).values
                     #summing the isotopes. I need to remove the eleemnt column!
-    
-    # Group by Element + Resolution, and sum concentrations
-    
-    df_grouped = df_clean.groupby('Element(Res)')
-    df_grouped = df_clean.groupby('Element(Res)', sort = False).sum()
-     #   numeric_only=True)
-        #group by the index. Adding the values. With num_only you avoid errors
-        #of addding string values and so!
-        #sort = False not so sort them alphabetically, keeping previous order
+            df_Elem_std.loc[index] = np.sqrt(Isotopes_std.drop('Element(Res)', 
+                                               axis = 1)**2).sum(axis = 0).values
     
     
     ############## Return
     #df_Elm is not numeric, so lets convert to it
     df_Elem = df_Elem.apply(pd.to_numeric)  
+    df_Elem_std = df_Elem_std.apply(pd.to_numeric)  
     
     if Debug == True:
-        return df_Elem, df_grouped
+        return {'dat' : df_Elem, 'dat_interferences_not_removed': df_grouped} 
         #Note df_grouped > df_Elem, which amkes makes considering the overstimation
         #for the case with intereferences. Function must be checked, but looking good!
     else:
-        return df_Elem
+        return {'dat': df_Elem, 'std': df_Elem_std, 
+                '%rsd': df_Elem_std/df_Elem * 100}
     
     
 #%% ------------- 1.19.1) Isotopes to elements, dictionary version ##############
 #The same but for a dictionary as input:
-    
-def ICPMS_Isot_to_Elem_from_dict(df_dict):
-    """
-    Scholargpt created
-    Applies isotope-to-element merging to multiple DataFrames stored in a dictionary.
-
-    Parameters
-    ----------
-    df_dict : dict
-        Dictionary of DataFrames, where keys are labels and values are isotope-indexed
-        DataFrames.
-
-    Returns
-    -------
-    dict
-        Dictionary with the same keys, and values as merged elemental DataFrames.
-    """
-    result = {}
-    for label, df in df_dict.items():
-        merged = ICPMS_Isot_to_Elem(df)  # Your existing function
-        result[label] = merged
-    return result
-    
-
+#Removed, as no longer aplciable
     
 #################################################################
 #%% ########## 1.20 )ICPMS Homogeneizer ###########################
@@ -4861,7 +4873,7 @@ def ICPMS_Plotter_mean_blk_N (
     N = len(x_list)
     labels = labels or [f'Data {i+1}' for i in range(N)]
     colors = colors or ['blue', 'red', 'green', 'orange'][:N]
-    linestyles = linestyles or ['-', '--', '-.', ':'][:N]
+    linestyles = linestyles or ['--', '-.', ':','-'][:N]   #'-' for solid line
 
     # === 3. Resolve Accessors ===
     '''

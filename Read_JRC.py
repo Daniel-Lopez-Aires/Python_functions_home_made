@@ -4829,8 +4829,8 @@ def ICPMS_Plotter_mean_blk_N (
     labels=None, colors=None, linestyles=None,
     folder_name='Plots', pre_title_plt='Concentration of ',
     pre_save_name='Conc', Nucl_rel=Elem_rel,
-    Logscale=False, Blank_here=False, plot_everything=False,
-    font_size=18 ):
+    Logscale=False, Blank_here=False, plot_everything=False, Connect_points = False,
+    font_size=18, Markers = None ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, 
     initially time, the cps and the rstd, for the 2 bentonites, plotting the average 
@@ -4869,6 +4869,11 @@ def ICPMS_Plotter_mean_blk_N (
                 'orange', 'olive', 'pink', 'purple', 'yellow']. Defalut: None (random)
         .lynestly: similar but with the linestyle. Eg:
             ['-', '--', '-.', ':', '-.']. Default: None
+        .Markers: similar, but for marker style. Eg: ['o','s', '+', 'v', '^', '*', 'D',
+                                                      'p']
+        .Connect_points: boolean to indicate wheather you want to connect the points
+        or not. Defalt: False (no connect)
+        
                                     
     *Outputs:
         .Plots (saving them) of the x and df_mean_cps data, cps vs x!
@@ -4890,7 +4895,8 @@ def ICPMS_Plotter_mean_blk_N (
     labels = labels or [f'Data {i+1}' for i in range(N)]
     colors = colors or ['blue', 'red', 'green', 'orange'][:N]
     linestyles = linestyles or ['--', '-.', ':','-'][:N]   #'-' for solid line
-
+    Markers = Markers or ['o', 's', 'v', 'p'][:N] 
+    
     # === 3. Resolve Accessors ===
     '''
     in case std x has no error (None), I will asign a low error, but not 0, so
@@ -4921,19 +4927,20 @@ def ICPMS_Plotter_mean_blk_N (
                 sx = get_std(std_x_list[k], i)
                 sy = std_y_list[k].loc[i]
 
-                color = colors[k % len(colors)]
-                linestyle = linestyles[k % len(linestyles)]
-                label = labels[k]
+                Color = colors[k % len(colors)]
+                Linestyle = linestyles[k % len(linestyles)] if Connect_points else "None"
+                Label = labels[k]
+                Marker = Markers[k % len(Markers)]
 
                 if Blank_here:
-                    plt.hlines(y[0], min(x), max(x), color=color, linestyle='-', 
-                               label=label + ' MS')
+                    plt.hlines(y[0], min(x), max(x), color=Color, linestyle='-', 
+                               label=Label + ' MS')
                     plt.errorbar(x[1:], y[1:], yerr=sy[1:], xerr=sx[1:], 
-                        linestyle=linestyle, color=color, label=label, 
-                        marker="o", markersize=5)
+                        linestyle=Linestyle, color=Color, label=Label, 
+                        marker= Marker, markersize=5)
                 else:
-                    plt.errorbar(x, y, yerr=sy, xerr=sx, linestyle=linestyle, 
-                                 color=color, label=label, marker="o", markersize=5)
+                    plt.errorbar(x, y, yerr=sy, xerr=sx, linestyle=Linestyle, 
+                                 color=Color, label=Label, marker= Marker, markersize=5)
 
             plt.xlabel(x_label, fontsize=font_size)
             plt.ylabel(y_label, fontsize=font_size)

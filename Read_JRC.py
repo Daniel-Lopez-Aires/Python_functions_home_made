@@ -72,7 +72,7 @@ Elem_rel = ['Si(MR)', 'Al(MR)', 'Mg(MR)', 'Mn(MR)', 'Fe(MR)',
 Isot rele Cs are from the Cs sep
 """
 Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)           
-            
+Markersize = 7                  #markersize for all the plots
 
 #For my personal laptop
 #At_we_rad = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
@@ -4210,10 +4210,10 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                 plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)           #title
                 plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
-                     markersize = 5, label = 'Repl_1') 
+                     markersize = Markersize, label = 'Repl_1') 
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x[int(len(x)/2):], row[int(len(x)/2) :], 'ro--', 
-                     markersize = 5, label = 'Repl_2') 
+                     markersize = Markersize, label = 'Repl_2') 
                 plt.ylabel(y_label, fontsize= Font)              #ylabel
                 plt.xlabel(x_label, fontsize = Font)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4231,9 +4231,9 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
                     plt.plot(x[:int(len(x)/2)], row[:int(len(x)/2)], 'bo--', 
-                         markersize = 5, label = 'Repl_1') 
+                         markersize = Markersize, label = 'Repl_1') 
                     plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
-                         markersize = 5, label = 'Repl_2') 
+                         markersize = Markersize, label = 'Repl_2') 
                     plt.ylabel(y_label, fontsize= Font)              #ylabel
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4263,12 +4263,12 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                 plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                 plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)           #title
                 plt.plot(x[:int(len(x)/3)], row[:int(len(x)/3)], 'bo--', 
-                     markersize = 5, label = 'Repl_1') 
+                     markersize = Markersize, label = 'Repl_1') 
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x[int(len(x)/3): 2* int(len(x)/3)], row[int(len(x)/3) :2* int(len(x)/3)], 'ro--', 
-                     markersize = 5, label = 'Repl_2') 
+                     markersize = Markersize, label = 'Repl_2') 
                 plt.plot(x[2* int(len(x)/3):], row[2* int(len(x)/3) :], 'go--', 
-                     markersize = 5, label = 'Repl_3') 
+                     markersize = Markersize, label = 'Repl_3') 
                 plt.ylabel(y_label, fontsize= Font)              #ylabel
                 plt.xlabel(x_label, fontsize = Font)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4286,12 +4286,12 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     plt.figure(figsize=(11,8))          #width, heigh 6.4*4.8 inches by default
                     plt.title(pre_title_plt + index[:-4], fontsize=22, wrap=True)     #title
                     plt.plot(x[:int(len(x)/3)], row[:int(len(x)/3)], 'bo--', 
-                     markersize = 5, label = 'Repl_1') 
+                     markersize = Markersize, label = 'Repl_1') 
                     #+1 needed since the df contain a row with the column names!
                     plt.plot(x[int(len(x)/3): 2* int(len(x)/3)], row[int(len(x)/3) :2* int(len(x)/3)], 'ro--', 
-                     markersize = 5, label = 'Repl_2') 
+                     markersize = Markersize, label = 'Repl_2') 
                     plt.plot(x[2* int(len(x)/3):], row[2* int(len(x)/3) :], 'go--', 
-                     markersize = 5, label = 'Repl_3') 
+                     markersize = Markersize, label = 'Repl_3') 
                     plt.ylabel(y_label, fontsize= Font)              #ylabel
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4426,22 +4426,22 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
             plt.title(pre_title_plt + df_cps['Sard'].index[i][:-4], fontsize=22, wrap=True)           #title
             #PLot bentonite 1, Sard
             plt.plot(x['Sard'][:int(len(x['Sard'])/2)], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][:int(len(x['Sard'])/2)], 'o--', color = Bent_color['Sard'],
-                     markersize = 5, label = 'Repl_1 S') 
+                     markersize = Markersize, label = 'Repl_1 S') 
                     #+1 needed since the df contain a row with the column names!
             plt.plot(x['Sard'][int(len(x['Sard'])/2):], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][int(len(x['Sard'])/2):], 'o--', color = Bent_color['Sard'],
-                     markersize = 5, label = 'Repl_2 S') 
+                     markersize = Markersize, label = 'Repl_2 S') 
             #PLot bentonite 2, T
             plt.plot(x['Tur'][:int(len(x['Tur'])/2)], df_cps['Tur'].loc[df_cps['Sard'].index[i] ][:int(len(x['Tur'])/2 )], 'o--', color = Bent_color['Tur'],
-                     markersize = 5, label = 'Repl_1 T') 
+                     markersize = Markersize, label = 'Repl_1 T') 
                     #+1 needed since the df contain a row with the column names!
             plt.plot(x['Tur'][int(len(x['Tur'])/2):], df_cps['Tur'].loc[df_cps['Sard'].index[i] ][int(len(x['Tur'])/2 ):], 'o--', color = Bent_color['Tur'],
-                     markersize = 5, label = 'Repl_2 T') 
+                     markersize = Markersize, label = 'Repl_2 T') 
             #PLot bentonite 3, BK
             plt.plot(x['BK'][:int(len(x['BK'])/2)], df_cps['BK'].loc[df_cps['Sard'].index[i] ][:int(len(x['BK'])/2 )], 'o--', color = Bent_color['BK'],
-                     markersize = 5, label = 'Repl_1 BK') 
+                     markersize = Markersize, label = 'Repl_1 BK') 
                     #+1 needed since the df contain a row with the column names!
             plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[df_cps['Sard'].index[i] ][int(len(x['BK'])/2 ):], 'o--', color = Bent_color['BK'],
-                     markersize = 5, label = 'Repl_2 BK') 
+                     markersize = Markersize, label = 'Repl_2 BK') 
             plt.ylabel(y_label, fontsize= Font)              #ylabel
             plt.xlabel(x_label, fontsize = Font)
             plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4460,22 +4460,22 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
                 plt.title(pre_title_plt + df_cps['Sard']['Isotopes'][i], fontsize=22, wrap=True)           #title
                 #PLot bentonite 1, Sard
                 plt.plot(x['Sard'][:int(len(x['Sard'])/2)], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][:int(len(x['Sard'])/2)], 'o--', color = Bent_color['Sard'],
-                     markersize = 5, label = 'Repl_1 S') 
+                     markersize = Markersize, label = 'Repl_1 S') 
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x['Sard'][int(len(x['Sard'])/2):], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][int(len(x['Sard'])/2):], 'o--', color = Bent_color['Sard'],
-                     markersize = 5, label = 'Repl_2 S') 
+                     markersize = Markersize, label = 'Repl_2 S') 
                     #PLot bentonite 2, T
                 plt.plot(x['Tur'][:int(len(x['Tur'])/2)], df_cps['Tur'].loc[df_cps['Sard'].index[i] ][:int(len(x['Tur'])/2 )], 'o--', color = Bent_color['Tur'],
-                     markersize = 5, label = 'Repl_1 T') 
+                     markersize = Markersize, label = 'Repl_1 T') 
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x['Tur'][int(len(x['Tur'])/2):], df_cps['Tur'].loc[df_cps['Sard'].index[i] ][int(len(x['Tur'])/2 ):], 'o--', color = Bent_color['Tur'],
-                     markersize = 5, label = 'Repl_2 T') 
+                     markersize = Markersize, label = 'Repl_2 T') 
                     #PLot bentonite 3, BK
                 plt.plot(x['BK'][:int(len(x['BK'])/2)], df_cps['BK'].loc[df_cps['Sard'].index[i] ][:int(len(x['BK'])/2 )], 'o--', color = Bent_color['BK'],
-                     markersize = 5, label = 'Repl_1 BK') 
+                     markersize = Markersize, label = 'Repl_1 BK') 
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[df_cps['Sard'].index[i] ][int(len(x['BK'])/2 ):], 'o--', color = Bent_color['BK'],
-                     markersize = 5, label = 'Repl_2 BK') 
+                     markersize = Markersize, label = 'Repl_2 BK') 
                 plt.ylabel(y_label, fontsize= Font)              #ylabel
                 plt.xlabel(x_label, fontsize = Font)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4646,16 +4646,16 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
                         plt.plot(x_1[1:], y_1.loc[y_1.index[i] ][1:], 'bo--', 
-                                 markersize = 5, label = 'Repl_1')          #repl 1
+                                 markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2[1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
-                                 markersize = 5, label = 'Repl_2')          #repl 2                                             
+                                 markersize = Markersize, label = 'Repl_2')          #repl 2                                             
                         plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1), max(x_1) , label = 'Blk_1', color = 'b' )
                         plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2), max(x_2) , label = 'Blk_2' , color = 'r' )                                                                           
                     else:                   #No blank!
                         plt.plot(x_1, y_1.loc[y_1.index[i] ], 'bo--', 
-                                 markersize = 5, label = 'Repl_1')          #repl 1
+                                 markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2, y_2.loc[y_2.index[i] ], 'ro--', 
-                                 markersize = 5, label = 'Repl_2')          #repl 2
+                                 markersize = Markersize, label = 'Repl_2')          #repl 2
                     plt.ylabel(y_label, fontsize= Font)              #ylabel
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4680,21 +4680,21 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
                         plt.plot(x_1[1:], y_1.loc[y_1.index[i] ][1:], 'bo--', 
-                                 markersize = 5, label = 'Repl_1')          #repl 1
+                                 markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2[1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
-                                 markersize = 5, label = 'Repl_2')          #repl 2
+                                 markersize = Markersize, label = 'Repl_2')          #repl 2
                         plt.plot(x_3[1:], y_3.loc[y_2.index[i] ][1:], 'go--', 
-                                 markersize = 5, label = 'Repl_3')          #repl 3                                               
+                                 markersize = Markersize, label = 'Repl_3')          #repl 3                                               
                         plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1), max(x_1) , label = 'Blk_1', color = 'b' )
                         plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2), max(x_2) , label = 'Blk_2', color = 'r' )
                         plt.hlines(y_3.loc[y_3.index[i] ][0], min(x_3), max(x_3) , label = 'Blk_3', color = 'g' )                                                                             
                     else:                   #No blank!
                         plt.plot(x_1, y_1.loc[y_1.index[i] ], 'bo--', 
-                                 markersize = 5, label = 'Repl_1')          #repl 1
+                                 markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2, y_2.loc[y_2.index[i] ], 'ro--', 
-                                 markersize = 5, label = 'Repl_2')          #repl 2
+                                 markersize = Markersize, label = 'Repl_2')          #repl 2
                         plt.plot(x_3, y_3.loc[y_2.index[i] ], 'go--', 
-                                 markersize = 5, label = 'Repl_3')          #repl 3 
+                                 markersize = Markersize, label = 'Repl_3')          #repl 3 
                     plt.ylabel(y_label, fontsize= Font)              #ylabel
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4721,18 +4721,18 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
                         plt.plot(x_1.loc[x_1.index[i]][1:], y_1.loc[y_1.index[i] ][1:], 'bo--', 
-                                 markersize = 5, label = 'Repl_1')          #repl 1
+                                 markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2.loc[x_2.index[i]][1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
-                                 markersize = 5, label = 'Repl_2')          #repl 2                                           
+                                 markersize = Markersize, label = 'Repl_2')          #repl 2                                           
                         plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1.loc[x_1.index[i]]), 
                                    max(x_1.loc[x_1.index[i]]) , label = 'Blk_1', color = 'b' ) 
                         plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2.loc[x_2.index[i]]), 
                                    max(x_2.loc[x_2.index[i]]) , label = 'Blk_2', color = 'r' )                                                                            
                     else:                   #No blank!
                         plt.plot(x_1.loc[x_1.index[i]], y_1.loc[y_1.index[i] ], 'bo--', 
-                                 markersize = 5, label = 'Repl_1')          #repl 1
+                                 markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2.loc[x_2.index[i]], y_2.loc[y_2.index[i] ], 'ro--', 
-                                 markersize = 5, label = 'Repl_2')          #repl 2
+                                 markersize = Markersize, label = 'Repl_2')          #repl 2
                     plt.ylabel(y_label, fontsize= Font)              #ylabel
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -4757,11 +4757,11 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     plt.title(pre_title_plt + y_1.index[i][:-4], fontsize=22, wrap=True)     #title
                     if Blank_here:      #if Blank here ==> 1st colum is blk
                         plt.plot(x_1.loc[x_1.index[i]][1:], y_1.loc[y_1.index[i] ][1:], 'bo--', 
-                                 markersize = 5, label = 'Repl_1')          #repl 1
+                                 markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2.loc[x_2.index[i]][1:], y_2.loc[y_2.index[i] ][1:], 'ro--', 
-                                 markersize = 5, label = 'Repl_2')          #repl 2                                           
+                                 markersize = Markersize, label = 'Repl_2')          #repl 2                                           
                         plt.plot(x_3.loc[x_3.index[i]][1:], y_3.loc[y_3.index[i] ][1:], 'go--', 
-                                 markersize = 5, label = 'Repl_3')          #repl 3       
+                                 markersize = Markersize, label = 'Repl_3')          #repl 3       
                         plt.hlines(y_1.loc[y_1.index[i] ][0], min(x_1.loc[x_1.index[i]]), 
                                    max(x_1.loc[x_1.index[i]]) , label = 'Blk_1', color = 'b' )
                         plt.hlines(y_2.loc[y_2.index[i] ][0], min(x_2.loc[x_2.index[i]]), 
@@ -4771,11 +4771,11 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
 
                     else:                   #No blank!
                         plt.plot(x_1.loc[x_1.index[i]], y_1.loc[y_1.index[i] ], 'bo--', 
-                                 markersize = 5, label = 'Repl_1')          #repl 1
+                                 markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2.loc[x_2.index[i]], y_2.loc[y_2.index[i] ], 'ro--', 
-                                 markersize = 5, label = 'Repl_2')          #repl 2                                           
+                                 markersize = Markersize, label = 'Repl_2')          #repl 2                                           
                         plt.plot(x_3.loc[x_3.index[i]], y_3.loc[y_3.index[i] ], 'go--', 
-                                 markersize = 5, label = 'Repl_3')          #repl 3       
+                                 markersize = Markersize, label = 'Repl_3')          #repl 3       
                     plt.ylabel(y_label, fontsize= Font)              #ylabel
                     plt.xlabel(x_label, fontsize = Font)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
@@ -5158,7 +5158,7 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
     
     fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
     ax = fig.add_subplot(111)
-    ax.errorbar(t, Q, delta_Q, delta_t, 'o', color = Color, markersize = 5, label = 'Data')
+    ax.errorbar(t, Q, delta_Q, delta_t, 'o', color = Color, markersize = Markersize, label = 'Data')
     ax.plot(t_vector, PFO_eq(t_vector, Qe, K1),'--', color = Color,
             label= 'Fit: ' + y_label + f' = {Qe:.1e} ' + '$\cdot$ [1- exp(-'+ x_label + '$\cdot$' +f'+{K1:.1e} )]')      #fit
             #.2f to show 2 decimals on the coefficients!
@@ -5301,7 +5301,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     
     # fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
     # ax = fig.add_subplot(111)
-    # ax.errorbar(logCe, logQe, delta_logCe, delta_logQe, 'o', color = Color, markersize = 5,
+    # ax.errorbar(logCe, logQe, delta_logCe, delta_logQe, 'o', color = Color, markersize = Markersize,
     #             label = 'Data')
     # ax.plot(logCe_vector, logCe_vector*fit['a'] + *fit['b'],'--', color = Color,
     #         label= 'Fit: ' + y_label + f' = {Qe:.1e} ' + '$\cdot$ [1- exp(-'+ x_label + '$\cdot$' +f'+{K1:.1e} )]')      #fit

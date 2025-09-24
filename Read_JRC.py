@@ -43,8 +43,9 @@ import warnings
 warnings.filterwarnings('ignore')       #To ignore and not print warning
 warnings.simplefilter("ignore")         #to ignore all warnings
 import re #regex, to group by
+from scipy.stats import pearsonr, spearmanr #statistical correlation tests
 
-#############################################################
+# ----------- Useful variables -----------------------------
 
 #Useful stuff
 Bent_color = {'Sard' : (.68,.24,.31), 'Tur' :  '#F6BE00', 'BK' : 'grey'} 
@@ -3664,10 +3665,142 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std ):
     
     
     
+#---------------------------------------------------------------------------
+#%% ------------ 1.22) Statisticals correlation tests ----------------------------------
+#--------------------------------------------------------------------------
+
+def ICPMS_Correlation_test(data, element_list, type = 'Spe'):
+    '''
+    Funciton that will check if there is correlation betweeen ICPMS datasets.
+    I will give elements to compare, and the funciton will create a matrix
+    comparing all of them. Eg:
+        
+                U(LR) Sr(LR) Si(MR)
+        U(LR)   ----   a      b
+        Sr(LR)  a     ---    c
+        Si(MR)  b      c    ---
+        
+    Note the diagonal elements are not valid, same comparison, reporting max 
+    correlation. Also that matrix is symmetric, a_ij = a_ji for each i,j.
+    
+    The test to eprform could be either (or both)
+        :Pearson. Linear test
+        .Spearman: nonlinear
+        
+    Both are based on examininng covariances:
+        cov (x,y)/ (std(x)*std(y) )
+    
+    Pearson states if linear relationships obtained. Spearman if they are 
+    monotonic (follow similar pattern). hence, the models should kinda agree,
+    at least do not have different correlation sign. IF so, you could state
+    that no clear correlation obtained.
+    
+    THe p-value will also be returned, which indicate how likely the value. 
+    The p-value is the probability of obtaining a correlation coefficient 
+    (or other test statistic) at least as extreme as the one you observed, 
+    if the null hypothesis were true.
+
+    Null hypothesis (H₀): “There is no correlation between the two variables” 
+            (true r = 0).
+    Alternative hypothesis (H₁): “There is a correlation” (true r ≠ 0).
+
+    So, the p-value answers:
+        “If U and Si were truly unrelated, how likely is it that I would see
+        an r this strong just by chance?”
+    Typically p < 0.05 → statistically significant.
+    
+    In geochemistry / environmental sciences, people often use the following 
+    guidelines (for Pearson or Spearman):
+        ∣r∣<0.3 → weak or negligible
+        0.3 ≤ ∣r∣<0.5 → moderate
+        0.5 ≤ ∣r∣<0. strong
+        ∣r∣≥0.7 → very strong
     
     
+    *Inputs
+        .data: df with the ICPMS data to compare. INdex are elements, 
+                        columns samples
+        
+        .element list: list containing the elements to compare. Eg: 
+            ['U(LR)', 'Sr(LR)', 'Si(MR)']
+        .type: string to indicate which test:
+                'Spe' ---> Spearman (non linear)
+                'Pea' ---- > pearson (linear)
+                'Both' ---> do both!
+            Default: 'Spe'
+        from the ICPMS results.
     
+    *Output
+        .Dictionary with 2 df
+            .df with the statistical correlation r
+            .df with the p-value
+        If both is stated, apaprt from the 4 df, 2 per method, a df with r*r
+        is also returned
     
+    '''
+
+    #--------------- Empty df creation to store the results
+    df_r = pd.DataFrame([], index = element_list, columns = element_list)
+                        #empty df creation, to store the results, r
+    df_p = pd.DataFrame([], index = element_list, columns = element_list)
+                         #empty df creation, to store the results, p
+                                            
+    
+    if type == 'Spe':                                           #Spearson test
+        for i in range(df_r.shape[0]):               #loop thoruhg rows
+            for j in range(df_r.shape[0]):          #loop thourhg columns
+                df_r.iloc[i,j] = spearmanr(data.loc[element_list[i] ].values, 
+                                          data.loc[element_list[j] ].values )[0]
+                df_p.iloc[i,j] = spearmanr(data.loc[element_list[i] ].values, 
+                                          data.loc[element_list[j] ].values )[1]
+    elif type == 'Pea':                                     #Pearson test
+        for i in range(df_r.shape[0]):       #loop thoruhg rows
+            for j in range(df_r.shape[0]):          #loop thourhg columns
+                df_r.iloc[i,j] = pearsonr(data.loc[element_list[i] ].values, 
+                                          data.loc[element_list[j] ].values )[0]
+                df_p.iloc[i,j] = pearsonr(data.loc[element_list[i] ].values, 
+                                          data.loc[element_list[j] ].values )[1]
+                #
+    elif type == 'Both':             #2 both analysis
+        #Need to create the storing df for the 2nd test
+        df_r2 = pd.DataFrame([], index = element_list, columns = element_list)
+                            #empty df creation, to store the results, r
+        df_p2 = pd.DataFrame([], index = element_list, columns = element_list)
+        #
+        for i in range(df_r.shape[0]):                  #loop thoruhg rows
+            for j in range(df_r.shape[0]):          #loop thourhg columns
+                df_r.iloc[i,j] = pearsonr(data.loc[element_list[i] ].values, 
+                                          data.loc[element_list[j] ].values )[0]
+                df_p.iloc[i,j] = pearsonr(data.loc[element_list[i] ].values, 
+                                          data.loc[element_list[j] ].values )[1]
+                df_r2.iloc[i,j] = spearmanr(data.loc[element_list[i] ].values, 
+                                          data.loc[element_list[j] ].values )[0]
+                df_p2.iloc[i,j] = spearmanr(data.loc[element_list[i] ].values, 
+                                          data.loc[element_list[j] ].values )[1]                
+                
+    else:
+        print('-------------------------------------------')
+        print('Wrong type writen! Only Spe, Pea of Both available!')
+        print('-------------------------------------------\n')
+
+
+    #-------- Return -------------------------
+    
+    if type == 'Both':                                  #return both tests!
+        return {'Pea, r' : df_r.apply(pd.to_numeric) , 
+        'Pea, p-value': df_p.apply(pd.to_numeric),
+        'Spe, r' : df_r2.apply(pd.to_numeric) , 
+        'Spe, p-value': df_p2.apply(pd.to_numeric),
+        'r_Spe * r_Pea': df_r.apply(pd.to_numeric) * df_r2.apply(pd.to_numeric)}  
+                #r*r showed to see if they predict different relations!
+        print('------------------------------------------------------')
+        print('The product of r will be returned. When r*r <0, the correlations' +
+              ' methods are disagreeing !')
+        print('-------------------------------------------\n')
+    #
+    else:                                             #return only one
+        return {'r' : df_r.apply(pd.to_numeric) , 
+            'p-value': df_p.apply(pd.to_numeric) }        #returning a dictionary
     
     
     
@@ -5036,14 +5169,7 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
     
     ############## 1) Calcs #################
     #I need to compute t/Q(t) to do the PSO fit!
-    
-    '''
-    As a pre-step, to avoid issues (delta t = 0, when replciates are the same, etc)
-    I will redefine in those cases the std, adding a small value, epsilon = 1e-12
-    '''
-    delta_t = delta_t.replace(0, np.nan)
-    
-    
+        
     t__Q = t / Q          #t/Q(t) for S
     Delta_t__Q = np.abs(t__Q) * np.sqrt((delta_Q / Q )**2 + 
                                         (delta_t /t )**2 )  
@@ -5062,12 +5188,13 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
     From that I can also get Qe and K easy:
         y = ax + b;
          a = 1/Qe ==> Qe = 1/a
-         b = 1/KQe**2 == > K = 1/bQe**2 = a**2 /b
+         b = 1/KQe**2 = a**2/K == > K = a**2 /b
     '''
     fit['Q_e'] = 1 / fit['a']         #Qe = 1/a, y= ax + b
     fit['\Delta(Q_e)'] = fit['\Delta(a)'] /fit['a']**2     #Delta(Qe)
     fit['K'] = fit['a']**2 /fit['b']         #K = 1/b * Qe**2 = a**2/b
-    fit['\Delta(K)'] = np.abs(fit['K']) * np.sqrt( 2*(fit['\Delta(a)'] / fit['a'] )**2 + (fit['\Delta(b)'] / fit['b'])**2 )  
+    fit['\Delta(K)'] = np.abs(fit['K']) * np.sqrt( 2*(fit['\Delta(a)'] / fit[
+        'a'] )**2 + (fit['\Delta(b)'] / fit['b'])**2 )  
                             #Delta(K) np.abs() so its always >0
 
     ########## 4) Return ###########
@@ -5344,9 +5471,11 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
     linearization are:
         1) C_e/Q_e = C_e/Q_max + 1/(Q_max *K_L)
         The best linearization is (Guo2019, in terms, of minimizing 
-                                   uncertainties):
+                                   uncertainties)
+        
+        Here you plot Ce (x) vs Ce/Qe (y)
         2) Q_e/C_e = -K_L* Q_e + Q_max * K_L
-    
+        Here you plot Qe (x) vs Qe/Ce (y)
     I will do these function so that you can do one of the 2 linearizations
     
     *Inputs
@@ -5619,6 +5748,8 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
     
     return fit
     
+
+
 #%% ######### 4) TGA reader ##################### 
 ##################################################
 

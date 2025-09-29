@@ -5116,7 +5116,7 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
     '''
     Function to do and compute some variables relevant to the PSO (pseudo second 
     order) kinetic model. THis model comes from
-    d(Q(t))7dt = K * (Q_e - Q(t))**2,
+    d(Q(t))/dt = K * (Q_e - Q(t))**2,
     
     where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. THe solution of 
     that can be casted in linear form:
@@ -5201,6 +5201,19 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
     
     return fit
     
+
+    #---------- Non linear fit
+    # from scipy.optimize import curve_fit
+
+    # def PSO_model(t, Qe, K):
+    #     return (K * Qe**2 * t) / (1 + K * Qe * t)
+
+    # popt, pcov = curve_fit(PSO_model, Dict_Time_S['< >'].drop(['Data 1', 'Data 13']).values,
+    #         Dict_Qe_S['< >'].loc['U(LR)' ].drop('Data 12').values, 
+    #         p0=[max(Dict_Qe_S['< >'].loc['U(LR)' ].drop('Data 12')), 0.01])
+    # Qe, K = popt
+    # perr = np.sqrt(np.diag(pcov))   # uncertainties
+
 
 #%% ######### 2.2) PFO fit #############################
 ###################################################
@@ -5415,7 +5428,9 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     fit['\Delta(n)'] = fit['\Delta(a)'] 
     fit['K_F'] = 10**fit['b']        
     fit['\Delta(K_F)'] = fit['K_F'] *fit['\Delta(b)'] * np.log(10)
-    
+    #Return the %rsd will be useful to know how relevants are the aprameters!
+    fit['%rsd K_F'] = fit['\Delta(K_F)'] / fit['K_F'] * 100
+    fit['%rsd n'] = fit['\Delta(n)'] / fit['n'] * 100
     '''
     K_F error may be higher than you expected, but since you work with lgoaritm
     this could happen!
@@ -5476,7 +5491,8 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         Here you plot Ce (x) vs Ce/Qe (y)
         2) Q_e/C_e = -K_L* Q_e + Q_max * K_L
         Here you plot Qe (x) vs Qe/Ce (y)
-    I will do these function so that you can do one of the 2 linearizations
+    I will do these function so that you can do one of the 2 linearizations, or
+    the normal version.
     
     *Inputs
         .Ce, Qe: df series containing C_e and Q_e data. Expected the averaged
@@ -5493,7 +5509,8 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         .Color = 'b': color for the plot
         .Folder_name: folder name, where to store the fit plots
         .npo=100: number of points for the fit plot
-        .Fit_type: linearization type. Default: 1, meaning linearization 1
+        .Fit_type: linearization type. Default: 1, meaning linearization 1, 2 for
+        lin 2. other that 1 or 2 for non-linear lin!
     
     
     *Outputs
@@ -5538,9 +5555,9 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
             #
-        print("############################/n")
-        print("Linearization 1 done, Ce/Qe vs Ce! /n")
-        print("############################/n")
+        print("#------------------------------- ")
+        print("Linearization 1 done, Ce/Qe vs Ce! ")
+        print("#------------------------------- \n")
                 ####### Parameters obtention #############
         """
         C_e/Q_e = C_e/Q_max + 1/(Q_max *K_L)   
@@ -5556,14 +5573,15 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
             delta KL = Kl * sqrt( (delta b/b)**2 + (delta Qmax/Qmax)**2 )
          
         """          
-        fit["Q_max[ng/g_be]"] = 1/ fit["a"]
-        fit["\Delta(Q_max[ng/g_be])"] = fit['\Delta(a)']/fit['a']**2
-        fit["K_L[g/ng]"] = 1/ (fit["b"] * fit["Q_max[ng/g_be]"] )
-        fit["/Delta(K_L[g/ng])"] = fit["K_L[g/ng]"] * np.sqrt(
-             (fit["\Delta(Q_max[ng/g_be])"]/fit["Q_max[ng/g_be]"])**2 + 
+        fit["Q_max[mol/kg_be]"] = 1/ fit["a"]
+        fit["\Delta(Q_max[mol/kg_be])"] = fit['\Delta(a)']/fit['a']**2
+        fit["K_L[L/kg]"] = 1/ (fit["b"] * fit["Q_max[mol/kg_be]"] )
+        fit["/Delta(K_L[L/kg])"] = fit["K_L[L/kg]"] * np.sqrt(
+             (fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
-         
-    else:       #Linearization 2!
+        fit['%rsd Q_max'] = fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
+        fit['%rsd K_L'] = 100 * fit["/Delta(K_L[L/kg])"] / fit["K_L[L/kg]"]
+    elif Fit_type ==2:       #Linearization 2!
         fit = Fits.LinearRegression(Qe, Qe_Ce, delta_Qe, delta_Qe_Ce,
                                    x_label = x_label, y_label = y_label, 
                                    x_legend = '$Q_e$', 
@@ -5574,9 +5592,9 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
             #
-        print("############################/n")
-        print("Linearization 2 done, Qe/Ce vs Qe! /n")
-        print("############################/n")
+        print("#-------------------------------")
+        print("Linearization 2 done, Qe/Ce vs Qe! ")
+        print("#----------------------------------\n")
     
                 ####### Parameters obtention #############
         """
@@ -5593,16 +5611,74 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
             delta Qm = Qm * sqrt( (delta b/b)**2 + (delta KL/KL)**2 )
          
      """          
-        fit["K_L[g/ng]"] = -fit["a"]
-        fit["Q_max[ng/g_be]"] = fit["b"] / fit["K_L[g/ng]"]
+        fit["K_L[L/kg]"] = -fit["a"]
+        fit["Q_max[mol/kg_be]"] = fit["b"] / fit["K_L[L/kg]"]
         
-        fit["/Delta(K_L[g/ng])"] = fit['\Delta(a)']        
-        fit["\Delta(Q_max[ng/g_be])"] = fit["Q_max[ng/g_be]"] * np.sqrt(
-             (fit["/Delta(K_L[g/ng])"]/fit["K_L[g/ng]"])**2 + 
+        fit["/Delta(K_L[L/kg])"] = fit['\Delta(a)']        
+        fit["\Delta(Q_max[mol/kg_be])"] = fit["Q_max[mol/kg_be]"] * np.sqrt(
+             (fit["/Delta(K_L[L/kg])"]/fit["K_L[L/kg]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
 
-        #Finally lets compute the mean free energy    
+        fit['%rsd Q_max'] = fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
+        fit['%rsd K_L'] = 100 * fit["/Delta(K_L[L/kg])"] / fit["K_L[L/kg]"]   
 
+    elif Fit_type == 0:           #no linear fit, normal fit!
+        print("#------------------------------- ")
+        print("Non linear fit will be done! (or tried at least xD ")
+        print('Beware with r, might be misleading. Parameters must be checked!')
+        print("#----------------------------------\n")
+        #
+        def Lang_fit_eq(Ce, Qmax, K):      #equaition fo langmuir fit
+            #Q_e = Q_max * K_L/(1+K_L* C_e) * C_e
+            return Qmax * K * Ce /(1+K*Ce) 
+        # --- Initial guess: Qmax ~ max(Qe), KL ~ 1/mean(Ce)
+        p0 = [np.max(Qe), 1/np.mean(Ce)]  
+        popt, pcov = curve_fit(Lang_fit_eq, Ce, Qe, p0=p0, maxfev=5000)
+        Qmax, KL = popt
+        perr = np.sqrt(np.diag(pcov))  # errors
+        dQmax, dKL = perr
+
+        # --- Predicted values
+        Qe_pred = Lang_fit_eq(Ce, *popt)
+
+        # --- Goodness of fit (R^2)
+        ss_res = np.sum((Qe - Qe_pred) ** 2)
+        ss_tot = np.sum((Qe - np.mean(Qe)) ** 2)
+        R2 = 1 - (ss_res / ss_tot)
+        
+        
+        fit = pd.Series({
+        'Q_max[mol/kg_be]': Qmax,
+        '\Delta(Q_max[mol/kg_be])': dQmax,
+        'K_L[L/kg]': KL,
+        '/Delta(K_L[L/kg])': dKL,
+        'r': R2,
+        '%rsd K_L' : dKL/KL*100, '%rsd Q_max': dQmax/Qmax*100})
+        
+        # --- Plot
+        Ce_range = np.linspace(min(Ce), max(Ce), 200)
+        plt.figure(figsize=(11,8))
+        plt.errorbar(Ce, Qe, xerr=delta_Ce, yerr=delta_Qe,
+               fmt='o', color=Color, label='Data', markersize = Markersize)
+        plt.plot(Ce_range, Lang_fit_eq(Ce_range, *popt),
+           '--', color=Color, label=f'Fit (R²={R2:.3f})')
+        plt.xlabel('$C_e$ [M]', fontsize = Font)
+        plt.ylabel('$Q_e$ [mol/kg$_{be}$]', fontsize = Font)
+        plt.title(f'Langmuir Fit {post_title}', fontsize=22)
+        plt.grid(True)
+        plt.tick_params(axis='both', labelsize=Font)
+        plt.legend(fontsize = Font)
+        #plt.tight_layout()
+        plt.savefig(folder_name +'/' + save_name + '.png', format = 'png',
+                    bbox_inches='tight')
+        plt.show()
+        
+    else:
+        print('Wrong fit type introduced! Returning fit = np.nan ')
+        print('Values: 1 for lin 1, 2 for lin 2, 0 for non linear version')
+        print('-------------------------------\n')
+        fit = np.nan
+    
     ########## 5) Return ###########
     
     return fit

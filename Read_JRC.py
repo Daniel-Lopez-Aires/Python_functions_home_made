@@ -5323,7 +5323,8 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
 ###################################################
 def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
             x_label = 'log($C_e [ng/g]$)', y_label = 'log($Q_e [ng/g_{be}]$)',
-            Color = 'b', save_name = '', post_title = ' ', npo=100):   
+            Color = 'b', save_name = '', post_title = ' ', npo=100,
+            Fit_type = 1):   
     '''
     Function to do and compute some variables relevant to the Freundlich fit
     of an adsorption isotherm Q_e = f (C_e), the sorbed quantity as a function
@@ -5385,18 +5386,16 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     if not os.path.exists(path_bar_pl):
         os.makedirs(path_bar_pl)
 
-    
-    ############## 1) Calcs #################
-    #I need to compute the logarithms!
-    logCe = np.log10(Ce)
-    logQe = np.log10(Qe)
-    
-    delta_logCe = delta_Ce / (np.abs(Ce) * np.log(10))   #error of the log10!!
-    delta_logQe = delta_Qe / (np.abs(Qe) * np.log(10))
 
-    ############# 2)Fit ######################
     
-    fit = Fits.LinearRegression(logCe, logQe, delta_logCe, delta_logQe,
+    if Fit_type ==1:                #linear type
+    #
+        logCe = np.log10(Ce)                        #cal of the log
+        logQe = np.log10(Qe)
+        delta_logCe = delta_Ce / (np.abs(Ce) * np.log(10))   #error of the log10!!
+        delta_logQe = delta_Qe / (np.abs(Qe) * np.log(10))
+    ############# 2)Fit ######################
+        fit = Fits.LinearRegression(logCe, logQe, delta_logCe, delta_logQe,
                                    x_label = x_label, y_label = y_label, 
                                    x_legend = 'log($C_e$)', y_legend = 'log($Q_e$)',
                                    Color = Color, 
@@ -5404,10 +5403,8 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
                                    post_title = post_title)       
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
-    
-    
     ################ 3) Model parameters ################
-    '''
+        '''
     From that I can also get the constants; applying log10 == log, no ln!!!, 
     since log properties are applicable regardless of the base:
         y= ax + b : loq Qe = n log Ce + log KF
@@ -5423,43 +5420,69 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     n is adimensional, ofc
     K_F not, since Q_e = K_F * C_e**1/n ==> K_F = Q_e * C_e*n ==>
     K_F is ng/g_be * (ng/g_tot)**n = ng**n+1/(g_be * g_tot**n)
-    '''
-    fit['n'] = fit['a']         
-    fit['\Delta(n)'] = fit['\Delta(a)'] 
-    fit['K_F'] = 10**fit['b']        
-    fit['\Delta(K_F)'] = fit['K_F'] *fit['\Delta(b)'] * np.log(10)
+        '''
+        fit['n'] = fit['a']         
+        fit['\Delta(n)'] = fit['\Delta(a)'] 
+        fit['K_F'] = 10**fit['b']        
+        fit['\Delta(K_F)'] = fit['K_F'] *fit['\Delta(b)'] * np.log(10)
     #Return the %rsd will be useful to know how relevants are the aprameters!
-    fit['%rsd K_F'] = fit['\Delta(K_F)'] / fit['K_F'] * 100
-    fit['%rsd n'] = fit['\Delta(n)'] / fit['n'] * 100
-    '''
-    K_F error may be higher than you expected, but since you work with lgoaritm
-    this could happen!
-    '''
-    
-    
-    
-    # ############# 4) Plot of the fit##########
-    # logCe_vector = np.linspace( min(logCe),max(logCe),npo )         #for the fit plotting
-    
-    # fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-    # ax = fig.add_subplot(111)
-    # ax.errorbar(logCe, logQe, delta_logCe, delta_logQe, 'o', color = Color, markersize = Markersize,
-    #             label = 'Data')
-    # ax.plot(logCe_vector, logCe_vector*fit['a'] + *fit['b'],'--', color = Color,
-    #         label= 'Fit: ' + y_label + f' = {Qe:.1e} ' + '$\cdot$ [1- exp(-'+ x_label + '$\cdot$' +f'+{K1:.1e} )]')      #fit
-    #         #.2f to show 2 decimals on the coefficients!
-    #         #2e for scientific notation with 2 significative digits
-    # ax.set_title('Freundlich fit ' + post_title, fontsize=22)          #title
-    # ax.set_xlabel(x_label, fontsize= Font)                                    #xlabel
-    # ax.set_ylabel(y_label, fontsize= Font)                                    #ylabel
-    # ax.tick_params(axis='both', labelsize= Font)            #size of tick labels  
-    # ax.grid(True)                                              #show grid
-    # ax.legend(fontsize = Font)             #legend
-    #                 #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
-    # plt.savefig(folder_name +'/' + save_name +'.png', format='png', bbox_inches='tight')                
-    #                 ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
-    
-    
+        fit['%rsd K_F'] = fit['\Delta(K_F)'] / fit['K_F'] * 100
+        fit['%rsd n'] = fit['\Delta(n)'] / fit['n'] * 100
+        '''
+        K_F error may be higher than you expected, but since you work with lgoaritm
+        this could happen!
+        '''
+    elif Fit_type == 0:                         #non linear type
+        #
+        def Fre_fit_eq(C,K, n):         #fre fit eq, non linear (original)
+            return K*C**n
+        # --- Initial guess: K ~ max (Qe)/max(Ce), n  ~ 1
+        p0 = [np.max(Qe)/np.max(Ce), 1]  
+        popt, pcov = curve_fit(Fre_fit_eq, Ce, Qe, p0=p0, maxfev=10000)
+        K,n = popt
+        perr = np.sqrt(np.diag(pcov))  # errors
+        dK, dn = perr
+
+        # --- Predicted values
+        Qe_pred = Fre_fit_eq(Ce, *popt)
+
+        # --- Goodness of fit (R^2)
+        ss_res = np.sum((Qe - Qe_pred) ** 2)
+        ss_tot = np.sum((Qe - np.mean(Qe)) ** 2)
+        R2 = 1 - (ss_res / ss_tot)
+        
+        fit = pd.Series({
+        'K[L^n/(kg*mol^{n-1})]': K,
+        '/Delta(K[L^n/(kg*mol^{n-1})])': dK,
+        'n' : n,
+        '\Delta(n)' : dn,
+        'r': R2,
+        '%rsd K' : dK/K*100, '%rsd n': dn/n*100})
+        
+        # --- Plot
+        Ce_range = np.linspace(min(Ce), max(Ce), 200)
+        plt.figure(figsize=(11,8))
+        plt.errorbar(Ce, Qe, xerr=delta_Ce, yerr=delta_Qe,
+               fmt='o', color=Color, label='Data', markersize = Markersize)
+        plt.plot(Ce_range, Fre_fit_eq(Ce_range, *popt),
+           '--', color=Color, label=f'Fit (R²={R2:.3f})')
+        plt.xlabel('$C_e$ [M]', fontsize = Font)
+        plt.ylabel('$Q_e$ [mol/kg$_{be}$]', fontsize = Font)
+        plt.title(f'{post_title}', fontsize=22)
+        plt.grid(True)
+        plt.tick_params(axis='both', labelsize=Font)
+        plt.legend(fontsize = Font)
+        #plt.tight_layout()
+        plt.savefig(folder_name +'/' + save_name + '.png', format = 'png',
+                    bbox_inches='tight')
+        plt.show()
+        #
+        #
+    else:       #wrong type given
+        print('Wrong fit type given. Accepted 1(Linear) and 0 (non linear)')
+        fit = np.nan
+        print('Returning nan!')
+        
     ########## 4) Return ###########
     
     return fit
@@ -5664,7 +5687,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
            '--', color=Color, label=f'Fit (R²={R2:.3f})')
         plt.xlabel('$C_e$ [M]', fontsize = Font)
         plt.ylabel('$Q_e$ [mol/kg$_{be}$]', fontsize = Font)
-        plt.title(f'Langmuir Fit {post_title}', fontsize=22)
+        plt.title(f'{post_title}', fontsize=22)
         plt.grid(True)
         plt.tick_params(axis='both', labelsize=Font)
         plt.legend(fontsize = Font)

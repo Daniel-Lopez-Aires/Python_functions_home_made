@@ -4962,7 +4962,7 @@ def ICPMS_Plotter_mean_blk_N (
     labels=None, colors=None, Fmts = None,
     folder_name='Plots', pre_title_plt='Concentration of ',
     pre_save_name='Conc', Nucl_rel=Elem_rel,
-    Logscale=False, Blank_here=False, plot_everything=False, font_size=18 ):
+    Logscale=False, Blank_here=False, plot_everything=False, font_size= Font ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, 
     initially time, the cps and the rstd, for the 2 bentonites, plotting the average 
@@ -5961,16 +5961,24 @@ def Read_XRD_WB (name):
 ######################################################
 
 def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0, 
-                   DosTheta_inter = [4,6]):
+                   DosTheta_inter = [4,6], XRD_Type = 'Cold'):
     '''
-    Function that reads the .ras file from the XRD in F130 (Olaf Walter), returning a df
-    with the relevant info. It will also plot it and save it, in the same folder!
+    Function that reads the .ras file from the XRD for both:
+        . F130, Cold (Olaf Walter)
+        . A232, Active, (Olaf also xD)
+    returning a df with the relevant info. It will also plot it and save it, 
+    in the same folder, and if desired, also compute the interlaminar space from
+    the 001 peak (aorund 6°)
     
-    The .ras file contain lot of text at the beginning (1st 266 lines), then 3 variables:
+    The 2 XRD gives differnt, output files, so will be treated differently:
+        .Cold: .ras file contain lot of text at the beginning (1st 266 lines), then 
+            3 variables:
             2Theta, Counts, Unknown
-        The unknown seem to be always 1, so I delete it.
-        
-    Some of the text I skip contian relevant info. Eg:
+            The unknown seem to be always 1, so I delete it.
+        .Active: .uxd file, containing text at ebginning and after 2 columns
+                2Theta PSD 
+    
+    Note that some of the text I skip contian relevant info. Eg:
             *MEAS_SCAN_START_TIME "04/10/24 15:21:09" (near the last lines of text)
     
     *Inputs:
@@ -5978,11 +5986,13 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
         .t_paso: time per step, in seconds. Ej: 10 [s]. Thi assumes the operation 
         mode in step, the usual
         .Skip_rows: number of rows of the .ras file to skip. Default: 266. Spotted 
-        from opening the file
+        from opening the file. For Hot, 62
         .Compute_d : boolean to indicate if you can to compute the interlaminar
         space distance from the 001 peka or not. Default: 0 (no)
         .2Theta_inter: array indicating the interval of the 001 peak, in case that
         Compute_d = 1. Default: [4,6]
+        .XRD_type: string indicating the XRD device: 'Cold' or 'Hot'. Default:
+            'Cold' (F130)
         
     *Output
         .df with the 2Theta, Counts and cps
@@ -5991,16 +6001,29 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
     
     ##### 1. Reading #########
     #Reading was not trivial, but I came up with the way of doing it:
-    aux = pd.read_csv(name, skiprows = Skip_rows, sep = ' ', 
+        
+
+    if XRD_Type== 'Cold':                           #Cold XRD
+        aux = pd.read_csv(name, skiprows = Skip_rows, sep = ' ', 
                       names = ['2Theta[°]', 'Counts', 'npi'], encoding='latin')
+        '''That worked, but 2 last columns are text, that I can delete easily. 
+        Also I have 3 column,  being the 3rd always 1, so I will also delte it:'''
     
-    '''That worked, but 2 last columns are text, that I can delete easily. 
-    Also I have 3 column,  being the 3rd always 1, so I will also delte it:'''
+        df = aux.iloc[:-2,:-1]        #Removing 3rd column, and last 2 rows
     
-    df = aux.iloc[:-2,:-1]        #Removing 3rd column, and last 2 rows
-    
-    #Since the 2theta data is not numeric because of these 2 rows, I need to make them numeric:
-    df = df.apply(pd.to_numeric)  
+    elif XRD_Type == 'Hot':                 #hot XRD
+        df = pd.read_csv('XRD/DL_Bentonite_raw.uxd', skiprows = Skip_rows, sep = '      ', 
+                          names = ['2Theta[°]', 'Counts'], encoding='latin')
+                    #separato spotted from the .udx file
+    else:       
+        print('Wrong XRD type, accepting only Hot or Cold !')
+        print('Retunrin nan, pssiibly error in the function !')
+        print('------------------------------------\n')
+        df = np.nan
+        
+    #Since the 2theta data is not numeric because of these 2 rows, I need to make
+    #them numeric:
+    df = df.apply(pd.to_numeric)            #conversion to numeric in case its not
     
     #The cps are easy to get, since I define the time measuring each step:
         
@@ -6056,14 +6079,14 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
             #If fit did not work, d(A) does not exist, to previous label will not work
             plt.plot(df['2Theta[°]'], df['CPS_norm'], 
                  label='No fit possible bro xD')
-        plt.xlabel(" $2 \Theta [°]$", fontsize=18)  # ylabel
-        plt.ylabel('cps', fontsize=18)
-        plt.tick_params(axis='both', labelsize=18)  # size of axis
+        plt.xlabel(" $2 \Theta [°]$", fontsize= Font)  # ylabel
+        plt.ylabel('cps', fontsize= Font)
+        plt.tick_params(axis='both', labelsize= Font)  # size of axis
         plt.minorticks_on()             #enabling minor grid lines
         plt.grid(which = 'minor', linestyle=':', linewidth=0.5)  
                     #which both to plot major and minor grid lines
         plt.grid(which = 'major')
-        plt.legend(fontsize=18)
+        plt.legend(fontsize= Font)
         plt.savefig( name[:-4]+ '.png', format='png',
                     bbox_inches='tight')  
                     # To save plot, same name as file, change extensio
@@ -6077,14 +6100,14 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
         plt.title('XRD: ' + name[:-4], fontsize=22,
               wrap=True, loc='center')  # title
         plt.plot(df['2Theta[°]'], df['CPS_norm'], label='data')
-        plt.xlabel(" $2 \Theta [°]$", fontsize=18)  # ylabel
-        plt.ylabel('cps', fontsize=18)
-        plt.tick_params(axis='both', labelsize=18)  # size of axis
+        plt.xlabel(" $2 \Theta [°]$", fontsize= Font)  # ylabel
+        plt.ylabel('cps', fontsize= Font)
+        plt.tick_params(axis='both', labelsize= Font)  # size of axis
         plt.minorticks_on()             #enabling minor grid lines
         plt.grid(which = 'minor', linestyle=':', linewidth=0.5)  
                 #which both to plot major and minor grid lines
         plt.grid(which = 'major')
-                #plt.legend(fontsize=18)
+                #plt.legend(fontsize= Font)
         plt.savefig( name[:-4]+ '.png', format='png',
                 bbox_inches='tight')  # To save plot, same name as file, change extensio
         plt.show()
@@ -6221,19 +6244,19 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
     #plt.plot(df['1/lambda[cm-1]'], df['Transmitance[%]'], label='data')
     if Plot== 'A':           #plotting Abs
         plt.plot(df['1/lambda[cm-1]'], df['Absorbance[%]'], label='data')
-        plt.ylabel('Absorbance [%]', fontsize=18)
+        plt.ylabel('Absorbance [%]', fontsize= Font)
     else:   #plotting transm
         plt.plot(df['1/lambda[cm-1]'], df['Transmitance[%]'], label='data')
-        plt.ylabel('Transmitance [%]', fontsize=18)
+        plt.ylabel('Transmitance [%]', fontsize= Font)
     #
-    plt.xlabel(" 1/$\lambda$ [cm-1]", fontsize=18)  # ylabe
+    plt.xlabel(" 1/$\lambda$ [cm-1]", fontsize= Font)  # ylabe
     plt.gca().invert_xaxis()            #to invert x axis (1st higher values, then lower)
-    plt.tick_params(axis='both', labelsize=18)  # size of axis
+    plt.tick_params(axis='both', labelsize= Font)  # size of axis
     plt.minorticks_on()             #enabling minor grid lines
     plt.grid(which = 'minor', linestyle=':', linewidth=0.5)       
                 #which both to plot major and minor grid lines
     plt.grid(which = 'major')
-    #plt.legend(fontsize=18)
+    #plt.legend(fontsize= Font)
     plt.savefig( name[:-4]+ '.png', format='png',
                 bbox_inches='tight')  # To save plot, same name as file, change extensio
     plt.show()

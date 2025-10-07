@@ -5098,6 +5098,67 @@ def ICPMS_Plotter_mean_blk_N (
     print('###############################################')
     
     
+
+##############################################################################
+#%%### 1.20) ICPMS multibar plotter ############
+##############################################################################
+
+def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
+    Xlabel = 'X axis', Ylabel = 'Y axis', Title= 'PLot', Savename = 'Plot1'):
+    '''
+    Function that will do a multibar plot, with the number of abrs you give (Nbars),
+    of a given df, chosing the elements you desire. The df_std shoudl also be included!
+    
+    
+    *Inputs:
+        .df/df_std: df with the icpms data
+        .Elements: Array containing the elemtns you want to include. Eg:
+                ['Sr(LR)', 'Si(MR)']
+        .b: blank space between the bar groups. b < 1
+        .Xlabel/Ylabel: string with the label for the x/y axis. Default: 'X/Y axis'
+        .Title: string with the title of the plot. Defalt: 'Plot'
+        .Savename: string with the name of the file to save (png). Eg: 'Plot1'
+    
+    *Outputs:
+        No outputs, jsut generate a plot!
+    
+    '''
+
+    #Parameters for the multibar plot
+    Nbars = len(Elements)       # number of bars to plot
+    w = (1 - b) / Nbars             #Width of each bar
+    offsets = (np.arange(Nbars) - (Nbars - 1) / 2) * w  #displacement between the bar
+            # Si N es par: [-3.5w, -2.5w, ..., +3.5w]
+            # Si N es impar: [-3w, -2w, ..., +3w]
+    X_axis =  np.linspace(1, df.shape[1], num =  df.shape[1]) #plotting all columns!
+    
+    
+    # === Plot ===
+    plt.figure(figsize=(12, 8))
+    plt.title(Title, fontsize=22, wrap=True)
+
+    for i, elem in enumerate(Elements):
+        plt.bar(X_axis + offsets[i], 
+            df.loc[elem],
+            yerr=df_std.loc[elem],
+            width=w, edgecolor="black",
+            label=elem,
+            align='center')
+    
+    plt.ylabel(Ylabel, fontsize= Font)              #ylabel
+    plt.xlabel(Xlabel, fontsize= Font)   
+    #plt.xticks(X_axis, Dict_el_MS['dat'].columns, rotation=90)
+    #plt.yscale('log') 
+    plt.legend(fontsize = Font)
+    plt.tick_params(axis='both', labelsize=Font)              #size of axis
+    plt.minorticks_on()             #enabling minor grid lines
+    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
+                                #which both to plot major and minor grid lines
+    plt.grid(which = 'major')
+    plt.savefig(Savename + '.png', format='png', bbox_inches='tight')
+    plt.show() 
+    
+    
     
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -6079,7 +6140,7 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
             #If fit did not work, d(A) does not exist, to previous label will not work
             plt.plot(df['2Theta[°]'], df['CPS_norm'], 
                  label='No fit possible bro xD')
-        plt.xlabel(" $2 \Theta [°]$", fontsize= Font)  # ylabel
+        plt.xlabel("2"r"$\theta $ (°) ", fontsize= Font)  # xlabel
         plt.ylabel('cps', fontsize= Font)
         plt.tick_params(axis='both', labelsize= Font)  # size of axis
         plt.minorticks_on()             #enabling minor grid lines
@@ -6092,7 +6153,7 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
                     # To save plot, same name as file, change extensio
         plt.show()    
         #
-    else:       #False, so I did not compute the distance
+    else:                           #False, so I did not compute the distance
         'False, no distance computed. Then I only do the plot'
     #
         plt.figure(figsize=(11, 8))  # width, heigh 6.4*4.8 inches by default (11,8)
@@ -6100,7 +6161,7 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
         plt.title('XRD: ' + name[:-4], fontsize=22,
               wrap=True, loc='center')  # title
         plt.plot(df['2Theta[°]'], df['CPS_norm'], label='data')
-        plt.xlabel(" $2 \Theta [°]$", fontsize= Font)  # ylabel
+        plt.xlabel("2"r"$\theta $ (°) ", fontsize= Font)  # xlabel
         plt.ylabel('cps', fontsize= Font)
         plt.tick_params(axis='both', labelsize= Font)  # size of axis
         plt.minorticks_on()             #enabling minor grid lines
@@ -6249,7 +6310,7 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
         plt.plot(df['1/lambda[cm-1]'], df['Transmitance[%]'], label='data')
         plt.ylabel('Transmitance [%]', fontsize= Font)
     #
-    plt.xlabel(" 1/$\lambda$ [cm-1]", fontsize= Font)  # ylabe
+    plt.xlabel(" $1/\lambda[cm^{-1}]$", fontsize= Font)  # ylabe
     plt.gca().invert_xaxis()            #to invert x axis (1st higher values, then lower)
     plt.tick_params(axis='both', labelsize= Font)  # size of axis
     plt.minorticks_on()             #enabling minor grid lines

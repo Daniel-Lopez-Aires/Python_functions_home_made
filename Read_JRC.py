@@ -5173,14 +5173,17 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
 #%% ######### 2.1) PSO fit #############################
 ###################################################
 def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
-            y_label = 'y', Color = 'b', save_name = '', post_title = ' '):    
+            y_label = 'y', Color = 'b', save_name = '', post_title = ' ',
+            Fit_type = 1):    
     '''
     Function to do and compute some variables relevant to the PSO (pseudo second 
     order) kinetic model. THis model comes from
     d(Q(t))/dt = K * (Q_e - Q(t))**2,
-    
-    where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. THe solution of 
-    that can be casted in linear form:
+    whose solution is:
+        Q(t) = Qe**2 * K * t / (1+Qe*K*t)
+    where Q_e = Q(t ==> \infty).
+    This funciton could do either the non-linear fit (that eq), or a linear one.
+    THe solution of that eq can be casted in linear form:
         t/Q(t) = 1/KQ_e**2 + t/Q_e
         
     so, plotting t/Q(t) vs t is linear (y = ax + b), being 1/Q_e the slope, 
@@ -5204,13 +5207,17 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
         value = '' ==> no saving.this variable is followed by .png for savinf
         .Color = 'b': color for the plot
         .Folder_name: folder name, where to store the fit plots
-    
+        .Fit type: number to indnicate fit type. 1 = linear (default). 0 for non linear
+         else will return NaN
     
     *Outputs
         .df series with all the relevant info, from the fit and computed 
         quantities, errors (quadratic propagation) included The input units 
         define those units!! Remember saltpepper!
     
+    
+    #------------- To Do -----------
+        -Non linear fit version, to be developed still, not work well
     
     '''    
     ############# 0) Folder creation ###############
@@ -5227,37 +5234,68 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
         os.makedirs(path_bar_pl)
 
 
-    
-    ############## 1) Calcs #################
-    #I need to compute t/Q(t) to do the PSO fit!
-        
-    t__Q = t / Q          #t/Q(t) for S
-    Delta_t__Q = np.abs(t__Q) * np.sqrt((delta_Q / Q )**2 + 
-                                        (delta_t /t )**2 )  
-                #error, unused!!
-    
-    ############# 2)Fit ######################
-    
-    fit = Fits.LinearRegression(t, t__Q, delta_t, Delta_t__Q,
+    if Fit_type==1:                     #Linear fit type
+        #
+        t__Q = t / Q          #t/Q(t) for S
+        Delta_t__Q = np.abs(t__Q) * np.sqrt((delta_Q / Q )**2 + 
+                                        (delta_t /t )**2 )  #error, unused!!
+        #Fit
+        fit = Fits.LinearRegression(t, t__Q, delta_t, Delta_t__Q,
                                    x_label = x_label, y_label = y_label, 
                                    Color = Color, 
                 save_name = folder_name +'/' + save_name, post_title = post_title)       
                             #Fit (i dont use npo variable, fit variable)
-    
-    ################ 3) Model parameters ################
-    '''
-    From that I can also get Qe and K easy:
-        y = ax + b;
+        ################ 3) Model parameters ################
+        '''
+        From that I can also get Qe and K easy: y = ax + b;
          a = 1/Qe ==> Qe = 1/a
          b = 1/KQe**2 = a**2/K == > K = a**2 /b
-    '''
-    fit['Q_e'] = 1 / fit['a']         #Qe = 1/a, y= ax + b
-    fit['\Delta(Q_e)'] = fit['\Delta(a)'] /fit['a']**2     #Delta(Qe)
-    fit['K'] = fit['a']**2 /fit['b']         #K = 1/b * Qe**2 = a**2/b
-    fit['\Delta(K)'] = np.abs(fit['K']) * np.sqrt( 2*(fit['\Delta(a)'] / fit[
+         '''
+        fit['Q_e'] = 1 / fit['a']         #Qe = 1/a, y= ax + b
+        fit['\Delta(Q_e)'] = fit['\Delta(a)'] /fit['a']**2     #Delta(Qe)
+        fit['%rsd Q_e'] = fit['\Delta(Q_e)']/np.abs(fit['Q_e']) * 100
+        fit['K'] = fit['a']**2 /fit['b']         #K = 1/b * Qe**2 = a**2/b
+        fit['\Delta(K)'] = np.abs(fit['K']) * np.sqrt( 2*(fit['\Delta(a)'] / fit[
         'a'] )**2 + (fit['\Delta(b)'] / fit['b'])**2 )  
                             #Delta(K) np.abs() so its always >0
+        fit['%rsd K'] = fit['\Delta(K)']/fit['K']*100
+        
+    elif Fit_type ==0:                                    #Non linear tyoe
 
+        def PSO_eq(t, Qe, K):       #t the independent variable, other parameterets
+            return Qe**2*K*t/(1+ Qe*K*t)
+    
+        #Initial paratermers for the guess
+        Qe0 = np.nanmax(Q)
+        K0 = 1 / (Qe0 * (t[np.argmax(Q > Qe0/2)] if np.any(Q > Qe0/2) else t.mean()))
+        p0 = [Qe0, K0]  
+        popt, pcov = curve_fit(PSO_eq, t, Q, p0=p0, maxfev=10000)
+        Qe,K = popt
+        perr = np.sqrt(np.diag(pcov))  # errors
+        dQe, dK = perr
+        
+        # --- Predicted values
+        Qe_pred = PSO_eq(t, *popt)
+
+        # --- Goodness of fit (R^2)
+        ss_res = np.sum((Q - Qe_pred) ** 2)
+        ss_tot = np.sum((Q - np.mean(Q)) ** 2)
+        R2 = 1 - (ss_res / ss_tot)
+        
+        #Debug
+        print(f"ss_res={ss_res}, ss_tot={ss_tot}, mean(Q)={np.mean(Q)}")
+        #If ss_tot is ~0 or ss_res negative, you’ve found the culprit.
+        
+        #Storage
+        fit = pd.Series({ 'Q_e': Qe, '\Delta(Q_e)' : dQe, '%rsd Qe': dQe/np.abs(Qe)*100,
+                         'K': K, '\Delta(K)': dK, '%rsd K': dK/K * 100,
+                         'r': R2})
+        
+    else:                                                        #Wong case
+        print('Wrong fit type given. Accepted 1(Linear) and 0 (non linear)')
+        fit = np.nan
+        print('Returning nan!')
+        
     ########## 4) Return ###########
     
     return fit
@@ -5391,14 +5429,25 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     of an adsorption isotherm Q_e = f (C_e), the sorbed quantity as a function
     of the equilibrium concentration. Its equation is
     
-        Q_e = K_F * C_e**n,           K_F, n constants
-    That can be linearized into (10 log is fine)
-        loq Q_e = log K_F + n log C_e
+        Q_e = K_F * C_e**(1/n),           K_F, n constants
+    Being 1/n the heterogeneity factor. n= 1 ==> linear sorption. That can also be
+    linearized (log 10 used normally):
+                    loq Q_e = log K_F + 1/n log C_e
     
+    *n>1 ==> 1/n <1 ==> 
+        .The adsorbent becomes gradually saturated, but adsorption still occurs 
+        efficiently even as concentration rises.
+        .It reflects a heterogeneous surface with high-affinity sites that get 
+                occupied first.
+    *n<1 ==> 1/n >1 ==>
+        .Adsorption becomes more difficult as concentration rises.
+        .It suggests possible cooperative or multilayer effects — not a simple 
+        surface sorption process.
+        
     The lineal fit of that is trivial:  y= ax + b
                 y= log Q_e
                 x= Log C_e
-                a = n
+                a = 1/n
                 b= log K_F
     (easier than if I use 1/n as constant!)
     
@@ -5468,13 +5517,13 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
         '''
     From that I can also get the constants; applying log10 == log, no ln!!!, 
     since log properties are applicable regardless of the base:
-        y= ax + b : loq Qe = n log Ce + log KF
+        y= ax + b : loq Qe = 1/n log Ce + log KF
                     y= log Q_e
                     x= Log C_e
-                    a = n
+                    a = 1/n
                     b= log K_F ==> K_F = 10**b
                     delta_K_F = delta_b * ln(10) * K_F
-                    delta_n = delta_a
+                    delta_n = delta_a/a**2
                     (partial log(Kf) / partial Kf = 1/ (KF ln(10)) )
     
     And the units?
@@ -5482,12 +5531,14 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     K_F not, since Q_e = K_F * C_e**1/n ==> K_F = Q_e * C_e*n ==>
     K_F is ng/g_be * (ng/g_tot)**n = ng**n+1/(g_be * g_tot**n)
         '''
-        fit['n'] = fit['a']         
-        fit['\Delta(n)'] = fit['\Delta(a)'] 
-        fit['K_F'] = 10**fit['b']        
-        fit['\Delta(K_F)'] = fit['K_F'] *fit['\Delta(b)'] * np.log(10)
+        fit['n'] = 1/fit['a']         
+        fit['\Delta(n)'] = fit['\Delta(a)']/ fit['a'] **2
+        fit['K[L^n/(kg*mol^{n-1})]'] = 10**fit['b']        
+        fit['\Delta(K[L^n/(kg*mol^{n-1})])'] = fit['K[L^n/(kg*mol^{n-1})]'] *fit[
+            '\Delta(b)'] * np.log(10)
     #Return the %rsd will be useful to know how relevants are the aprameters!
-        fit['%rsd K_F'] = fit['\Delta(K_F)'] / fit['K_F'] * 100
+        fit['%rsd K'] = fit['\Delta(K[L^n/(kg*mol^{n-1})])'] / fit['K[L^n/(kg*mol^{n-1})]'
+                                                                   ] * 100
         fit['%rsd n'] = fit['\Delta(n)'] / fit['n'] * 100
         '''
         K_F error may be higher than you expected, but since you work with lgoaritm
@@ -5496,7 +5547,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     elif Fit_type == 0:                         #non linear type
         #
         def Fre_fit_eq(C,K, n):         #fre fit eq, non linear (original)
-            return K*C**n
+            return K*C**(1/n)
         # --- Initial guess: K ~ max (Qe)/max(Ce), n  ~ 1
         p0 = [np.max(Qe)/np.max(Ce), 1]  
         popt, pcov = curve_fit(Fre_fit_eq, Ce, Qe, p0=p0, maxfev=10000)
@@ -5514,7 +5565,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
         
         fit = pd.Series({
         'K[L^n/(kg*mol^{n-1})]': K,
-        '/Delta(K[L^n/(kg*mol^{n-1})])': dK,
+        '\Delta(K[L^n/(kg*mol^{n-1})])': dK,
         'n' : n,
         '\Delta(n)' : dn,
         'r': R2,

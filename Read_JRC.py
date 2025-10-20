@@ -68,7 +68,7 @@ Elem_rel = ['Si(MR)', 'Al(MR)', 'Mg(MR)', 'Mn(MR)', 'Fe(MR)',
             'Ca(MR)', 'Na(MR)', 'P(MR)', #bentonite elements
             'Sr(LR)', 'Cs(LR)', 'Eu(LR)','La(LR)', 'U(LR)', 'Mo(LR)'] 
         #General list of elements of interest (merging isotopes)
-
+N_A = 6.022e23                              #[part/mol] Avogadro Number
 """
 Isot rele Cs are from the Cs sep
 """
@@ -2943,7 +2943,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
             ICPMS Blk corr)
     The data should be Xe corrected, since Xe interfere with Ba and Cs. ORIGEN
     calcs from the fuel are also need. Some rsd will be also printed throughout
-    the function to check what makes the uncertainty rises a lot
+    the function to check what makes the uncertainty rises a lot!
     
     Note that for the std calcs, it was ASSUMED:
         i) NO std to natural abundances
@@ -3335,7 +3335,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
 def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     '''
     Function that will take an ICP-MS datasheet (in df format) and will merge 
-    all the isotopes to have elemental data. That is:
+    all the isotopes to have elemental data (in ppb/conc format). That is:
         .Merge all (LR): U(LR) = sum (U233,U234,...), Eu(LR), etc
         .Merge all (MR): Si(MR) = sum (Si28, Si29..), U(MR), etc
     
@@ -3618,7 +3618,7 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std ):
     
     
     ################ 0) Pre calcs
-    N_A = 6.022e23                              #[part/mol] Avogadro Number
+    
     
     #Gettind theisotopes of the df, removving (LR)/(MR)
     
@@ -3666,7 +3666,7 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std ):
     
     
 #---------------------------------------------------------------------------
-#%% ------------ 1.22) Statisticals correlation tests ----------------------------------
+#%% ------------ 1.22) Statisticals correlation tests ------------------
 #--------------------------------------------------------------------------
 
 def ICPMS_Correlation_test(data, element_list, type = 'Spe'):
@@ -5104,7 +5104,8 @@ def ICPMS_Plotter_mean_blk_N (
 ##############################################################################
 
 def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
-    Xlabel = 'X axis', Ylabel = 'Y axis', Title= 'PLot', Savename = 'Plot1'):
+    Xlabel = 'X axis', Ylabel = 'Y axis', Title= 'PLot', Savename = 'Plot1',
+    Log_y = False):
     '''
     Function that will do a multibar plot, with the number of abrs you give (Nbars),
     of a given df, chosing the elements you desire. The df_std shoudl also be included!
@@ -5118,7 +5119,7 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
         .Xlabel/Ylabel: string with the label for the x/y axis. Default: 'X/Y axis'
         .Title: string with the title of the plot. Defalt: 'Plot'
         .Savename: string with the name of the file to save (png). Eg: 'Plot1'
-    
+        . Log_y: boolean to indicate if u want ylabel in logscale. Default: False
     *Outputs:
         No outputs, jsut generate a plot!
     
@@ -5148,7 +5149,8 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     plt.ylabel(Ylabel, fontsize= Font)              #ylabel
     plt.xlabel(Xlabel, fontsize= Font)   
     #plt.xticks(X_axis, Dict_el_MS['dat'].columns, rotation=90)
-    #plt.yscale('log') 
+    if Log_y:       #do ylog scale
+        plt.yscale('log') 
     plt.legend(fontsize = Font)
     plt.tick_params(axis='both', labelsize=Font)              #size of axis
     plt.minorticks_on()             #enabling minor grid lines
@@ -5173,7 +5175,7 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
 #%% ######### 2.1) PSO fit #############################
 ###################################################
 def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
-            y_label = 'y', Color = 'b', save_name = '', post_title = ' ',
+            y_label = 'y', Color = 'b', save_name = '', Title = 'Linear PSO fit',
             Fit_type = 1):    
     '''
     Function to do and compute some variables relevant to the PSO (pseudo second 
@@ -5202,7 +5204,7 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
         .delta_t/Q: df with the errors of t and Q. Default value = 0, since I do
         not use them!
         .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
-        .post_title = '' : title to add after 'Linear fit '
+        .Title = '' : title to add after 'Linear fit '
         .save_name = filename of the fit plot, if it wants to be save. Default 
         value = '' ==> no saving.this variable is followed by .png for savinf
         .Color = 'b': color for the plot
@@ -5243,7 +5245,7 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
         fit = Fits.LinearRegression(t, t__Q, delta_t, Delta_t__Q,
                                    x_label = x_label, y_label = y_label, 
                                    Color = Color, 
-                save_name = folder_name +'/' + save_name, post_title = post_title)       
+                save_name = folder_name +'/' + save_name, Title = Title)       
                             #Fit (i dont use npo variable, fit variable)
         ################ 3) Model parameters ################
         '''
@@ -5317,7 +5319,7 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
 #%% ######### 2.2) PFO fit #############################
 ###################################################
 def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_label = 'x',
-            y_label = 'y', Color = 'b', save_name = '', post_title = ' ', npo=100):   
+            y_label = 'y', Color = 'b', save_name = '', Title = ' ', npo=100):   
     '''
     Function to do and compute some variables relevant to the PFO (pseudo first order) kinetic model. THis model
     comes from
@@ -5342,7 +5344,7 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
         .delta_t/Q: df with the errors of t and Q. Default value = 0, since I do not use them!
         .p_0 = None: initial stimation of the fit parameters. 
         .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
-        .post_title = '' : title to add after 'Linear fit '
+        .Title = '' : title to add after 'Linear fit '
         .save_name = filename of the fit plot, if it wants to be save. Default value = '' ==> no saving.
                     this variable is followed by .png for savinf
         .Color = 'b': color for the plot
@@ -5388,8 +5390,8 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
     #Storing them in a df Series
     values = {'Qe' : Qe, '\Delta(Qe)' : Delta_Qe,
               'K1' : K1, '\Delta(K1)' : Delta_K1}
-    Ser_values = pd.Series(values, name = post_title)      #gathering output in a df Series
-            #naming the column like the post_title variable, since this variable is an isotope: U238    
+    Ser_values = pd.Series(values, name = Title)      #gathering output in a df Series
+            #naming the column like the Title variable, since this variable is an isotope: U238    
     
     
     ############# 3) Plot of the fit##########
@@ -5402,7 +5404,7 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
             label= 'Fit: ' + y_label + f' = {Qe:.1e} ' + '$\cdot$ [1- exp(-'+ x_label + '$\cdot$' +f'+{K1:.1e} )]')      #fit
             #.2f to show 2 decimals on the coefficients!
             #2e for scientific notation with 2 significative digits
-    ax.set_title('PFO fit ' + post_title, fontsize=22)          #title
+    ax.set_title('PFO fit ' + Title, fontsize=22)          #title
     ax.set_xlabel(x_label, fontsize= Font)                                    #xlabel
     ax.set_ylabel(y_label, fontsize= Font)                                    #ylabel
     ax.tick_params(axis='both', labelsize= Font)            #size of tick labels  
@@ -5422,7 +5424,7 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
 ###################################################
 def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
             x_label = 'log($C_e [ng/g]$)', y_label = 'log($Q_e [ng/g_{be}]$)',
-            Color = 'b', save_name = '', post_title = ' ', npo=100,
+            Color = 'b', save_name = '', Title = ' ', npo=100,
             Fit_type = 1):   
     '''
     Function to do and compute some variables relevant to the Freundlich fit
@@ -5467,7 +5469,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
         .x_label, y_label= x and y label, for the plot. Default value: 
             'log($C_e [ng/g]$)' and 
                     log($Q_e [ng/g_{be}]$)' respectively!
-        .post_title = '' : title to add after 'Linear fit '
+        .Title = Title of the plot.
         .save_name = filename of the fit plot, if it wants to be save. 
         Default value = '' ==> no saving.
                     this variable is followed by .png for savinf
@@ -5510,7 +5512,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
                                    x_legend = 'log($C_e$)', y_legend = 'log($Q_e$)',
                                    Color = Color, 
                                    save_name = folder_name +'/' + save_name, 
-                                   post_title = post_title)       
+                                   Title = Title)       
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
     ################ 3) Model parameters ################
@@ -5580,7 +5582,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
            '--', color=Color, label=f'Fit (R²={R2:.3f})')
         plt.xlabel('$C_e$ [M]', fontsize = Font)
         plt.ylabel('$Q_e$ [mol/kg$_{be}$]', fontsize = Font)
-        plt.title(f'{post_title}', fontsize=22)
+        plt.title(f'{Title}', fontsize=22)
         plt.grid(True)
         plt.tick_params(axis='both', labelsize=Font)
         plt.legend(fontsize = Font)
@@ -5607,7 +5609,7 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
 def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
              folder_name = 'Fits', x_label = '$C_e [ng/g]$', 
              y_label = '$C_e/Q_e [g_{be}/g_{tot}]$',
-            Color = 'b', save_name = '', post_title = ' ', npo=100):   
+            Color = 'b', save_name = '', Title = ' ', npo=100):   
     '''
     Function to do and compute some variables relevant to the 
     Langmuir fit of an adsorption isotherm Q_e = f (C_e), the sorbed 
@@ -5627,7 +5629,8 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         2) Q_e/C_e = -K_L* Q_e + Q_max * K_L
         Here you plot Qe (x) vs Qe/Ce (y)
     I will do these function so that you can do one of the 2 linearizations, or
-    the normal version.
+    the normal version. ANd the untis? If [Ce] = M, [Qe] = mol /kg_bent, 
+    [K_L] = M^{-1}
     
     *Inputs
         .Ce, Qe: df series containing C_e and Q_e data. Expected the averaged
@@ -5637,7 +5640,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         since I do not use them!
         .x_label, y_label= x and y label, for the plot. Default value: 
             'log($C_e [ng/g]$)' and log($Q_e [ng/g_{be}]$)' respectively!
-        .post_title = '' : title to add after 'Linear fit '
+        .Title = '' : title to add after 'Linear fit '
         .save_name = filename of the fit plot, if it wants to be save. 
             Default value = '' ==> no saving. this variable is followed 
             by .png for savinf
@@ -5686,7 +5689,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
                                    y_legend = '$C_e/Q_e$',
                                    Color = Color, 
                                    save_name = folder_name +'/' + save_name, 
-                                   post_title = post_title)       
+                                   Title = Title)       
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
             #
@@ -5710,12 +5713,12 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         """          
         fit["Q_max[mol/kg_be]"] = 1/ fit["a"]
         fit["\Delta(Q_max[mol/kg_be])"] = fit['\Delta(a)']/fit['a']**2
-        fit["K_L[L/kg]"] = 1/ (fit["b"] * fit["Q_max[mol/kg_be]"] )
-        fit["/Delta(K_L[L/kg])"] = fit["K_L[L/kg]"] * np.sqrt(
+        fit["K_L[M^{-1}]"] = 1/ (fit["b"] * fit["Q_max[mol/kg_be]"] )
+        fit["/Delta(K_L[M^{-1}])"] = fit["K_L[M^{-1}]"] * np.sqrt(
              (fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
         fit['%rsd Q_max'] = fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
-        fit['%rsd K_L'] = 100 * fit["/Delta(K_L[L/kg])"] / fit["K_L[L/kg]"]
+        fit['%rsd K_L'] = 100 * fit["/Delta(K_L[M^{-1}])"] / fit["K_L[M^{-1}]"]
     elif Fit_type ==2:       #Linearization 2!
         fit = Fits.LinearRegression(Qe, Qe_Ce, delta_Qe, delta_Qe_Ce,
                                    x_label = x_label, y_label = y_label, 
@@ -5723,7 +5726,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
                                    y_legend = '$Q_e/C_e$',
                                    Color = Color, 
                                    save_name = folder_name +'/' + save_name, 
-                                   post_title = post_title)       
+                                   Title = Title)       
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
             #
@@ -5746,16 +5749,16 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
             delta Qm = Qm * sqrt( (delta b/b)**2 + (delta KL/KL)**2 )
          
      """          
-        fit["K_L[L/kg]"] = -fit["a"]
-        fit["Q_max[mol/kg_be]"] = fit["b"] / fit["K_L[L/kg]"]
+        fit["K_L[M^{-1}]"] = -fit["a"]
+        fit["Q_max[mol/kg_be]"] = fit["b"] / fit["K_L[M^{-1}]"]
         
-        fit["/Delta(K_L[L/kg])"] = fit['\Delta(a)']        
+        fit["/Delta(K_L[M^{-1}])"] = fit['\Delta(a)']        
         fit["\Delta(Q_max[mol/kg_be])"] = fit["Q_max[mol/kg_be]"] * np.sqrt(
-             (fit["/Delta(K_L[L/kg])"]/fit["K_L[L/kg]"])**2 + 
+             (fit["/Delta(K_L[M^{-1}])"]/fit["K_L[M^{-1}]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
 
         fit['%rsd Q_max'] = fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
-        fit['%rsd K_L'] = 100 * fit["/Delta(K_L[L/kg])"] / fit["K_L[L/kg]"]   
+        fit['%rsd K_L'] = 100 * fit["/Delta(K_L[M^{-1}])"] / fit["K_L[M^{-1}]"]   
 
     elif Fit_type == 0:           #no linear fit, normal fit!
         print("#------------------------------- ")
@@ -5785,8 +5788,8 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         fit = pd.Series({
         'Q_max[mol/kg_be]': Qmax,
         '\Delta(Q_max[mol/kg_be])': dQmax,
-        'K_L[L/kg]': KL,
-        '/Delta(K_L[L/kg])': dKL,
+        'K_L[M^{-1}]': KL,
+        '/Delta(K_L[M^{-1}])': dKL,
         'r': R2,
         '%rsd K_L' : dKL/KL*100, '%rsd Q_max': dQmax/Qmax*100})
         
@@ -5799,7 +5802,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
            '--', color=Color, label=f'Fit (R²={R2:.3f})')
         plt.xlabel('$C_e$ [M]', fontsize = Font)
         plt.ylabel('$Q_e$ [mol/kg$_{be}$]', fontsize = Font)
-        plt.title(f'{post_title}', fontsize=22)
+        plt.title(f'{Title}', fontsize=22)
         plt.grid(True)
         plt.tick_params(axis='both', labelsize=Font)
         plt.legend(fontsize = Font)
@@ -5825,7 +5828,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
 def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1, 
             folder_name = 'Fits', x_label = 'log($C_e [ng/g]$)', 
             y_label = 'log($Q_e [ng/g_{be}]$)',
-            Color = 'b', save_name = '', post_title = ' '):   
+            Color = 'b', save_name = '', Title = ' '):   
     '''
     Function to do and compute the D-R fit model. Its equation is:
         
@@ -5861,7 +5864,7 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
         .x_label, y_label= x and y label, for the plot. Default value: 
             'log($C_e [ng/g]$)' and 
                     log($Q_e [ng/g_{be}]$)' respectively!
-        .post_title = '' : title to add after 'Linear fit '
+        .Title = '' : title to add after 'Linear fit '
         .save_name = filename of the fit plot, if it wants to be save. 
         Default value = '' ==> no saving.
                     this variable is followed by .png for saving
@@ -5912,7 +5915,7 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
                                    x_legend = '$\epsilon$^2', y_legend = 'log($Q_e$)',
                                    Color = Color, 
                                    save_name = folder_name +'/' + save_name, 
-                                   post_title = post_title)       
+                                   Title = Title)       
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
     

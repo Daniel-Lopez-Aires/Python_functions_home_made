@@ -15,12 +15,13 @@ import scipy.optimize
 from statsmodels.formula.api import ols 
 
 Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)   
+Markersize = 7
 
 #%% ###### 1) Linear fit function ############################
 ####################################################################
 
 def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_label = 'y', 
-                     post_title = '',  Color = 'b', 
+                     Title = 'Linear fit',  Color = 'b', 
                      x_legend = 'x', y_legend = 'y', save_name = ''):
     '''
     Function that makes a linear regression of the 2 list (numpy preferred) X, Y
@@ -34,7 +35,7 @@ def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_l
         .npo = 'number of points of the linspace for the fit plotting. Default value = 100
         .x_label, y_label= x and y label, for the plot. Default value: 'x' and 'y'
         .x_legend, y_legend: y and y label, to appear in the legend. Default: 'x' and 'y'
-        .post_title = '' : title to add after 'Linear fit '
+        .Title = title of the plot. Default: 'Linear fit'
         .save_name = filename of the plot, if it wants to be save. Default value = '' ==> no saving.
             this variable is followed by .png for savinf
         .Color = 'b': color for the plot
@@ -76,7 +77,7 @@ def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_l
     ################ 3) Storing #########################
     values = {'a' : a, '\Delta(a)' : delta_a,
               'b' : b, '\Delta(b)' : delta_b, 'r' : r }
-    Ser_values = pd.Series(values, name = post_title)      #gathering output in a df Series
+    Ser_values = pd.Series(values, name = Title)      #gathering output in a df Series
             #naming the column like the post_title variable, since this variable is an isotope: U238
     
     
@@ -85,12 +86,12 @@ def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_l
     
     fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
     ax = fig.add_subplot(111)
-    ax.errorbar(x, y, delta_y, delta_x, 'o', color = Color, markersize = 5, label = 'Data')
+    ax.errorbar(x, y, delta_y, delta_x, 'o', color = Color, markersize = Markersize, label = 'Data')
     ax.plot(x_vector, linear(x_vector, a, b),'--', color = Color,
             label= 'Fit: ' + y_legend + f' = {a:.1e} ' + x_legend + f'+{b:.1e}' + ',\n r= ' + f'{r:.5f}')      #fit
             #.2f to show 2 decimals on the coefficients!
             #2e for scientific notation with 2 significative digits
-    ax.set_title('Linear fit ' + post_title, fontsize=22)          #title
+    ax.set_title(Title, fontsize=22)          #title
     ax.set_xlabel(x_label, fontsize = Font)                                    #xlabel
     ax.set_ylabel(y_label, fontsize= Font)                                    #ylabel
     ax.tick_params(axis='both', labelsize= Font)            #size of tick labels  
@@ -206,7 +207,7 @@ def QuadraticRegression(x, y, npo = 100):
     ####3) Plot of the fit####
     x_vector = np.linspace(min(x),max(x),npo)         #for the fit plotting
     plt.figure(figsize=(10,6))  #width, heigh 6.4*4.8 inches by default
-    plt.plot(x, y, 'bo', markersize = 5, label = 'Data' )                         #original data
+    plt.plot(x, y, 'bo', markersize = Markersize, label = 'Data' )            #original data
     plt.plot(x_vector, cuadratic(x_vector, a, b, c), 'r--', linewidth=2, 
              label=f'Fit: y = {a:.1e}x^2 + {b:.1e}x + {c:.1e}' + ', r= ' + f'{r:.5f}')      #fit
                         #Like that I put the fit eq into the legend plot ;)
@@ -340,9 +341,9 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
     x_vector = np.linspace(min(x),max(x),N)         #for the fit plotting
     
     plt.figure(figsize=(8,5))  #width, heigh 6.4*4.8 inches by default
-    plt.plot(x, y, 'b.', label = 'data')                         #original data
+    plt.plot(x, y, 'bo', label = 'data', markersize = Markersize)     #original data
     plt.plot(x_vector, gaussian(x_vector, heigh, mean, sigma), 'r--', 
-             label= 'Fit: y = ' + f' = {heigh:.2f} * exp('  + f' -(x-{mean:.2f})^2 / 2*{sigma:.2f}^2)' + '\nRes= ' + f'{Res:.2f}')      #fit
+      label= 'Fit: y = ' + f' = {heigh:.2f} * exp('  + f' -(x-{mean:.2f})^2 / 2*{sigma:.2f}^2)' + '\nRes= ' + f'{Res:.2f}') #fit
              #.2f to show 2 decimals on the coefficients!
              #2e for scientific notation with 2 significative digits)           #fit
     plt.legend(fontsize = 12)

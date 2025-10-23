@@ -3329,8 +3329,240 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
 
 
 
+#%% ######## 1.19 Sr correction ##############
+#################################################################    
+def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
+                        Sr90_fis_ab = 48.94, Excel_name = 'Sr_correction.xlsx',
+                        Zr90_row = 15, Sa_start_column = 19, N_sa = 6):
+    '''
+    Function that will take ICPMS cps datasheet (in df format) and will apply
+    the Sr corrections needed to determine fission-produced Sr88,90. It is important
+    to use data before Blk corrected because you need to correct from Kr (noble gas),
+    which exist because of Ar (plasma gas).
+    
+    The correction consist on:
+        1) Compute Kr84, Kr86
+        2) Get Sr84, Sr86
+        3) Compute Sr88 based on Sr86
+        4) Copmute fiss Sr88 with that: Sr88
+        5) For Sr90, we need to stimate Zr90 based on Zr91
+        6) Compute fiss Sr90 with that
+              
+    Note I am not considering using Rb85,87 (for Sr87, to etimate Sr88 based onRb87),
+    since there is also fiss Rb87, so the stimation might not be accurate. Zr91 I
+    can say it is nat only, and not fiss because Stef told me that fission Zr it is not
+    leached, you only see it when you dissolve the fuel.
+    
+    I will perform this correction only on LR, but could also be done for the MR
+    case also. Could be an option, if you want to see if both data confirm each other.
+              
+    I want to generate an excel as a output, since that I will put into the
+    oringinal excel, since this will be used as initial to_read for the IS and Blk
+    corrections!
+    
+    The icpms data for Zr(90) will not be overwritted, keeping initial values, which
+    contain as well Sr90. I will not modify it because I am not ineterested in Zr!
+              
+    Printing the values for only the samples. For this it is assumed that all the samples
+    are together in the measuring sequence, without any std/blk in between!
+              
+    *Inputs:
+        .df_cps
+        .df_cps_rsd
+        .Sr88/90_fis_ab: fission abundances [%]. 
+        .Excel_name: string with the name of the excel to generate
+        .Zr90_row: number indicating the row in excel where Zr90(LR) is 
+        .N_sa: number of samples
+        .sa-Start_columns: number indicating the column number in excel where samples starts
+        .
+        
+    *Outputs:
+        .Excel containing cps and cps_std with new columns, Sr90. Maybe also
+        with Sr88 fission? Or maybe not, I do not know. 
+    
+    Function checked with excel ;)
+    
+    # ------------ To Do: --------
+        .Apply also for MR elements?
+        .save Sr88 nat and fiss? Maybe only in python at least?
+    '''
+    
+    
+    #-------------------- 0) Precalcs ----------------------
+    
+    #We need to get the std of the cps from the rsd, easy peasy:
+    df_cps_std = df_cps_rsd*df_cps/100                       #[cps] std
+    
+    
+    #----------------- 1) Cacls ----------------------------
+    
+    # 1) Compute Kr 84, Kr 86, using at% abundances and interfernce free Kr83
+    #and copmute Zr90 based on Zr91, interference-free: 
+                #nuclei/abundance = cte
+    
+    Kr84 = df_cps.loc['Kr83(LR)'] * 56.987/11.5             #11.5 at% abundance Kr83
+    Kr84_std = Kr84 * df_cps_std.loc['Kr83(LR)']/df_cps.loc['Kr83(LR)']   #std [cps]
+    Kr86 = df_cps.loc['Kr83(LR)'] * 17.279/11.5             #[cps]      Kr86
+    Kr86_std = Kr86 * df_cps_std.loc['Kr83(LR)']/df_cps.loc['Kr83(LR)']         
+    Zr90 = df_cps.loc['Zr91(LR)'] * 51.45/11.22            #11.22 at% of Zr 91
+    Zr90_std = Zr90 * df_cps_std.loc['Zr91(LR)']/df_cps.loc['Zr91(LR)']
+
+    print(' --- Zr90 measured - natural Zr90 stimated (from nat Zr91): ----------')
+    print( ((df_cps.loc['Zr90(LR)'] - Zr90)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
+            ).round(2) )
+    print('If Zr90 meas > natural Zr90 stimated, we have fission Sr90 there!!')
+    print('------------------------------------------------------\n')
+
+    #C 2) Compute Sr 84, 86
+    Sr84 = df_cps.loc['Sr84(LR)'] - Kr84                #Nat Sr84
+    Sr84_std = np.sqrt(df_cps_std.loc['Sr84(LR)']**2 + Kr84_std**2)
+    Sr86 = df_cps.loc['Sr86(LR)'] - Kr86                #Nat Sr86
+    Sr86_std = np.sqrt(df_cps_std.loc['Sr86(LR)']**2 + Kr86_std**2)
+    
+    #Note Sr84 might be <0 if there is a lot of Kr!!!
+    
+    # 3) Compute nat Sr 88 based on Sr 86. 
+    Sr88 = Sr86 * 82.58 / 9.86              #9,86 at% of Sr86
+    Sr88_std = Sr88 * Sr86_std/Sr86  #std [cps]
+    
+    print(' --- Sr88 measured - natural Sr 88 stimated: ----------')
+    print(((df_cps.loc['Sr88(LR)'] - Sr88)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
+            ).round(2) )
+    print('If Sr88 meas > natural Sr88 stimated, we have fission Sr88 there!!')
+    print('------------------------------------------------------\n')
+    
+    # ------ 4) Computte fission Sr 88 and Sr 90
+    Sr88_fis = df_cps.loc['Sr88(LR)'] - Sr88
+    Sr88_fis_std = np.sqrt(df_cps_std.loc['Sr88(LR)']**2 + Sr88_std**2)
+    Sr90_fis = df_cps.loc['Zr90(LR)'] - Zr90
+    Sr90_fis_std = np.sqrt(df_cps_std.loc['Zr90(LR)']**2 + Zr90_std**2)
+
+    
+    #Check, checking if stimated abundances ratio matches ORIGEN abundances!!
+
+    print('----------- Fission Sr88 --------------')
+    print(((Sr88_fis)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
+            ).round(2) )
+    print('----------- Fission Sr90 --------------')
+    print(((Sr90_fis)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
+            ).round(2) )
+    print('-----------------------------------------\n')
+    
+    '''
+    We can also check if fiss Sr80 and Fiss Sr90 confirm each other, based on the
+    abundances, now in wt%!! ORIGEN gives that (or at least that I a aware of!)
+    
+    Sr88/ ab Sr88 should be approx = Sr90/ab Sr90
+    
+    '''  
+    
+    print('----- Sr88 fission / ORIGEN abundance of fiss Sr88')
+    print(((Sr88_fis/Sr88_fis_ab)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
+            ).round(2) )
+    print('----- Sr90 fission / ORIGEN abundance of fiss Sr90')
+    print(((Sr90_fis/Sr90_fis_ab)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
+            ).round(2) )
+    print('If both ratios are somewhat similar, this means that both isotopes confirm each other')
+    print('-------------------------------------------\n ')      
+
+
+    # ------------Output, including new variables in old ones -------------
+    #Lets include Sr90 into the cps and csp %rsd!
+    
+    
+    df_cps1_2 = df_cps.iloc[:Zr90_row-7,:]        #1st half
+            #-7 because data start in row 7 (Co59)
+    df_cps2_2 = df_cps.iloc[Zr90_row-7:,:]        #2nd half
+                #1st element there is Zr90
+    
+    df_cps1_2.loc['Sr90(LR)'] = Sr90_fis        #adding the new data
+    
+    #merging them again
+    df_cps_new = pd.concat([df_cps1_2, df_cps2_2])      #merging them again!
+    
+    #And now we need to do the same for the %rsd
+    df_cps_rsd_1_2 = df_cps_rsd.iloc[:Zr90_row-7,:]        #1st half
+            #-7 because data start in row 7 (Co59)
+    df_cps_rsd_2_2 = df_cps_rsd.iloc[Zr90_row-7:,:]        #2nd half
+                #1st element there is Zr90
+    
+    df_cps_rsd_1_2.loc['Sr90(LR)'] = Sr90_fis_std/Sr90_fis*100      #%rsd
+    
+    #merging them again
+    df_cps_rsd_new = pd.concat([df_cps_rsd_1_2, df_cps_rsd_2_2])      #merging them again!
+
+
+    #Bro ojo aqui, si Sr90<0, substitute for 0!!! otherwise huge errors after Blk corr!! xDD
+    INeedToReplaceNegativeSr90ValuesWith0ctmKliaoooooo
+    
+    #------------ Excel writing --------------
+    '''
+    I will write in a single excel 2 excel sheets:
+        1) With the cps data
+        2) With cps_rsd data (what I was normally using, not to alter the procedures)
+              
+    Writing them in the usual icpms.
+    
+    That requires to write the info int he variables. We want to write Sr90, but
+    not write it at the end of the df, rather where it should be, before Zr90(LR)
+    Hence, we need to find where that is, and place it before. AN easy ways is:
+        .to split the df in 2, absed on that position
+        . Add the new column at the end of df 1
+        . MErge again df 1 and 2
+    '''
+    
+    writer = pd.ExcelWriter(Excel_name, engine = 'xlsxwriter')      #excel writer
+
+    # -------- cps sheet ---------
+    df_cps_new.to_excel(writer, sheet_name = 'cps_Sr_corr', startrow = 6, 
+                        header = False, freeze_panes = (6, 1))  
+    #Formating
+    excel_sheet = writer.sheets['cps_Sr_corr']
+    bold_format = writer.book.add_format({'bold': True})      
+    excel_sheet.write_row('B2', df_cps_new.columns, bold_format)     
+    #Write from cell B2 with the numer of columns. Note B2 is column B, row 2
+    excel_sheet.write_row('B1', range(1, len(df_cps_new.columns) + 1), bold_format)  
+                                #2nd row with columns names
+    excel_sheet.write_row('B3', [None] * len(df_cps_new.columns))            
+                                #row 3 empty
+    excel_sheet.write_row('B4', ['Net <Int>'] * len(df_cps_new.columns))         
+                                #row 4 with a value repeated
+    excel_sheet.write_row('B5', ['[cps]'] * len(df_cps_new.columns))     
+                                #row 5 with a value repeated
+
+    # -------- rsd sheet ---------
+    df_cps_rsd_new.to_excel(writer, sheet_name = '%rsd_Sr_corr', startrow = 6, 
+                        header = False, freeze_panes = (6, 1))  
+    #Formating
+    excel_sheet = writer.sheets['%rsd_Sr_corr']
+    bold_format = writer.book.add_format({'bold': True})      
+    excel_sheet.write_row('B2', df_cps_rsd_new.columns, bold_format)     
+    #Write from cell B2 with the numer of columns. Note B2 is column B, row 2
+    excel_sheet.write_row('B1', range(1, len(df_cps_rsd_new.columns) + 1), bold_format)  
+                                #2nd row with columns names
+    excel_sheet.write_row('B3', [None] * len(df_cps_rsd_new.columns))            
+                                #row 3 empty
+    excel_sheet.write_row('B4', ['Net <Int>'] * len(df_cps_rsd_new.columns))         
+                                #row 4 with a value repeated
+    excel_sheet.write_row('B5', ['[cps]'] * len(df_cps_rsd_new.columns))     
+                                #row 5 with a value repeated
+
+    writer.close()                 #critical step, to save the excel xD
+    
+    #-------- Output --------------
+    #Lets return both variables also here!
+    #maybe return also fiss Sr88 fiss and nat??
+        
+    Output = {'dat' : df_cps_new, 
+              '%rsd': df_cps_rsd_new}
+    
+    
+    return Output
+
+
+
 #######################################################################
-# %% ######### 1.19) Isotopes to elements ###########################
+# %% ######### 1.20) Isotopes to elements ###########################
 ######################################################################
 def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     '''
@@ -5321,8 +5553,8 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
 def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_label = 'x',
             y_label = 'y', Color = 'b', save_name = '', Title = ' ', npo=100):   
     '''
-    Function to do and compute some variables relevant to the PFO (pseudo first order) kinetic model. THis model
-    comes from
+    Function to do and compute some variables relevant to the PFO (pseudo first order) 
+    kinetic model. THis model comes from
     d(Q(t))/dt = K * (Q_e - Q(t))
     
     where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. THe solution of that is:

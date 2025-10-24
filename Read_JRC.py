@@ -3360,9 +3360,12 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     oringinal excel, since this will be used as initial to_read for the IS and Blk
     corrections!
     
-    The icpms data for Zr(90) will not be overwritted, keeping initial values, which
+    General notes: 
+        -icpms data for Zr(90) will not be overwritted, keeping initial values, which
     contain as well Sr90. I will not modify it because I am not ineterested in Zr!
-              
+        -Fission Sr90 values < 0 replaced by 0, not to have problems when doing the
+        Blk correction (ICPMS data processing)
+    
     Printing the values for only the samples. For this it is assumed that all the samples
     are together in the measuring sequence, without any std/blk in between!
               
@@ -3372,13 +3375,15 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
         .Sr88/90_fis_ab: fission abundances [%]. 
         .Excel_name: string with the name of the excel to generate
         .Zr90_row: number indicating the row in excel where Zr90(LR) is 
-        .N_sa: number of samples
-        .sa-Start_columns: number indicating the column number in excel where samples starts
+        .N_sa: number of samples. Default: 6
+        .sa-Start_columns: number indicating the column number in excel where 
+        samples starts. Default: 19
         .
         
     *Outputs:
         .Excel containing cps and cps_std with new columns, Sr90. Maybe also
         with Sr88 fission? Or maybe not, I do not know. 
+        .Dictionary with: cps, cps_std, %rsd
     
     Function checked with excel ;)
     
@@ -3469,7 +3474,16 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     # ------------Output, including new variables in old ones -------------
     #Lets include Sr90 into the cps and csp %rsd!
     
+    '''
+    Okay, I can not directly save those variables, because some Sr90 values are
+    negative, really negative. And that makes problem for BLk corr, since I substract
+    blk or min (samples). Subtract a negative value increase that, making the result
+    wrong. So, a simple fix of replacing negative values by 0 would fix that!
+    '''
+    Sr90_fis = Sr90_fis.clip(lower = 0)         #replcaing negative values by 0!
     
+
+    #Now we can start:    
     df_cps1_2 = df_cps.iloc[:Zr90_row-7,:]        #1st half
             #-7 because data start in row 7 (Co59)
     df_cps2_2 = df_cps.iloc[Zr90_row-7:,:]        #2nd half
@@ -3492,8 +3506,6 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     df_cps_rsd_new = pd.concat([df_cps_rsd_1_2, df_cps_rsd_2_2])      #merging them again!
 
 
-    #Bro ojo aqui, si Sr90<0, substitute for 0!!! otherwise huge errors after Blk corr!! xDD
-    INeedToReplaceNegativeSr90ValuesWith0ctmKliaoooooo
     
     #------------ Excel writing --------------
     '''
@@ -5284,11 +5296,16 @@ def ICPMS_Plotter_mean_blk_N (
             plt.title(pre_title_plt + element_name, fontsize=22, wrap=True)
 
             for k in range(N):      #loop plotting, for all the datasets
-                x = get_x(x_list[k], i)
-                y = y_list[k].loc[i]
-                sx = get_std(std_x_list[k], i)
-                sy = std_y_list[k].loc[i]
-
+                try:                #to see if the element is there    
+                    x = get_x(x_list[k], i)
+                    y = y_list[k].loc[i]
+                    sx = get_std(std_x_list[k], i)
+                    sy = std_y_list[k].loc[i]
+                except KeyError:            #what happens when an element not there
+                    print(f"Element '{i}' not found in dataset '{k}'")
+                    print('Skipped in the loop ! \n')
+                    continue
+                #
                 Color = colors[k % len(colors)]
                 Fmt = Fmts[k % len(Fmts)]
                 Label = labels[k]
@@ -5391,6 +5408,99 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     plt.grid(which = 'major')
     plt.savefig(Savename + '.png', format='png', bbox_inches='tight')
     plt.show() 
+    
+    
+
+##############################################################################
+#%%### 1.21) ICPMS multibar plotter ############
+##############################################################################
+def ICPMS_MultiBar_plotter_N(
+    dfs, dfs_std, Elements,
+    dataset_labels=None,
+    b=0.2,
+    Xlabel='X axis', Ylabel='Y axis',
+    Title='ICPMS Multi-Bar Plot',
+    Savename='Plot1',
+    Log_y=False,
+    Font=18):
+    '''
+    Generalized ICPMS multi-bar plotter for N datasets and M elements.
+
+    *Inputs:
+        .dfs / dfs_std : list of DataFrames containing ICPMS data and their std deviations.
+            Example: [df1, df2, df3]
+        .Elements: list of element names (row labels) to plot. e.g. ['Si(MR)', 'Al(MR)']
+        .dataset_labels: optional list of dataset names for the legend. Default: ['Set 1', 
+                                                                'Set 2', ...]
+        .b: blank space between bar groups (0 < b < 1)
+        .Xlabel/Ylabel: axis labels
+        .Title: plot title
+        .Savename: file name for saving
+        .Log_y: use logarithmic scale on y-axis
+        .Font: font size for labels
+
+    *Outputs:
+        Generates and saves a grouped multi-bar plot.
+    '''
+
+    # ---- Input validation ----
+    if not isinstance(dfs, list):
+        dfs = [dfs]
+    if not isinstance(dfs_std, list):
+        dfs_std = [dfs_std]
+    N_datasets = len(dfs)
+    if dataset_labels is None:
+        dataset_labels = [f"Set {i+1}" for i in range(N_datasets)]
+
+    N_elements = len(Elements)
+    X_axis = np.arange(N_elements)
+    
+    # ---- Bar width and offsets ----
+    total_bars = N_datasets
+    w = (1 - b) / total_bars
+    offsets = (np.arange(total_bars) - (total_bars - 1) / 2) * w
+
+    # ---- Colors (auto-generated if not specified) ----
+    cmap = plt.cm.get_cmap('tab10', N_datasets)
+    colors = [cmap(i) for i in range(N_datasets)]
+
+    # ---- Plot ----
+    plt.figure(figsize=(12, 8))
+    plt.title(Title, fontsize=22, wrap=True)
+
+    for j, (df, df_std, label) in enumerate(zip(dfs, dfs_std, dataset_labels)):
+        for i, elem in enumerate(Elements):
+            try:
+                plt.bar(
+                    X_axis[i] + offsets[j],
+                    df.loc[elem],
+                    yerr=df_std.loc[elem],
+                    width=w,
+                    edgecolor='black',
+                    color=colors[j],
+                    label=label if i == 0 else "",
+                    align='center'
+                )
+            except KeyError:
+                print(f"⚠️ Element '{elem}' not found in dataset '{label}' — skipped.")
+                continue
+
+    plt.xticks(X_axis, Elements, rotation=45, ha='right', fontsize=Font)
+    plt.ylabel(Ylabel, fontsize=Font)
+    plt.xlabel(Xlabel, fontsize=Font)
+    if Log_y:
+        plt.yscale('log')
+
+    plt.legend(fontsize=Font)
+    plt.tick_params(axis='both', labelsize=Font)
+    plt.minorticks_on()
+    plt.grid(which='minor', linestyle=':', linewidth=0.5)
+    plt.grid(which='major')
+    
+    plt.tight_layout()
+    plt.savefig(Savename + '.png', format='png', bbox_inches='tight')
+    plt.show()
+    
     
     
     

@@ -917,7 +917,7 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
             #%rstd of the IS sens. ofc agrees with excel!
     print('################################################################# \n')
     print('%rstd of the IS sens:')
-    print(rstd)
+    print((rstd).round(2))
     print('Values >= 10/15% start to be suspicious, something happened! (Th oxidation for ex?) \n')
     print('############################################################### \n')
     
@@ -3365,6 +3365,8 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     contain as well Sr90. I will not modify it because I am not ineterested in Zr!
         -Fission Sr90 values < 0 replaced by 0, not to have problems when doing the
         Blk correction (ICPMS data processing)
+        - Beware, if you run it twice, to a data cps with the added Sr, you will get
+        the Sr90 data duplicate!
     
     Printing the values for only the samples. For this it is assumed that all the samples
     are together in the measuring sequence, without any std/blk in between!
@@ -3461,10 +3463,10 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     
     '''  
     
-    print('----- Sr88 fission / ORIGEN abundance of fiss Sr88')
+    print('----- Sr88 fission / ORIGEN abundance of fiss Sr88: ---------')
     print(((Sr88_fis/Sr88_fis_ab)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
             ).round(2) )
-    print('----- Sr90 fission / ORIGEN abundance of fiss Sr90')
+    print('----- Sr90 fission / ORIGEN abundance of fiss Sr90: ---------')
     print(((Sr90_fis/Sr90_fis_ab)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
             ).round(2) )
     print('If both ratios are somewhat similar, this means that both isotopes confirm each other')
@@ -3500,7 +3502,8 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     df_cps_rsd_2_2 = df_cps_rsd.iloc[Zr90_row-7:,:]        #2nd half
                 #1st element there is Zr90
     
-    df_cps_rsd_1_2.loc['Sr90(LR)'] = Sr90_fis_std/Sr90_fis*100      #%rsd
+    df_cps_rsd_1_2.loc['Sr90(LR)'] = (Sr90_fis_std/Sr90_fis*100).replace(np.inf,0)
+          #%rsd. Ensuring to have no inf values!!
     
     #merging them again
     df_cps_rsd_new = pd.concat([df_cps_rsd_1_2, df_cps_rsd_2_2])      #merging them again!
@@ -6414,8 +6417,10 @@ def Read_XRD_WB (name):
         return df
 
 
+# --------------------------------------------------------------
 #%% ######### 5.2) XRD reader, F130 (hot XRD) #################### 
-######################################################
+# --------------------------------------------------------------
+
 
 def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0, 
                    DosTheta_inter = [4,6], XRD_Type = 'Cold'):
@@ -6468,13 +6473,13 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
     
         df = aux.iloc[:-2,:-1]        #Removing 3rd column, and last 2 rows
     
-    elif XRD_Type == 'Hot':                 #hot XRD
-        df = pd.read_csv('XRD/DL_Bentonite_raw.uxd', skiprows = Skip_rows, sep = '      ', 
+    elif XRD_Type == 'Hot':                 #hot XRD, read .uxd
+        df = pd.read_csv(name, skiprows = Skip_rows, sep = '      ', 
                           names = ['2Theta[°]', 'Counts'], encoding='latin')
                     #separato spotted from the .udx file
     else:       
         print('Wrong XRD type, accepting only Hot or Cold !')
-        print('Retunrin nan, pssiibly error in the function !')
+        print('Retunrin nan, possibly error in the function !')
         print('------------------------------------\n')
         df = np.nan
         
@@ -6506,7 +6511,7 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
     
     ########### 2. interl space calc ##############
     if Compute_d:       #if true, compute it
-        print('\n##############')    
+        print('\n######Computing interlaminar space based on the 001 peak ########')    
         print('Beware woth the initial interval, you might need to modify it'+
         'since the first guess may not be okay/good enough and could give error \n')    
         try:    #Try the fit
@@ -6574,8 +6579,10 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
     return df
 
 
+# --------------------------------------------------------------
 #%% ######### 5.3) XRD, Get interlaminar space bentonites #################### 
-######################################################
+# --------------------------------------------------------------
+
 
 def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
     '''

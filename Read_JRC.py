@@ -2945,6 +2945,16 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     calcs from the fuel are also need. Some rsd will be also printed throughout
     the function to check what makes the uncertainty rises a lot!
     
+    Useful info; natural elements:
+        .Cs: nat Cs133 (radioactive Cs134, Cs137 fission produced)
+        .Ba: nat Ba130, 132, 134, 135, 136, 137, 138
+        .Xe: nat Xe 124, 126, 128, 129, 130, 131, 132, 134, 136
+    Fission produced elements:
+        .Cs: Cs133, 134, 135, 137
+        .Ba: Ba134, 135, 136, 137, 138
+        .Xe: Xe128, 129, 130, 131, 132, 134, 136
+        
+    
     Note that for the std calcs, it was ASSUMED:
         i) NO std to natural abundances
         ii) NO std to ORIGEN calcs (fission abundances, etc)
@@ -2966,7 +2976,9 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
         
         
         
-            #### To Do:
+     #------------ To Do: -------------------------------------------------
+                .Rewrtie given Ba134,5,7 data with the obtained one, since the original
+                might have Cs interferences?
                 .Link with abundance excel??
                 .Problem with uncertainties, from fis ratio on, std> variable,
                 since we do variable = 1- var 2, delta var = delta var 2, and 
@@ -3168,23 +3180,42 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     understand the data. We would expect similar Cs133 as Cs137 production, or
     slightly higher Cs137. Huge discrepancies would indicate that the data is not
     trustworthy
+    
+    Ab Cs 133 = Cs 133 / (Cs133 + 134+ 135+ 137) * 100
     '''
 
     Cs133_ab = df_ppb.loc['Cs133(LR)'] * 100 / (df_ppb.loc['Cs133(LR)'] + 
         Cs134_fis + Cs135_fis + Cs137_fis)
+    Cs133_ab_std = Cs133_ab * np.sqrt( 
+        (df_ppb_std.loc['Cs133(LR)']/df_ppb.loc['Cs133(LR)'])**2 + 
+        (df_ppb_std.loc['Cs133(LR)']**2 + Cs134_fis_std**2 + Cs135_fis_std**2 + Cs137_fis_std**2 ) 
+        / (df_ppb.loc['Cs133(LR)'] +  Cs134_fis + Cs135_fis + Cs137_fis)**2  )
     Cs134_ab = Cs134_fis * 100 / (df_ppb.loc['Cs133(LR)'] + 
         Cs134_fis + Cs135_fis + Cs137_fis)
+    Cs134_ab_std = Cs134_ab * np.sqrt( 
+        (Cs134_fis_std/Cs134_fis )**2 + 
+        (df_ppb_std.loc['Cs133(LR)']**2 + Cs134_fis_std**2 + Cs135_fis_std**2 + Cs137_fis_std**2 ) 
+        / (df_ppb.loc['Cs133(LR)'] +  Cs134_fis + Cs135_fis + Cs137_fis)**2  )
     Cs135_ab = Cs135_fis * 100 / (df_ppb.loc['Cs133(LR)'] + 
         Cs134_fis + Cs135_fis + Cs137_fis)
+    Cs135_ab_std = Cs135_ab * np.sqrt( 
+        (Cs135_fis_std/Cs135_fis )**2 + 
+        (df_ppb_std.loc['Cs133(LR)']**2 + Cs134_fis_std**2 + Cs135_fis_std**2 + Cs137_fis_std**2 ) 
+        / (df_ppb.loc['Cs133(LR)'] +  Cs134_fis + Cs135_fis + Cs137_fis)**2  )
     Cs137_ab = Cs137_fis * 100 / (df_ppb.loc['Cs133(LR)'] + 
         Cs134_fis + Cs135_fis + Cs137_fis)
-    
+    Cs137_ab_std = Cs137_ab * np.sqrt( 
+        (Cs137_fis_std/Cs137_fis )**2 + 
+        (df_ppb_std.loc['Cs133(LR)']**2 + Cs134_fis_std**2 + Cs135_fis_std**2 + Cs137_fis_std**2 ) 
+        / (df_ppb.loc['Cs133(LR)'] +  Cs134_fis + Cs135_fis + Cs137_fis)**2  )    
     df_Cs_ab = pd.DataFrame([Cs133_ab, Cs134_ab, Cs135_ab, Cs137_ab], 
                 index = ['Cs133', 'Cs134', 'Cs135', 'Cs137']) #abundances [%]
     
+    df_Cs_ab_std =  pd.DataFrame([Cs133_ab_std, Cs134_ab_std, Cs135_ab_std, Cs137_ab_std], 
+                index = ['Cs133', 'Cs134', 'Cs135', 'Cs137']) #abundances [%]
     print('-------------------------------------------------------')
     print('Fission Cs abundances [%]:')
-    print(df_Cs_ab)
+    print((df_Cs_ab).round(1) )
     print('Ab of Cs133 should be <= Cs137. Huge discrepancies indicate untrustworthy data')
     print('-----------------------------------------------------------\n')
     
@@ -3271,9 +3302,11 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     
     ############## 7) Output ##################
     '''
-    Okay, I will return the df_ppb, but I will add it the info. I will add all, 
-    and with time I will know if I need more or less info xD
-    
+    Okay, I will return the df_ppb, but I will add it the info. Whihc info? I need
+    to know:
+        Cs: Cs134, Cs135, Cs137
+        Ba: Since the measured Ba134,135,137 are overstimated because of Cs intereferencs,
+        that woudl also be nice to have! Not to overwrite, I will add a _Cscorr to the name
     Cs tot will not be saved!!!
     
     Note I all (LR) to all the names, which will be useful for plotting, since
@@ -3283,36 +3316,29 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     '''
     
     ##### ppb
-    df_ppb.loc['Ba134(LR)_nat'] = Ba134_nat
-    df_ppb.loc['Ba134(LR)_fis'] = Ba134_fis
-    df_ppb.loc['Cs134(LR)_fis'] = Cs134_fis_co
-    df_ppb.loc['Ba135(LR)_nat'] = Ba135_nat
-    df_ppb.loc['Cs135(LR)_fis'] = Cs135_fis_co
-    df_ppb.loc['Ba136(LR)_nat'] = Ba136_nat
-    df_ppb.loc['Ba136(LR)_fis'] = Ba136_fis
-    df_ppb.loc['Ba137(LR)_nat'] = Ba137_nat
-    df_ppb.loc['Ba137(LR)_fis'] = Ba137_fis
-    df_ppb.loc['Cs137(LR)_fis'] = Cs137_fis_co
-    df_ppb.loc['Ba138(LR)_nat'] = Ba138_nat
-    df_ppb.loc['Ba138(LR)_fis'] = Ba138_fis
+
+    df_ppb.loc['Cs134(LR)'] = Cs134_fis_co
+    df_ppb.loc['Cs135(LR)'] = Cs135_fis_co
+    df_ppb.loc['Cs137(LR)'] = Cs137_fis_co
+    
+    df_ppb.loc['Ba134_Cscorr(LR)'] = Ba134_nat + Ba134_fis
+    df_ppb.loc['Ba135_Cscorr(LR)'] = Ba135_nat
+    df_ppb.loc['Ba137_Cscorr(LR)'] = Ba137_nat + Ba137_fis
     # The total Cs will also be given as output!
     #df_ppb.loc['Cs_tot(LR)'] = Cs_tot
     #df_ppb.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133
     #df_ppb.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137
     
     #### ppb_std
-    df_ppb_std.loc['Ba134(LR)_nat'] = Ba134_nat_std
-    df_ppb_std.loc['Ba134(LR)_fis'] = Ba134_fis_std
-    df_ppb_std.loc['Cs134(LR)_fis'] = Cs134_fis_co_std
-    df_ppb_std.loc['Ba135(LR)_nat'] = Ba135_nat_std
-    df_ppb_std.loc['Cs135(LR)_fis'] = Cs135_fis_co_std
-    df_ppb_std.loc['Ba136(LR)_nat'] = Ba136_nat_std
-    df_ppb_std.loc['Ba136(LR)_fis'] = Ba136_fis_std
-    df_ppb_std.loc['Ba137(LR)_nat'] = Ba137_nat_std
-    df_ppb_std.loc['Ba137(LR)_fis'] = Ba137_fis_std
-    df_ppb_std.loc['Cs137(LR)_fis'] = Cs137_fis_co_std
-    df_ppb_std.loc['Ba138(LR)_nat'] = Ba138_nat_std
-    df_ppb_std.loc['Ba138(LR)_fis'] = Ba138_fis_std    
+    df_ppb_std.loc['Ba134_Cscorr(LR)'] = np.sqrt(Ba134_nat_std**2 + Ba134_fis_std**2)
+    df_ppb_std.loc['Ba135_Cscorr(LR)'] = Ba135_nat_std
+    df_ppb_std.loc['Ba137_Cscorr(LR)'] = np.sqrt(Ba137_nat_std**2 +Ba137_fis_std**2)
+
+    df_ppb_std.loc['Cs134(LR)'] = Cs134_fis_co_std
+    df_ppb_std.loc['Cs135(LR)'] = Cs135_fis_co_std
+    df_ppb_std.loc['Cs137(LR)'] = Cs137_fis_co_std
+    
+   
     #
     #df_ppb_std.loc['Cs_tot(LR)'] = Cs_tot_std
     #df_ppb_std.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133_std
@@ -3324,7 +3350,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     ###### Returning #########
     #A dictionary with the 3 df will be returned, to keep it more gathered
     output = {'dat': df_ppb, 'std': df_ppb_std, '%rsd': df_rsd,
-              'Cs_Ab': df_Cs_ab}
+              'Cs_Ab%': df_Cs_ab, 'Cs_Ab%_std': df_Cs_ab_std}
     return output
 
 

@@ -874,20 +874,26 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
         #To compute the error of the sens, I assume that Delta(ppb) = 1% ppb ==> 
                     #Delta(ppb)/ppb = 1/100!!
         aux2 = aux * np.sqrt((std_IS/cps_IS)**2 + (1/100)**2)     #std values
-        
-        
-        #TO store temporarily those values I create an auxiliary list
-        #     #no df, not efficient!
-        # list_aux = np.append(list_aux, aux) #append it (in rows not possible)
-        # list_aux2 = np.append(list_aux2, aux2)
-        
+                
+        #We make a df out of those:
         df_aux = pd.DataFrame(data = aux)
         df_aux2 =pd.DataFrame(data = aux2)
+        
+        #New 6/11/25, if any blank has no IS added, it will contain Inf. I will replace
+        #them by the average. I could do this by convertir Iinf to Nan, and then Nan
+        #to average (NaN not counted for the average, while INf it is!)
+        df_aux.replace(np.Inf, np.nan, inplace = True)
+        df_aux = df_aux.apply(lambda row: row.fillna(row.mean()), axis=1)
+                #like that I replace NaN in a df, the fillna is for series only!
+        
+        df_aux2.replace(np.Inf, np.nan, inplace = True)
+        df_aux2 = df_aux2.apply(lambda row: row.fillna(row.mean()), axis=1)
         
         #And I add that to the storing df
         df_IS_sens = pd.concat([df_IS_sens,df_aux], ignore_index= True)
         df_IS_sens_std = pd.concat([df_IS_sens_std, df_aux2], ignore_index= True)
     
+
     '''
     Now, to add the isotopes as index, we first add them as a column, and then we set
     the column to index:we need to insert the isotopes column, giving as values 
@@ -906,6 +912,14 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     '''
     df_IS_sens.columns = df_cps_ppb.columns
     df_IS_sens_std.columns = df_cps_ppb.columns
+    
+    '''
+    New, 6/11/25. If any blk as no IS added (like only 1M HNO3, the case for last 
+    emasurement), then sens = Inf (cps /0). To avoid did, I will replace the Inf
+    by the average values
+    '''
+    aa = df_IS_sens.replace(np.Inf, df_IS_sens.mean(axis = 1),inplace = True)
+    #
     
     print('############################################ \n')
     print('Attention: Here, to compute the std of the sens, assuming error in '+
@@ -1616,7 +1630,7 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
                                 #getting and plotting new IS sens
     
     print('\n ########################')
-    print('Step 2.2. donce, copmuted the new IS sens :)) ')
+    print('Step 2.2. donce, computed the new IS sens :)) ')
     print('#############################')
     
     
@@ -6449,7 +6463,7 @@ def Read_XRD_WB (name):
 
 
 def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0, 
-                   DosTheta_inter = [4,6], XRD_Type = 'Cold'):
+                   DosTheta_inter = [4,6], n = 1, XRD_Type = 'Cold'):
     '''
     Function that reads the .ras file from the XRD for both:
         . F130, Cold (Olaf Walter)
@@ -6481,6 +6495,7 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
         Compute_d = 1. Default: [4,6]
         .XRD_type: string indicating the XRD device: 'Cold' or 'Hot'. Default:
             'Cold' (F130)
+        .n: number of the basal reflection. Defauolt: 1, for 001 reflection (at 6°)
         
     *Output
         .df with the 2Theta, Counts and cps
@@ -6541,7 +6556,7 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
         print('Beware woth the initial interval, you might need to modify it'+
         'since the first guess may not be okay/good enough and could give error \n')    
         try:    #Try the fit
-            Fit = XRD_Get_interl_sp (df, DosTheta_inter)
+            Fit = XRD_Get_interl_sp (df, DosTheta_inter, n)
         #
         #Now saving the results in the previous df
             df[Fit.columns] = Fit
@@ -6610,11 +6625,15 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
 # --------------------------------------------------------------
 
 
-def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
+def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401, n = 1):
     '''
     Function that will get the interlaminar space of the bentonites, based on the
-    first basal refelction 001, which will satisfy:
-            lambda = 2d sin (theta)    n = 1
+    first basal refelction 001. The XRD eq basics is:
+            n * lambda = 2d sin (theta) == d = n * lambda /(2 * sin (theta) )
+            
+    For n = 1, we obtain the 001 peak, associated to interlaminar space. Other 
+    reflextions, such as n = 2, etc could also indicate the distance, if the 
+    peaks are visible.
             
     For this, we need:
         1. Perform the gaussian fit of the peak (Fits module used!)
@@ -6635,6 +6654,7 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
         .kalpha: Wavelength of the Kalpha1 radiation of the Cu, the element of
             the XRD = 1.5401Angs
         .name: name of the file. Ej: 'file.ras'
+        .n = index in the 00n reflection. For 001 peak, n= 1. Default: 1
 
     *Output
         .df with the interlaminar space!
@@ -6658,7 +6678,7 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401):
     ########## 2. Interlaminas space calc
     #Note that np.sin works in radian, so I convert the angle from degree to radians
     
-    d = Kalpha / (2*np.sin(np.deg2rad(Fit['mean'][0] / 2) ) )      #[Ams]
+    d = n *Kalpha / (2*np.sin(np.deg2rad(Fit['mean'][0] / 2) ) )      #[Ams]
     Delta_d = d * np.cos(np.deg2rad(Fit['mean'][0] / 2) ) * Fit['\Delta(mean)'][0]/2/ np.sin(
                                                 np.deg2rad(Fit['mean'][0] / 2) ) #[Ams]
 

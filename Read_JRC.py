@@ -2396,7 +2396,7 @@ def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
 
     ## Returning a dictionary
     # Compute %RSD safely (NaN where mean == 0)
-    df_rsd = df_final_std / df_mean.replace(0, np.nan) * 100 
+    df_rsd = df_final_std / np.abs(df_mean.replace(0, np.nan) ) * 100 
     
     if Debug:           #return both stds to compare them!
         Output = {'< >': df_mean, 'std': df_final_std, '%rsd' : df_rsd,
@@ -3376,7 +3376,8 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
                         Zr90_row = 15, Sa_start_column = 19, N_sa = 6):
     '''
     Function that will take ICPMS cps datasheet (in df format) and will apply
-    the Sr corrections needed to determine fission-produced Sr88,90. It is important
+    the Sr corrections needed to determine fission-produced Sr88, 90 in a SNF
+    leachate measurement. It is important
     to use data before Blk corrected because you need to correct from Kr (noble gas),
     which exist because of Ar (plasma gas).
     
@@ -3419,7 +3420,8 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
         .Zr90_row: number indicating the row in excel where Zr90(LR) is 
         .N_sa: number of samples. Default: 6
         .sa-Start_columns: number indicating the column number in excel where 
-        samples starts. Default: 19
+        samples starts. Default: 19. THis and the rpevious variable are used only
+            for printing, to check the calcs!
         .
         
     *Outputs:
@@ -3434,6 +3436,9 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
         .save Sr88 nat and fiss? Maybe only in python at least?
     '''
     
+    print('-----------------------------------------------------')
+    print('Starting the Sr correction! ')
+    print('-----------------------------------------------------')
     
     #-------------------- 0) Precalcs ----------------------
     
@@ -3445,7 +3450,9 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     
     # 1) Compute Kr 84, Kr 86, using at% abundances and interfernce free Kr83
     #and copmute Zr90 based on Zr91, interference-free: 
-                #nuclei/abundance = cte
+    #Note Zr91 is fission produced, but it is not leached, to emasure it you
+    #need to dissolve the fuel! Epxlian this better, also for phd!
+                            #nuclei/abundance = cte
     
     Kr84 = df_cps.loc['Kr83(LR)'] * 56.987/11.5             #11.5 at% abundance Kr83
     Kr84_std = Kr84 * df_cps_std.loc['Kr83(LR)']/df_cps.loc['Kr83(LR)']   #std [cps]
@@ -3455,8 +3462,8 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     Zr90_std = Zr90 * df_cps_std.loc['Zr91(LR)']/df_cps.loc['Zr91(LR)']
 
     print(' --- Zr90 measured - natural Zr90 stimated (from nat Zr91): ----------')
-    print( ((df_cps.loc['Zr90(LR)'] - Zr90)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
-            ).round(2) )
+    print( ((df_cps.loc['Zr90(LR)'] - Zr90)[df_cps.columns[Sa_start_column-1:
+            Sa_start_column-1+N_sa]] ).round(2) )
     print('If Zr90 meas > natural Zr90 stimated, we have fission Sr90 there!!')
     print('------------------------------------------------------\n')
 
@@ -3466,14 +3473,15 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     Sr86 = df_cps.loc['Sr86(LR)'] - Kr86                #Nat Sr86
     Sr86_std = np.sqrt(df_cps_std.loc['Sr86(LR)']**2 + Kr86_std**2)
     
-    #Note Sr84 might be <0 if there is a lot of Kr!!!
+    #Note Sr84 might be <0 if there is a lot of Kr!!! ==> not good to use for Sr88 
+    #determination
     
-    # 3) Compute nat Sr 88 based on Sr 86. 
+    # 3) Compute nat Sr 88 based on nat Sr 86. 
     Sr88 = Sr86 * 82.58 / 9.86              #9,86 at% of Sr86
     Sr88_std = Sr88 * Sr86_std/Sr86  #std [cps]
     
-    print(' --- Sr88 measured - natural Sr 88 stimated: ----------')
-    print(((df_cps.loc['Sr88(LR)'] - Sr88)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
+    print(' --- Sr88 measured - natural Sr 88 stimated (from nat Sr86): ----------')
+    print(((df_cps.loc['Sr88(LR)'] - Sr88)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
             ).round(2) )
     print('If Sr88 meas > natural Sr88 stimated, we have fission Sr88 there!!')
     print('------------------------------------------------------\n')
@@ -3484,17 +3492,19 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     Sr90_fis = df_cps.loc['Zr90(LR)'] - Zr90
     Sr90_fis_std = np.sqrt(df_cps_std.loc['Zr90(LR)']**2 + Zr90_std**2)
 
+    #
+    # --- Pringing the fission Sr -----------
+    
+    # print('----------- Fission-produced Sr88 --------------')
+    # print(((Sr88_fis)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+    #         ).round(2) )
+    # print('----------- Fission-produced  Sr90 --------------')
+    # print(((Sr90_fis)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+    #         ).round(2) )
+    # print('-----------------------------------------\n')
     
     #Check, checking if stimated abundances ratio matches ORIGEN abundances!!
 
-    print('----------- Fission Sr88 --------------')
-    print(((Sr88_fis)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
-            ).round(2) )
-    print('----------- Fission Sr90 --------------')
-    print(((Sr90_fis)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
-            ).round(2) )
-    print('-----------------------------------------\n')
-    
     '''
     We can also check if fiss Sr80 and Fiss Sr90 confirm each other, based on the
     abundances, now in wt%!! ORIGEN gives that (or at least that I a aware of!)
@@ -3503,53 +3513,75 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     
     '''  
     
-    print('----- Sr88 fission / ORIGEN abundance of fiss Sr88: ---------')
-    print(((Sr88_fis/Sr88_fis_ab)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
-            ).round(2) )
-    print('----- Sr90 fission / ORIGEN abundance of fiss Sr90: ---------')
-    print(((Sr90_fis/Sr90_fis_ab)[df_cps.columns[Sa_start_column:Sa_start_column+N_sa]]
-            ).round(2) )
-    print('If both ratios are somewhat similar, this means that both isotopes confirm each other')
-    print('-------------------------------------------\n ')      
+    # print('----- fission-produced Sr88 / ORIGEN abundance of fiss Sr88: ---------')
+    # print(((Sr88_fis/Sr88_fis_ab)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+    #         ).round(2) )
+    # print('----- Sr90 fission / ORIGEN abundance of fiss Sr90: ---------')
+    # print(((Sr90_fis/Sr90_fis_ab)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+    #         ).round(2) )
+    # print('If both ratios are somewhat similar, this means that both isotopes confirm each other')
+    # print('-------------------------------------------\n ')      
 
 
-    # ------------Output, including new variables in old ones -------------
+    #Other check (better I would say) is compute abundance ratio, and relate to the
+    #theoretical one:  Sr88/Sr90 fission ORIGEN = measured
+    Fission_ratio = Sr88_fis/Sr90_fis
+    print('---Ratio fission produced Sr88/Sr90 --------')
+    print(f'Theoretical fission ratio (ORIGEN): {Sr88_fis_ab/Sr90_fis_ab: .2f}' )
+    print((Fission_ratio[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+            ).round(2) )
+    print(' If theoretical and obtained ratio are somehwat similar, both isotopes confirm each other \n')
+    print('Values < 0 indicats not trustworthy data!')
+    
+    # ------------Output,including new variables in old ones -------------
+    '''
+    Okay, we need to include now the computed Sr90 in the cps and %rsd variables.
+    But, to avoid re-running this file without adding multiple rows with Sr90,
+    for example to check the printed info, I will only do the writing if Sr90
+    is not found in the df_cps
+    
+    '''
     #Lets include Sr90 into the cps and csp %rsd!
     
-    '''
-    Okay, I can not directly save those variables, because some Sr90 values are
-    negative, really negative. And that makes problem for BLk corr, since I substract
-    blk or min (samples). Subtract a negative value increase that, making the result
-    wrong. So, a simple fix of replacing negative values by 0 would fix that!
-    '''
-    Sr90_fis = Sr90_fis.clip(lower = 0)         #replcaing negative values by 0!
+    if 'Sr90(LR)' in df_cps.index:      #if Sr90 already there, not doing anything!
+        print('Sr90(LR) already exist in cps/rsd variables, so will not add it again!')    
+        df_cps_new = df_cps
+        df_cps_rsd_new= df_cps_rsd
+        
+    else:                   #Sr90 not present, so I need to do all the writing procedure
     
-
-    #Now we can start:    
-    df_cps1_2 = df_cps.iloc[:Zr90_row-7,:]        #1st half
+        '''
+        Okay, I can not directly save those variables, because some Sr90 values are
+        negative, really negative. And that makes problem for BLk corr, since I substract
+        blk or min (samples). Subtract a negative value increase that, making the result
+        wrong. So, a simple fix of replacing negative values by 0 would fix that!
+        '''
+        Sr90_fis = Sr90_fis.clip(lower = 0)         #replcaing negative values by 0!
+    
+        #Now we can start:    
+        df_cps1_2 = df_cps.iloc[:Zr90_row-7,:]        #1st half
             #-7 because data start in row 7 (Co59)
-    df_cps2_2 = df_cps.iloc[Zr90_row-7:,:]        #2nd half
+        df_cps2_2 = df_cps.iloc[Zr90_row-7:,:]        #2nd half
                 #1st element there is Zr90
     
-    df_cps1_2.loc['Sr90(LR)'] = Sr90_fis        #adding the new data
+        df_cps1_2.loc['Sr90(LR)'] = Sr90_fis        #adding the new data
     
-    #merging them again
-    df_cps_new = pd.concat([df_cps1_2, df_cps2_2])      #merging them again!
+        #merging them again
+        df_cps_new = pd.concat([df_cps1_2, df_cps2_2])      #merging them again!
     
-    #And now we need to do the same for the %rsd
-    df_cps_rsd_1_2 = df_cps_rsd.iloc[:Zr90_row-7,:]        #1st half
+        #And now we need to do the same for the %rsd
+        df_cps_rsd_1_2 = df_cps_rsd.iloc[:Zr90_row-7,:]        #1st half
             #-7 because data start in row 7 (Co59)
-    df_cps_rsd_2_2 = df_cps_rsd.iloc[Zr90_row-7:,:]        #2nd half
+        df_cps_rsd_2_2 = df_cps_rsd.iloc[Zr90_row-7:,:]        #2nd half
                 #1st element there is Zr90
     
-    df_cps_rsd_1_2.loc['Sr90(LR)'] = (Sr90_fis_std/Sr90_fis*100).replace(np.inf,0)
+        df_cps_rsd_1_2.loc['Sr90(LR)'] = (Sr90_fis_std/Sr90_fis*100).replace(np.inf,0)
           #%rsd. Ensuring to have no inf values!!
     
-    #merging them again
-    df_cps_rsd_new = pd.concat([df_cps_rsd_1_2, df_cps_rsd_2_2])      #merging them again!
+        #merging them again
+        df_cps_rsd_new = pd.concat([df_cps_rsd_1_2, df_cps_rsd_2_2])      #merging them again!
 
 
-    
     #------------ Excel writing --------------
     '''
     I will write in a single excel 2 excel sheets:
@@ -3604,13 +3636,20 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
 
     writer.close()                 #critical step, to save the excel xD
     
+    print('-----------------------------------------------------')
+    print('Ending the Sr correction')
+    print('-----------------------------------------------------\n')
+    
     #-------- Output --------------
     #Lets return both variables also here!
     #maybe return also fiss Sr88 fiss and nat??
         
     Output = {'dat' : df_cps_new, 
-              '%rsd': df_cps_rsd_new}
-    
+              '%rsd': df_cps_rsd_new,
+              'Fission Sr88/Sr90': Fission_ratio,
+              'Fission Sr88': Sr88_fis, 'Fission Sr88 std': Sr88_fis_std,
+              'Fission Sr88 %rsd': Sr88_fis_std/Sr88_fis*100,
+              'Fission Sr90 %rsd': Sr90_fis_std/Sr90_fis*100}
     
     return Output
 

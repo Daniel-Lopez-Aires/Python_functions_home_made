@@ -89,10 +89,13 @@ At_we_nat = pd.read_excel('C:/Users/Administrator/Desktop/Python/at_wt_natural_e
                       index_col=0, sheet_name = 'To_read_atom_weight')      
         #Path from guest laptop from JRC)       
               
-Rad_dat = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx', 
-                      index_col=0)      #half lifes and masses of radionuclides
-
+Rad_dat_gamma = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx',  
+                        sheet_name= 'Gamma',   index_col=0)      
+                    #half lifes and masses of radionuclides
+Rad_dat_alpha = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx',  
+                        sheet_name= 'Alpha',   index_col=0)   
         
+
 #############################################################            
 #%%## ## 1.1) ICPMS excel reader #############
 #####################################
@@ -3915,7 +3918,7 @@ def ICPMS_Homogenize(df_ref, df, Return_extra_mass = 0):
 #%% ########## 1.21 )ICPMS Get activity ###########################
 ###############################################
     
-def ICPMS_Get_Activity (df_ppb, df_ppb_std ):
+def ICPMS_Get_Activity (df_ppb, df_ppb_std, Type = 'Gamma' ):
     '''
     Function that, starting from the df with the ICPMS concentrations, will
     compute the totala activity of the desired radionuclides. Assuming concentration
@@ -3937,6 +3940,7 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std ):
             .index = masses (U238(LR), etc)
             .each column is a sample
         .df_ppb_std: df with the ppb std, in the same format
+        .Type: type of the activity. Default: 'Gamma'. Alpha accepted also.
         
     *Output
         .dictionary with 2 df containing the activity and its ucnertainty
@@ -3950,12 +3954,20 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std ):
     
     base_isotopes = df_ppb.index.str.extract(r"^([A-Z][a-z]?\d+)")[0]
     #base_isotopes = [a[:-4] for a in df_ppb.index]
-# Map to specific activity (Rad_dat must have isotopes as index)
+    # Map to specific activity (Rad_dat must have isotopes as index)
 
-
-    a_values = Rad_dat['a (Bq/g)'].reindex(base_isotopes).to_numpy() 
+    if Type == 'Gamma':         #Gamma activity wanted
+        print('---------------- Radiation type: Gamma ------\n')
+        a_values = Rad_dat_gamma['a (Bq/g)'].reindex(base_isotopes).to_numpy() 
                 #specific activity
-
+    elif Type == 'Alpha':          #Alpha activity wanted
+        print('---------------- Radiation type: Alpha ------\n')
+        a_values = Rad_dat_alpha['a (Bq/g)'].reindex(base_isotopes).to_numpy() 
+    else:
+        print('Wrong type of radiaotion type given, please give "Gamma" or "Alpha only')
+        print('using nan as specific activiy')
+        a_values = np.nan    
+    
     # Compute activity: conc(ppb) × SA(Bq/g) × 1e-9 (ppb → g/g)
     A = df_ppb.multiply(a_values * 1e-9, axis=0)  
     

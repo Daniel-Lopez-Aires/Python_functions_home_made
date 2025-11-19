@@ -3386,7 +3386,7 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     
     The correction consist on:
         1) Compute Kr84, Kr86
-        2) Get Sr84, Sr86
+        2) Get Sr84, Sr86 based on them
         3) Compute Sr88 based on Sr86
         4) Copmute fiss Sr88 with that: Sr88
         5) For Sr90, we need to stimate Zr90 based on Zr91
@@ -3437,9 +3437,11 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     # ------------ To Do: --------
         .Apply also for MR elements?
         .save Sr88 nat and fiss? Maybe only in python at least?
+        .Modify Zr90 removing the fission Sr90??
+        
     '''
     
-    print('-----------------------------------------------------')
+    print('\n-----------------------------------------------------')
     print('Starting the Sr correction! ')
     print('-----------------------------------------------------')
     
@@ -3546,6 +3548,8 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     '''
     #Lets include Sr90 into the cps and csp %rsd!
     
+    
+    print('Note negative Sr90 are changed to NaN in the saved variables !!!! \n')
     if 'Sr90(LR)' in df_cps.index:      #if Sr90 already there, not doing anything!
         print('Sr90(LR) already exist in cps/rsd variables, so will not add it again!')    
         df_cps_new = df_cps
@@ -3560,7 +3564,8 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
         wrong. So, a simple fix of replacing negative values by 0 would fix that!
         '''
         Sr90_fis = Sr90_fis.clip(lower = 0)         #replcaing negative values by 0!
-    
+        Sr90_fis = Sr90_fis.replace(0, np.nan)                 #replace 0 from nan, to avoid missinterpreatation
+        
         #Now we can start:    
         df_cps1_2 = df_cps.iloc[:Zr90_row-7,:]        #1st half
             #-7 because data start in row 7 (Co59)
@@ -3674,7 +3679,7 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     ACtually not for all the elements, since some sammes have interferences. For 
     those, you should not take those masses into acccount, rather use the other
     isotopes to stimate elemental conc: for Sr, Sr87 has interefernces (Rb87), so
-    if we do [Sr] = sum (Sr), the value will be high. YOu should do (Stef)
+    if we do [Sr] = sum (Sr), the value will be high. YOu should do:
         [Sr] = sum (isot without inter) / sum (wt% of those isotopes) * 100
         
     That I will do. Hence I need to read wt%, from the excel. This funciton also
@@ -3684,6 +3689,12 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     Eg, Mo92. Int he excel it is writen Zr92, so for Zr is computed with the wt%. 
     But for Mo would also need to be done, since not all the isotopes are written,
     Mo92 is missing (interferni).
+    
+    The function is done such that:
+            .If no interference, just sum the isotopes
+            .If interferences, then do the parcial sum/ parcial sum wt% * 100
+    wt% not defined for radioactive isotopes, so we need to improve this for
+    radioactive elements with interferences!!
     
     Uncertainty computed using quadratic propagation.
         
@@ -3704,6 +3715,12 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
             .df
             .df_std
             .df_%rsd
+            
+            
+    %---------- To Do: -----------
+        *As you identify more interfering isotopes/elemens, write them, update the
+        function!
+        *Sort Sr issue (bent released it)
         
     '''
     
@@ -3718,6 +3735,7 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
                    'Nd144(LR)','Nd148(LR)','Sm150(LR)','Sm152(LR)','Sm154(LR)',
                    'Gd156(LR)','Gd158(LR)','Gd160(LR)','Dy162(LR)','Dy164(LR)',
                    'Er168(LR)','Yb170(LR)','Yb174(LR)','Yb176(LR)',
+                   #Cm248=Th232 + O. Note no fiss produced Cm248!
                    'Ti48(MR)','Ti50(MR)','Cr54(MR)','Ni58(MR)','Zn64(MR)',
                    'Ge70(MR)','Ge74(MR)','Se76(MR)',
                    #Repeatitions beggin for MR
@@ -3728,7 +3746,8 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
             
     Elem_Interf = ['Rb(LR)', 'Mo(LR)', 'Pd(LR)', 'Te(LR)', 'Rb(LR)', 'Nd(LR)',
                    'Sm(LR)', 'Gd(LR)', 'Dy(LR)','Er(LR)','Yb(LR)','Hf(LR)',
-                   'Lu(LR)','Ca(MR)','V(MR)','Cr(MR)','Fe(MR)','Ni(MR)',
+                   'Lu(LR)',
+                   'Ca(MR)','V(MR)','Cr(MR)','Fe(MR)','Ni(MR)',
                    'Zn(MR)','Ge(MR)']   #Interfering elements. These are the 
         #elements with conflicintg isotopes, but that not appear in the icpms index list
         #eg: Sr87 appear and is Sr87 Rb87, hence Rb is written here.
@@ -3796,10 +3815,13 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     
     '''
     df_Elem = pd.DataFrame(index = df_grouped.index,
-                    columns = df.columns)    #Df to fill with elemental data
+                    columns = df.columns)    #Empty Df to fill with elemental data
     df_Elem_std = pd.DataFrame(index = df_grouped.index,
-                    columns = df.columns)    #Df to fill with elemental data std
+                    columns = df.columns)    #Empty Df to fill with elemental data std
     #
+    
+    #Now the big loop:
+        
     for index in df_Elem.index:        #loop throught all elements in the df
         Isotopes = df_clean.loc[df_clean['Element(Res)'] == index] 
                         #df with the isotopes for the given element
@@ -3810,7 +3832,7 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
                 #of the isotopes of that element is a interfering isotope
             #(index) in the df, OR if the element is in the interfering eleemnt list
             #for the interfering isotopes not in the icpms index.
-            #the 
+            #
             #The interferences are:
             Iso_inter = [iso for iso in Isotopes.index if iso in Interf_here]
                     #that have the isotopes with interferences. We remove them:
@@ -3819,21 +3841,28 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
             Isotopes_inter_free_std = Isotopes_std.drop(Iso_inter, axis = 0)
             #
             #Then I need to do sum isotopes * 100/sum abundances
-            At_mass = excel_dat.loc[[x[:-4] for x in Isotopes_inter_free.index],
+            Wt_per = excel_dat.loc[[x[:-4] for x in Isotopes_inter_free.index],
                         "wt%"]          #getting wt% of those isotopes (inter free)
                 #Now we can compute the elemental conc:
             df_Elem.loc[index] = Isotopes_inter_free.drop('Element(Res)', 
-                            axis = 1).sum(axis = 0)/ At_mass.sum(axis = 0) * 100
+                            axis = 1).sum(axis = 0)/ Wt_per.sum(axis = 0) * 100
                     #elemental conc = sum isotopes/wt% * 100. I remove the elem(REs) column
             df_Elem_std.loc[index] = np.sqrt(Isotopes_inter_free_std.drop('Element(Res)', 
-                            axis = 1)**2).sum(axis = 0) / At_mass.sum(axis = 0) * 100
+                            axis = 1)**2).sum(axis = 0) / Wt_per.sum(axis = 0) * 100
                             #quadratic std prop
-        
-        else:       # no intereferences, just sum the isotopes
-            df_Elem.loc[index] = Isotopes.drop('Element(Res)', 
+        else:                           # no intereferences, just sum the isotopes
+            if index=='Cm(LR)':         #For Cm, discard Cm248, 232Th+O interference!
+                print('For Cm, Cm248 discarded, since no fission produced [ORIGEN], its Th232+O')
+                df_Elem.loc[index] = Isotopes.drop('Element(Res)', 
+                                               axis = 1).drop('Cm248(LR)').sum(axis = 0).values
+                    #summing the isotopes. I need to remove the eleemnt column + row of Cm248
+                df_Elem_std.loc[index] = np.sqrt(Isotopes_std.drop('Element(Res)', 
+                                               axis = 1).drop('Cm248(LR)')**2).sum(axis = 0).values
+            else:               #General procedure, sum all the isotopes
+                df_Elem.loc[index] = Isotopes.drop('Element(Res)', 
                                                axis = 1).sum(axis = 0).values
                     #summing the isotopes. I need to remove the eleemnt column!
-            df_Elem_std.loc[index] = np.sqrt(Isotopes_std.drop('Element(Res)', 
+                df_Elem_std.loc[index] = np.sqrt(Isotopes_std.drop('Element(Res)', 
                                                axis = 1)**2).sum(axis = 0).values
     
     
@@ -3841,14 +3870,16 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     #df_Elm is not numeric, so lets convert to it
     df_Elem = df_Elem.apply(pd.to_numeric)  
     df_Elem_std = df_Elem_std.apply(pd.to_numeric)  
-    
+    print('-------- Isotopes with interferences present in the data:')
+    print(Interf_here)
+    print('---------------------')
     if Debug == True:
         return {'dat' : df_Elem, 'dat_interferences_not_removed': df_grouped} 
         #Note df_grouped > df_Elem, which amkes makes considering the overstimation
         #for the case with intereferences. Function must be checked, but looking good!
     else:
         return {'dat': df_Elem, 'std': df_Elem_std, 
-                '%rsd': df_Elem_std/df_Elem * 100}
+                '%rsd': df_Elem_std/df_Elem * 100, 'Interf': Interf_here}
     
     
 #%% ------------- 1.19.1) Isotopes to elements, dictionary version ##############
@@ -6827,3 +6858,71 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
     return df
 
 
+
+#--------------------------------------------
+#%% ------------ 7) Gamma analysis -----------
+#---------------------
+
+def Gamma_Bq_to_conc(df_A, df_A_std):
+    '''
+    Function that will read a df with the gamma report (pdf) and will compute the
+    concentration.
+    
+    In the gamma measurements we measured activity in Bq, we need to get the 
+    concentraiton. BUt should be trivial, since
+    A = lambda N ==> N = A /Lambda
+
+    N would be particle number, but I can convert to masss easily:
+        
+        x part * 1 mol /N_A part * M g /1 mol = x * M/N_A
+        
+    
+    *Inputs:
+        .df_A: df with the activity data. Each row a sample, index the nuclei, with (LR)
+        to be able to merge with ICPMS, if needed
+        
+    *Outputs:
+        .
+    '''
+
+    
+    #----------- 0) Precalcs, loading -------
+    '''
+    In the gamma measurements we measured activity in Bq, we need to get the 
+    concentraiton. BUt should be trivial, since
+    A = lambda N ==> N = A /Lambda
+
+    N would be particle number, but I can convert to masss easily:
+        
+        x part * 1 mol /N_A part * M g /1 mol = x * M/N_A
+        
+    TO convert to concentration, ppb, since I had 1g of sample, would be trivial:
+            ASSUMPTION, NOT using 100% mass, assuming 1, so I need to do 10**9/1!
+    '''
+    Rad_dat = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx', 
+                        sheet_name= 'Gamma',
+                      index_col=0)  #Radioactive data
+    Rad_dat_rel =Rad_dat.loc[df_A.index]         #Containing only the isotopes that were measured!
+
+    #That contain the rad data for all the nuclei, we need to get our reelvant ones
+    #------------ 1) N calculation (number of atoms) ------
+    N = df_A/Rad_dat_rel['Lambda (s-1)']                    #number of particles
+    N_std = df_A_std/Rad_dat_rel['Lambda (s-1)']            #std
+    #N_Cs134 = Act3_meas_Df.loc['Cs134(LR)']/Rad_dat_rel['Lambda (s-1)'] #particles
+    #N_Cs134_std = Act3_meas_std_Df.loc['Cs134(LR)']/Rad_dat['Lambda (s-1)']['Cs134']  #particles std
+
+
+    #---------- 2) Conversion to mass
+    
+    df_m = N*Rad_dat_rel['M (g/mol)']/N_A       #[g] mass of the isotopes
+    df_m_std = N_std * Rad_dat_rel['M (g/mol)']/N_A   #[std], only with error of N!!
+
+    #Concnetration calcs
+
+    # df_Conc = N/N_A*19**9/m_sa
+    # Gamma3_ppb_Cs134 = N_Cs134/N_A*Rad_dat['M (g/mol)'].loc['Cs134']*10**9/1        #[ppb] Cs134
+    # Gamma3_ppb_std_Cs134 = N_Cs134_std/N_A*Rad_dat['M (g/mol)'].loc['Cs134']*10**9/1      #[ppb] std Cs134
+
+    'Work in progress....'
+    return
+        

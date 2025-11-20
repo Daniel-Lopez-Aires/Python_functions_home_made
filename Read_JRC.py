@@ -2241,10 +2241,10 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         #Before storing them, I will remova back the NaN, by doing Qe to 9999999999,
         #since it
         #could give errors (like that the number is easy noticeable!)
-        Qe.fillna(99999999999, inplace = True)
-        Qe_std.fillna(99999999999, inplace = True)
-        Kd.fillna(99999999999, inplace = True)
-        Kd_std.fillna(99999999999, inplace = True)
+        # Qe.fillna(99999999999, inplace = True)
+        # Qe_std.fillna(99999999999, inplace = True)
+        # Kd.fillna(99999999999, inplace = True)
+        # Kd_std.fillna(99999999999, inplace = True)
         
         #Finally, lets store it
         repl_C0__Ceq.append(C0__Ceq)
@@ -2368,11 +2368,11 @@ def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
         cols = [i + j*N_sa for j in range(Nrepl)] #column numbers for the 3 replicates
                     #of a given sample
         df_temp = df_dat.iloc[:, cols]  #df with the 3 replicates for each sample
-        means.append(df_temp.mean(axis=1) )
-        stds.append(df_temp.std(axis=1) ) #store the std of the mean
+        means.append(df_temp.mean(axis=1) )     #store the mean value
+        stds.append(df_temp.std(axis=1) ) #store the std 
         
-        if df_dat_std is not None:      #if dat_std is provided
-            df_temp_std = df_dat_std.iloc[:, cols]      #same but for the std
+        if df_dat_std is not None:      #if dat_std is provided, compute avg and std of the stds
+            df_temp_std = df_dat_std.iloc[:, cols]      #same but for the stds
             std_repl.append(df_temp_std.mean(axis = 1) )    #doing mean of stds
         else:      #no dat_std provided, so using the other value
              std_repl.append(df_temp.std(axis=1) )      #using the value of the < > calc
@@ -2386,10 +2386,17 @@ def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
     df_std_repl = pd.concat(std_repl, axis=1)
     df_std_repl.columns = colnames
     
+    '''
     #Now I will chose the higher one, or std (from mean calc), or <stds (repl)>
     
-    df_final_std = pd.DataFrame( np.maximum(df_std.values, df_std_repl.values),
-        index=df_std.index, columns=colnames )      #the final std to be used
+    But, in case that one of the data has NaN, the max of a number and NaN is NaN,
+    so, in order to retreieve the number, I will subtitute in the comparison NaN
+    for 0, but only in this operation, after will still be NaN. 
+    '''
+    
+    df_final_std = pd.DataFrame( np.maximum(df_std.replace(np.nan,0).values, 
+                df_std_repl.replace(np.nan,0).values),
+                index=df_std.index, columns=colnames )      #the final std to be used
     
     # If original was Series, return as Series
     if is_series:
@@ -3372,7 +3379,166 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
 
 
 
-#%% ######## 1.19 Sr correction ##############
+#----------------------------------------------------------------
+#%% ######## 1.19 Pu correction ##############-------------------
+#################################################################    
+
+def ICPMS_Pu_correction(df_ppb, df_ppb_std, 
+                            Pu241_fis_ab = 6.18, Pu242_fis_ab = 12.09,
+                            Pu239_fis_ab = 49.24, Pu240_fis_ab = 28.37,
+                            Am241_fis_ab = 74.94, Am243_fis_ab = 25.01):
+    '''
+    This function will do the Pu correction to ICPMS data. Note that the fission
+    Pu, U and Am are:
+        Pu 238, 239, 241, 242, 244
+        U 234, 235, 236, 238
+        Am 241, 243
+        Cm 243, 244, 245, 246, 247
+    Many posible interferences there, but to decide we need to look at the inventory
+    (ORIGEN data):
+        .241 Am, Pu. Inventory comparable, Am>Pu, so we will determine the amount of
+        Pu241 based on the other Pu isotopes, the ratio, since the icpms seemed to
+        preserve the fissionr ati (as expected)
+        .238 = U, Pu. Since U = 10**3 Pu, for the moment we will not do this!!!
+        .242 = Pu, Am. Pu = Am * 10**4, so will not be done.
+        .243 = Am, Cm. Since Am = Cm *10**3, we dont do this also,s of ar...
+        
+    Note that for the std calcs, it was ASSUMED:
+        i) NO std to ORIGEN calcs (fission abundances, etc)
+        
+    *INPUTS
+        .df_ppb: df with the ppb data. 
+        .df_ppb_std: df with the ppb std data
+        . .._ab: fission abundances of those nuclei [%]
+        
+    *OUTPUTS
+        .dicitonary containing 3 df:
+            .df_ppb: including Ba, Cs 
+            .df_ppb_std: including the rstd
+            .df with the Cs abundances [%]
+        
+        
+        
+     #------------ To Do: -------------------------------------------------
+                .
+    '''
+
+    ######## 0) Pre adaptations ---------
+     
+        #to adapt the counting system, python starts at0, not 1!
+    print('\n------------------------------------------------')
+    print('------------ Start fo the Pu/Am calibration function ------------')
+    print('Did you calibrate properly Ba masses? is mandatory!!!')
+    print('-------------------------------------------------\n')
+
+
+    #-------------------------------
+    #-------------- 1) Pu241 cacls ---------------------------------
+    #-------------
+    
+    #----------- 1.1) Ratio Pu ---------
+    
+    rat_Pu239_240_teo = Pu239_fis_ab/Pu240_fis_ab       #theoretical ratio Pu239/240
+    
+    rat_Pu239_240 = df_ppb.loc['Pu239(LR)'] / df_ppb.loc['Pu240(LR)'] #measured ratio
+    rat_Pu239_240_std =  rat_Pu239_240 * np.sqrt( 
+        (df_ppb_std.loc['Pu239(LR)']/df_ppb.loc['Pu239(LR)'])**2 + 
+        (df_ppb_std.loc['Pu240(LR)']/df_ppb.loc['Pu240(LR)'])**2)   #std
+    
+    
+    print('Theoretical ratio Pu239/240: ' + str(np.round(rat_Pu239_240_teo,2)) )
+    print('Measured ratio:')
+    print(rat_Pu239_240.round(2))
+    print('They should be somehwat similar, otherwise this correction should not be done \n')
+    
+    #--------------- Pu241 expected
+    '''
+    We can compute basde on the abundances. WE can use both isotopes actually:
+        Pu239 + 240/ab 239+240 = Pu 241/ab 241 ==> Pu241 = ab Pu241 * ()
+    '''
+    Pu241 = Pu241_fis_ab * (df_ppb.loc['Pu239(LR)'] + df_ppb.loc['Pu240(LR)'] ) / (
+                                Pu239_fis_ab+Pu240_fis_ab)      #Pu241 expected
+    Pu241_std= Pu241* np.sqrt(df_ppb_std.loc['Pu239(LR)']**2+df_ppb_std.loc['Pu240(LR)']**2
+        ) / (df_ppb.loc['Pu239(LR)'] + df_ppb.loc['Pu240(LR)'] )        #std of Pu241
+    Pu241_rsd = Pu241_std/Pu241 *100        #%rsd
+    
+    
+    #-------------- Am241 real
+    #Since Am241 is the dominant isotope in 241, will be computed as total - Pu computed
+    Am241 = df_ppb.loc['Am241(LR)']- Pu241
+    Am241_std = np.sqrt(df_ppb_std.loc['Am241(LR)']**2 + Pu241_std)         #std
+    Am241_rsd = Am241_std / Am241 * 100                 #%rsd
+            #This blow up, from 20% to 50% !!!
+    
+    # ------------- Sens correction ----------------
+    'This is not needed since all sensitivities for actinides computed based on U238!'
+    
+    
+    
+    # ------------- Cross-check ---------------------------
+    '''
+    To validate the correction, we could check Am fission abundances. Are the data 
+    improved now after the Pu241 removal?
+    '''
+    
+    rat_Am241_243_teo = Am241_fis_ab / Am243_fis_ab         #teoretical ratio
+    
+    rat_Am241_243 =  Am241 / df_ppb.loc['Am243(LR)']        #new ratio
+    
+    rat_Am241_243_old = df_ppb.loc['Am241(LR)'] / df_ppb.loc['Am243(LR)']  
+                                            #old ratio (with Pu241 in)
+    
+    
+    print('Theoretical Am241/243 ratio: ' + str( np.round(rat_Am241_243_teo,2)) )
+    print('Old ratio (Pu241 inside):')
+    print(rat_Am241_243_old.round(1))
+    print('New ratio (Pu241 removed)')
+    print(rat_Am241_243.round(1))
+    print('New ratio should be somewhat closer to the theoretical, if correction is okay \n ')
+    
+    
+    #Final check, see difference new and old Am241:
+    Am241_old= df_ppb.loc['Am241(LR)']      #storing old data
+    Am241_std_old = df_ppb_std.loc['Am241(LR)']
+    
+    print('Am241_old/Am241_new: ')
+    print( (Am241_old/Am241).round(1) )
+    
+    print('---------------------------------------------')
+    print('---------- Pu241 correction done! ------------')
+    print('----------------------------------------------')
+
+
+    ############## 7) Output ##################
+    '''
+    Okay, I will return the df_ppb, but I will add it the info. 
+    The %rsd will also be computed and stored!
+    '''
+    
+    ##### ppb
+    #Overwriting the Am241 with the only Am241 data + adding new row, Pu241
+
+    
+    
+    df_ppb.loc['Am241(LR)'] = Am241
+    df_ppb.loc['Pu241(LR)'] = Pu241
+    
+    #### ppb_std
+    df_ppb_std.loc['Am241(LR)'] = Am241_std
+    df_ppb_std.loc['Pu241(LR)'] = Pu241_std
+    
+    #rsd
+    df_rsd = df_ppb_std/df_ppb * 100
+    
+    
+    ###### Returning #########
+    #A dictionary with the 3 df will be returned, to keep it more gathered
+    output = {'dat': df_ppb, 'std': df_ppb_std, '%rsd': df_rsd}
+    return output
+
+
+#--------------------------------------------------------
+#%% ######## 1.20 Sr correction ##############
 #################################################################    
 def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
                         Sr90_fis_ab = 48.94, Excel_name = 'Sr_correction.xlsx',
@@ -3477,13 +3643,15 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     Sr84_std = np.sqrt(df_cps_std.loc['Sr84(LR)']**2 + Kr84_std**2)
     Sr86 = df_cps.loc['Sr86(LR)'] - Kr86                #Nat Sr86
     Sr86_std = np.sqrt(df_cps_std.loc['Sr86(LR)']**2 + Kr86_std**2)
-    
+    Sr86_rsd =  Sr86_std/Sr86*100               #%rsd
+                    #Low values for rsd of Sr86!!
     #Note Sr84 might be <0 if there is a lot of Kr!!! ==> not good to use for Sr88 
     #determination
     
     # 3) Compute nat Sr 88 based on nat Sr 86. 
     Sr88 = Sr86 * 82.58 / 9.86              #9,86 at% of Sr86
     Sr88_std = Sr88 * Sr86_std/Sr86  #std [cps]
+    Sr88_rsd = Sr88_std/Sr88*100                    #%rsd  low values obtained!
     
     print(' --- Sr88 measured - natural Sr 88 stimated (from nat Sr86): ----------')
     print(((df_cps.loc['Sr88(LR)'] - Sr88)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
@@ -3494,19 +3662,54 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     # ------ 4) Computte fission Sr 88 and Sr 90
     Sr88_fis = df_cps.loc['Sr88(LR)'] - Sr88
     Sr88_fis_std = np.sqrt(df_cps_std.loc['Sr88(LR)']**2 + Sr88_std**2)
+    Sr88_fis_rsd = Sr88_fis_std /Sr88_fis * 100             #%rsd, blows up here!!
+            #Makes sense, if A = B-C, and B \simeq C, then A<<, but \Delta A no, so deltaA/A >>>
     Sr90_fis = df_cps.loc['Zr90(LR)'] - Zr90
     Sr90_fis_std = np.sqrt(df_cps_std.loc['Zr90(LR)']**2 + Zr90_std**2)
+    Sr90_fis_rsd = Sr90_fis_std /Sr90_fis * 100                 #%rsd, blows up here!!
 
-    #
-    # --- Pringing the fission Sr -----------
+    #----------- 5) Overwriting the Zr90
+    '''
+    Since 90 was both Sr90, Zr90, I will rewrite the Zr90, remvoing the Sr90 
+    contribution. But before doing that, since sometimes, if no fission Sr90 present,
+    the computed Sr90 is <0, not to overstimate Zr90, I will replace
+    I will replace those numbers by :
+            -0 for doing the operation
+            -NaN for printing an output
+            
+    If values are replaces by 0, the std calc should also be modified accordingly.
     
-    # print('----------- Fission-produced Sr88 --------------')
-    # print(((Sr88_fis)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
-    #         ).round(2) )
-    # print('----------- Fission-produced  Sr90 --------------')
-    # print(((Sr90_fis)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
-    #         ).round(2) )
-    # print('-----------------------------------------\n')
+    '''
+    Sr90_fis = Sr90_fis.clip(lower = 0)         #replcaing negative values by 0!
+    epsilon = 1e-14                     #for the std correction adaptation
+    Sr90_fis_std =  Sr90_fis_std * Sr90_fis/(Sr90_fis+epsilon)
+    
+        #modifying the std accordingly; when value is 0, the st will also be 0. 
+        #no change otherwise (x/(x+epsilon) = 1, the epsilon is to avoid
+        #avoid numerical error of division by 0)
+        
+    df_cps.loc['Zr90(LR)'] = df_cps.loc['Zr90(LR)']-Sr90_fis #Net Zr90, 90 - Sr90
+    df_cps_std.loc['Zr90(LR)'] = np.sqrt(df_cps_std.loc['Zr90(LR)']**2 + Sr90_fis_std**2)
+                                #net Zr90 std
+        
+    
+    # --- Pringing the fission Sr -----------
+    Sr90_fis = Sr90_fis.replace(0, np.nan)    #replace 0 from nan, to avoid missinterpreatation
+    Sr90_fis_rsd = Sr90_fis_std /Sr90_fis * 100         #recomputing with the NaN
+    
+    print('----------- Fission-produced Sr88 --------------')
+    print(((Sr88_fis)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+            ).round(2) )
+    print('%rsd:')
+    print(((Sr88_fis_rsd)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+            ).round(1) )    
+    print('----------- Fission-produced  Sr90 --------------')
+    print(((Sr90_fis)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+            ).round(2) )
+    print('%rsd:')
+    print(((Sr90_fis_rsd)[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
+            ).round(1) )    
+    print('-----------------------------------------\n')
     
     #Check, checking if stimated abundances ratio matches ORIGEN abundances!!
 
@@ -3535,8 +3738,10 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     print(f'Theoretical fission ratio (ORIGEN): {Sr88_fis_ab/Sr90_fis_ab: .2f}' )
     print((Fission_ratio[df_cps.columns[Sa_start_column-1:Sa_start_column-1+N_sa]]
             ).round(2) )
-    print(' If theoretical and obtained ratio are somehwat similar, both isotopes confirm each other \n')
-    print('Values < 0 indicats not trustworthy data!')
+    print(' If theoretical and obtained ratio are somehwat similar (1.), both isotopes confirm each other ')
+    print('Values < 0 indicats not trustworthy data! \n')
+    
+    
     
     # ------------Output,including new variables in old ones -------------
     '''
@@ -3550,6 +3755,7 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     
     
     print('Note negative Sr90 are changed to NaN in the saved variables !!!! \n')
+    
     if 'Sr90(LR)' in df_cps.index:      #if Sr90 already there, not doing anything!
         print('Sr90(LR) already exist in cps/rsd variables, so will not add it again!')    
         df_cps_new = df_cps
@@ -3563,9 +3769,7 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
         blk or min (samples). Subtract a negative value increase that, making the result
         wrong. So, a simple fix of replacing negative values by 0 would fix that!
         '''
-        Sr90_fis = Sr90_fis.clip(lower = 0)         #replcaing negative values by 0!
-        Sr90_fis = Sr90_fis.replace(0, np.nan)                 #replace 0 from nan, to avoid missinterpreatation
-        
+
         #Now we can start:    
         df_cps1_2 = df_cps.iloc[:Zr90_row-7,:]        #1st half
             #-7 because data start in row 7 (Co59)
@@ -3656,15 +3860,16 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
               '%rsd': df_cps_rsd_new,
               'Fission Sr88/Sr90': Fission_ratio,
               'Fission Sr88': Sr88_fis, 'Fission Sr88 std': Sr88_fis_std,
-              'Fission Sr88 %rsd': Sr88_fis_std/Sr88_fis*100,
-              'Fission Sr90 %rsd': Sr90_fis_std/Sr90_fis*100}
+              'Fission Sr88 %rsd': Sr88_fis_rsd,
+              'Fission Sr90': Sr90_fis,
+              'Fission Sr90 %rsd':  Sr90_fis_rsd}
     
     return Output
 
 
 
 #######################################################################
-# %% ######### 1.20) Isotopes to elements ###########################
+# %% ######### 1.21) Isotopes to elements ###########################
 ######################################################################
 def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     '''

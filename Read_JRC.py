@@ -21,8 +21,9 @@ For printing a break of line, \n goes at the end of the print, not at the
 beginning!
 """
 
-#%%######### 0) General packages ###########
-######################################
+#--------------------------------------------
+#%%         0) General packages 
+#--------------------------------------------
 
 
 import matplotlib.pyplot as plt  #for simplicity, to not write matplotlib.pyplot
@@ -96,9 +97,9 @@ Rad_dat_alpha = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA
                         sheet_name= 'Alpha',   index_col=0)   
         
 
-#############################################################            
-#%%## ## 1.1) ICPMS excel reader #############
-#####################################
+#--------------------------------------------         
+#%%          1.1) ICPMS excel reader
+#--------------------------------------------
 
 def Read_ICPMS_excel (excel_name, Sheet_name = 'To_read', Numbering_row = 1,
                       Is_wash_inside = 0,
@@ -244,9 +245,9 @@ def Read_ICPMS_excel (excel_name, Sheet_name = 'To_read', Numbering_row = 1,
     '''
 
 
-
-#%% ############## 1.1.5) Convert data from ppb to M ###########
-#############################################################
+#--------------------------------------------
+#%%         1.1.5) Convert data from ppb to M 
+#--------------------------------------------
 
 def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1, 
                    Delta_m_s = 0.0001, Delta_V_s = 0.001):
@@ -355,8 +356,9 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
     return Output             
                     
                     
-#%%########## 1.2) Future std computer!!!!!!!!!!!!!!!!!!!!!! #############
-#####################################
+#--------------------------------------------
+#%%         1.2) Future std computer
+#--------------------------------------------
 
 def ICPMS_std_calculator (df_cps, df_rsd):
     '''
@@ -419,9 +421,9 @@ def ICPMS_std_calculator (df_cps, df_rsd):
 
     
 
-
-#%%######## 1.3) ICPMS Dilution factor finder #############
-#####################################
+#--------------------------------------------
+#%%         1.3) ICPMS Dilution factor finder 
+#--------------------------------------------
 
 def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep'):
     '''
@@ -509,8 +511,9 @@ def ICPMS_Df_finder (excel_name, D_f_data, samp_prep_sheet_name = 'Sample_prep')
     return D_f            #return
 
 
-#%%######## 1.4) ICPMS Sens finder #############
-#####################################
+#--------------------------------------------
+#%%######## 1.4) ICPMS Sens finder 
+#--------------------------------------------
 
 def ICPMS_Sens_finder(Excel_name, Excel_sheet = 'Calib', Sens_column = 12):
     '''
@@ -541,8 +544,10 @@ def ICPMS_Sens_finder(Excel_name, Excel_sheet = 'Calib', Sens_column = 12):
     
     return df_sens
 
+
+#--------------------------------------------
 #%% ##### 1.4) ICPMS Dilution factor corrector #############
-#####################################
+#--------------------------------------------
 
 def ICPMS_Df_corrector (df_dat, Df):
     '''
@@ -601,8 +606,9 @@ def ICPMS_Df_corrector (df_dat, Df):
 
 
 
-#%% ######## 1.5) ICPMS Sample blank substraction #############
-#####################################
+#--------------------------------------------
+#%% ######## 1.5) ICPMS Sample blank substraction 
+#--------------------------------------------
 
 def ICPMS_Sample_Blk_corrector (df_dat, Nrepl = 2):
     '''
@@ -703,9 +709,9 @@ def ICPMS_Sample_Blk_corrector (df_dat, Nrepl = 2):
     return df_blk             #return
 
 
-
-#%%######## 1.6) ICPMS: Get Mass number #############
-#####################################
+#--------------------------------------------
+#%%######## 1.6) ICPMS: Get Mass number 
+#--------------------------------------------
 
 def Get_A_Resol(isotope_name):
     '''
@@ -755,9 +761,9 @@ def Get_A_Resol(isotope_name):
 
 
 
-
-#%%######## 1.7) ICPMS IS sens calculation/plotter #############
-#####################################
+#--------------------------------------------
+#%%######## 1.7) ICPMS IS sens calculation/plotter 
+#--------------------------------------------
 
 def IS_sens_calculator_plotter(df_cps_ppb, df_std,
         IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)',
@@ -987,8 +993,9 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     return df_IS_sens, df_IS_sens_std            #mass is an string!
 
 
-#%% ########## 1.8) ICPMS IS sens correction #############
-#####################################
+#--------------------------------------------
+#%% ########## 1.8) ICPMS IS sens correction 
+#--------------------------------------------
 
 def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
         IS_meas = ['Co59(LR)', 'In115(LR)', 'Ho165(LR)', 'Th232(LR)',
@@ -1389,9 +1396,9 @@ def IS_sens_correction(df_raw, df_raw_std, df_IS_sens, df_IS_sens_std,
     return df_IS_co, df_IS_co_std
 
 
-
-#%%########### 1.9) ICPMS Blank correction #############
-#####################################
+#--------------------------------------------
+#%%########### 1.9) ICPMS Blank correction 
+#--------------------------------------------
 def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
     
     '''
@@ -1529,8 +1536,9 @@ def ICPMS_ICPMSBlanks_corrector(df_IS_co, df_IS_co_std, columns_blks):
 
 
 
-#%%######## 1.10) ICPMS data processing automatized #############
-#####################################
+#--------------------------------------------
+#%%######## 1.10) ICPMS data processing automatized 
+#--------------------------------------------
 
 def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns, 
                        name_plot_LR_bef = 'IS_sensLR_plotBEF', 
@@ -1770,9 +1778,9 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     return To_save
 
 
-
-#%%######## 1.11) ICPMS Isotope selector #############
-#####################################
+#--------------------------------------------
+#%%######## 1.11) ICPMS Isotope selector 
+#--------------------------------------------
 def ICPMS_Isotope_selector(df_cps, Isotopes):
     '''
     Function to choose from all the elements measured in the DF some selected 
@@ -1827,9 +1835,9 @@ def ICPMS_Isotope_selector(df_cps, Isotopes):
 
 
 
-
-#%%############ 1.12) Kd calculaor #############
-#####################################
+#--------------------------------------------
+#%%############ 1.12) Kd calculaor 
+#--------------------------------------------
 
 def ICPMS_KdQe_calc (df_dat, df_dat_std, df_VoM_disol, df_m_be, 
                      df_VoM_disol_std = 0.0001, df_m_be_std = 0.0001, Nrepl = 2, 
@@ -2051,9 +2059,10 @@ def ICPMS_KdQe_calc (df_dat, df_dat_std, df_VoM_disol, df_m_be,
     
    
 
+#--------------------------------------------
+#%% ########## 1.13) Kd calculaor, Adsorption version 
+#--------------------------------------------
 
-#%% ########## 1.13) Kd calculaor, Adsorption version #############
-#####################################
 def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol, 
         df_m_be, df_VoM_disol_std = 0.001, df_m_be_std = 0.0001, 
         ret_Co__Ceq = False, Nrepl = 3):
@@ -2292,8 +2301,9 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     return results
 
 
-#%%####### 1.14) Mean/std of replicates calculator #############
-#####################################
+#--------------------------------------------
+#%%####### 1.14) Mean/std of replicates calculator 
+#--------------------------------------------
 
 
 def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
@@ -2529,9 +2539,9 @@ def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
            #return
 
 
-
-#%% ######## 1.15 Cs sep, cumulative conc computer ##############
-#################################################################
+#--------------------------------------------
+#%% ######## 1.15 Cs sep, cumulative conc computer 
+#--------------------------------------------
 
 def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
                                rho = 1, delta_rho = .001, MS_here = True, 
@@ -2655,8 +2665,9 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
         return df_cum, df_cum_std
 
     
-#%% ######## 1.16 Substraction of bentonite leached elements ##############
-#################################################################
+#--------------------------------------------
+#%% ######## 1.16 Substraction of bentonite leached elements 
+#--------------------------------------------
 
 def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
                              return_leached = False, Nucl_rel = Isot_rel,
@@ -2815,8 +2826,9 @@ def ICPMS_Removal_Bent_leach(df_ppb, df_ppb_std, df_MS, df_MS_std,
         return df_ppb_br, df_ppb_std_br
     
     
-#%% ######## 1.17 Ratio based correction Bentonite leached ##############
-#################################################################    
+#--------------------------------------------
+#%% ######## 1.17 Ratio based correction Bentonite leached 
+#--------------------------------------------   
 
 def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
     Nucl_rel=None, Nrepl=3):
@@ -2950,9 +2962,10 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
     return result
 
 
-    
-#%% ######## 1.18 Cs correction ##############
-#################################################################    
+
+#--------------------------------------------
+#%% ######## 1.18 Cs correction 
+#--------------------------------------------
 
 def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens, 
                         columns_blks = np.array([1,2,3]),
@@ -3380,8 +3393,8 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
 
 
 #----------------------------------------------------------------
-#%% ######## 1.19 Pu correction ##############-------------------
-#################################################################    
+#%% ######## 1.19 Pu correction 
+#--------------------------------------------   
 
 def ICPMS_Pu_correction(df_ppb, df_ppb_std, 
                             Pu241_fis_ab = 6.18, Pu242_fis_ab = 12.09,
@@ -3516,33 +3529,123 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
     '''
     
     ##### ppb
-    #Overwriting the Am241 with the only Am241 data + adding new row, Pu241
+    #Overwriting the Am241 with the only Am241 data
 
     
     
-    df_ppb.loc['Am241(LR)'] = Am241
-    df_ppb.loc['Pu241(LR)'] = Pu241
+    df_ppb.loc['Am241(LR)'] = Am241                 #ppb
+    df_ppb_std.loc['Am241(LR)'] = Am241_std             #std
     
-    #### ppb_std
-    df_ppb_std.loc['Am241(LR)'] = Am241_std
-    df_ppb_std.loc['Pu241(LR)'] = Pu241_std
+    #Now, to add the Pu241(LR), in order to add them where it should be, I
+    #need to split the df, and merge them, as for the Sr corr function.
+    #We will add it after the Pu240
+    
+    Pu240_row = np.where(df_ppb.index == 'Pu240(LR)')[0][0]
+    #Now we can start:    
+    df_ppb1_2 = df_ppb.iloc[:Pu240_row+1,:]        #1st half
+        
+    df_ppb2_2 = df_ppb.iloc[Pu240_row+1:,:]        #2nd half
+            #1st element there is Zr90
+
+    df_ppb1_2.loc['Pu241(LR)'] = Pu241      #adding the new data
+
+    #merging them again
+    df_ppb_new = pd.concat([df_ppb1_2, df_ppb2_2])      #merging them again!
+    
+    #ANd similarly for the std:
+    df_ppb_std_1_2 = df_ppb_std.iloc[:Pu240_row,:]        #1st half
+        
+    df_ppb_std_2_2 = df_ppb_std.iloc[Pu240_row:,:]        #2nd half
+            #1st element there is Zr90
+
+    df_ppb_std_1_2.loc['Pu241(LR)'] = Pu241_std      #adding the new data
+
+    #merging them again
+    df_ppb_std_new = pd.concat([df_ppb_std_1_2, df_ppb_std_2_2])        
+    
+
     
     #rsd
-    df_rsd = df_ppb_std/df_ppb * 100
+    df_rsd_new = df_ppb_std_new/df_ppb_new * 100
     
     
     ###### Returning #########
     #A dictionary with the 3 df will be returned, to keep it more gathered
-    output = {'dat': df_ppb, 'std': df_ppb_std, '%rsd': df_rsd}
+    output = {'dat': df_ppb_new, 'std': df_ppb_std_new, '%rsd': df_rsd_new}
     return output
 
 
+
+
+
+
+#-----------------------------------------------------------
+#%%                 1.20) ICPMS SNF leach corrections (Cs, Pu so far)
+#------------------------------------------------------
+
+def ICPMS_SNF_Leach_correction(df_ppb, df_ppb_std, df_sens,
+        Pu241_fis_ab = 6.18, Pu242_fis_ab = 12.09, Pu239_fis_ab = 49.24, 
+        Pu240_fis_ab = 28.37, Am241_fis_ab = 74.94, Am243_fis_ab = 25.01,
+                columns_blks = np.array([1,2,3]),
+        Cs133_fis_ab = 47.35, Ba134_fis_ab = 12.51,
+        Ba136_fis_ab = 1.37, Ba137_fis_ab = 24.25, Ba138_fis_ab = 61.82 ):
+    
+    
+    
+    '''
+    Function that will apply the correction to ICPMS measurements of SNF leachates.
+    These corrections are:
+            .Cs correction
+            .Pu(241) correction
+            .
+            
+    Hence, I need as input the inputs needed for both functions
+    
+    
+    *Inputs:
+        .
+    *Outputs:
+        .Dictionary with 3 df after the corrections:
+            -ppb
+            -ppb_std
+            -ppb_rsd
+    '''
+    
+    
+    #-------------------1) Pu correction -------------------
+    #Start from the easier, Pu correction
+    
+    
+    Dict_Pu_corr = ICPMS_Pu_correction(df_ppb, df_ppb_std, 
+                               Pu241_fis_ab, Pu242_fis_ab,
+                               Pu239_fis_ab, Pu240_fis_ab,
+                               Am241_fis_ab, Am243_fis_ab)          #Pu correction
+    
+    
+    # ---------------- 2) Cs correction ------------------
+    
+    
+    Dict_CsPu_corr = ICPMS_Cs_correction(Dict_Pu_corr['dat'], Dict_Pu_corr['std'], 
+                            df_sens, columns_blks,
+                                Cs133_fis_ab, Ba134_fis_ab,
+                                Ba136_fis_ab, Ba137_fis_ab,
+                                Ba138_fis_ab)                   #Cs correction
+    
+    
+    # -------------- 3) Return ----------------
+    
+    
+    return Dict_CsPu_corr
+
+
+
+
 #--------------------------------------------------------
-#%% ######## 1.20 Sr correction ##############
-#################################################################    
+#%%                  1.21 Sr correction 
+#--------------------------------------------    
 def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
-                        Sr90_fis_ab = 48.94, Excel_name = 'Sr_correction.xlsx',
-                        Zr90_row = 15, Sa_start_column = 19, N_sa = 6):
+                        Sr90_fis_ab = 48.94, Excel_name = 'Sr_correction.xlsx', 
+                        Sa_start_column = 19, N_sa = 6):
     '''
     Function that will take ICPMS cps datasheet (in df format) and will apply
     the Sr corrections needed to determine fission-produced Sr88, 90 in a SNF
@@ -3586,7 +3689,6 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
         .df_cps_rsd
         .Sr88/90_fis_ab: fission abundances [%]. 
         .Excel_name: string with the name of the excel to generate
-        .Zr90_row: number indicating the row in excel where Zr90(LR) is 
         .N_sa: number of samples. Default: 6
         .sa-Start_columns: number indicating the column number in excel where 
         samples starts. Default: 19. THis and the rpevious variable are used only
@@ -3672,9 +3774,10 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     '''
     Since 90 was both Sr90, Zr90, I will rewrite the Zr90, remvoing the Sr90 
     contribution. But before doing that, since sometimes, if no fission Sr90 present,
-    the computed Sr90 is <0, not to overstimate Zr90, I will replace
-    I will replace those numbers by :
+    the computed Sr90 is <0, not to overstimate Zr90, I will replace those numbers by :
             -0 for doing the operation
+            
+    And after, for printing the output:
             -NaN for printing an output
             
     If values are replaces by 0, the std calc should also be modified accordingly.
@@ -3748,7 +3851,9 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
     Okay, we need to include now the computed Sr90 in the cps and %rsd variables.
     But, to avoid re-running this file without adding multiple rows with Sr90,
     for example to check the printed info, I will only do the writing if Sr90
-    is not found in the df_cps
+    is not found in the df_cps.
+    
+    The Sr90 will be placed before the Zr90!
     
     '''
     #Lets include Sr90 into the cps and csp %rsd!
@@ -3763,17 +3868,12 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
         
     else:                   #Sr90 not present, so I need to do all the writing procedure
     
-        '''
-        Okay, I can not directly save those variables, because some Sr90 values are
-        negative, really negative. And that makes problem for BLk corr, since I substract
-        blk or min (samples). Subtract a negative value increase that, making the result
-        wrong. So, a simple fix of replacing negative values by 0 would fix that!
-        '''
+        Zr90_row = np.where(df_cps.index == 'Zr90(LR)')[0][0]
 
         #Now we can start:    
-        df_cps1_2 = df_cps.iloc[:Zr90_row-7,:]        #1st half
-            #-7 because data start in row 7 (Co59)
-        df_cps2_2 = df_cps.iloc[Zr90_row-7:,:]        #2nd half
+        df_cps1_2 = df_cps.iloc[:Zr90_row,:]        #1st half
+          
+        df_cps2_2 = df_cps.iloc[Zr90_row:,:]        #2nd half
                 #1st element there is Zr90
     
         df_cps1_2.loc['Sr90(LR)'] = Sr90_fis        #adding the new data
@@ -3782,9 +3882,9 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
         df_cps_new = pd.concat([df_cps1_2, df_cps2_2])      #merging them again!
     
         #And now we need to do the same for the %rsd
-        df_cps_rsd_1_2 = df_cps_rsd.iloc[:Zr90_row-7,:]        #1st half
+        df_cps_rsd_1_2 = df_cps_rsd.iloc[:Zr90_row,:]        #1st half
             #-7 because data start in row 7 (Co59)
-        df_cps_rsd_2_2 = df_cps_rsd.iloc[Zr90_row-7:,:]        #2nd half
+        df_cps_rsd_2_2 = df_cps_rsd.iloc[Zr90_row:,:]        #2nd half
                 #1st element there is Zr90
     
         df_cps_rsd_1_2.loc['Sr90(LR)'] = (Sr90_fis_std/Sr90_fis*100).replace(np.inf,0)
@@ -3868,9 +3968,9 @@ def ICPMS_Sr_correction(df_cps, df_cps_rsd, Sr88_fis_ab = 50.94,
 
 
 
-#######################################################################
-# %% ######### 1.21) Isotopes to elements ###########################
-######################################################################
+#--------------------------------------------
+# %%    	           1.22) Isotopes to elements 
+#--------------------------------------------
 def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
     '''
     Function that will take an ICP-MS datasheet (in df format) and will merge 
@@ -4091,9 +4191,9 @@ def ICPMS_Isot_to_Elem(df, df_std, Debug = False, Radiaoct_here = False):
 #The same but for a dictionary as input:
 #Removed, as no longer aplciable
     
-#################################################################
-#%% ########## 1.20 )ICPMS Homogeneizer ###########################
-###############################################
+#--------------------------------------------
+#%% ########## 1.23 )ICPMS Homogeneizer 
+#--------------------------------------------
 
     
 def ICPMS_Homogenize(df_ref, df, Return_extra_mass = 0):
@@ -4151,7 +4251,7 @@ def ICPMS_Homogenize(df_ref, df, Return_extra_mass = 0):
     
 
 #################################################################
-#%% ########## 1.21 )ICPMS Get activity ###########################
+#%%                 1.24 )ICPMS Get activity 
 ###############################################
     
 def ICPMS_Get_Activity (df_ppb, df_ppb_std, Type = 'Gamma' ):
@@ -4240,7 +4340,7 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Type = 'Gamma' ):
     
     
 #---------------------------------------------------------------------------
-#%% ------------ 1.22) Statisticals correlation tests ------------------
+#%%              1.25) Statisticals correlation tests 
 #--------------------------------------------------------------------------
 
 def ICPMS_Correlation_test(data, element_list, type = 'Spe'):
@@ -4381,23 +4481,18 @@ def ICPMS_Correlation_test(data, element_list, type = 'Spe'):
     
     
     
+
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-####################### PLOTTERS ####################################
+#                                PLOTTERS
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 
-#%% ########## 1.16) ICPMS Single Bar plotter #############
-#####################################
+
+#---------------------------------------------------------------------
+#%%             1.16) ICPMS Single Bar plotter 
+#--------------------------------------------------------------------
 
 def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plots',
                       pre_title_plt = "Concentration of ", 
@@ -4525,8 +4620,9 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
     print('###############################################')
 
 
-#%% ########## 1.17) ICPMS Single Bar plotter #############
-#####################################
+#--------------------------------------------
+#%% ########## 1.17) ICPMS Single Bar plotter 
+#--------------------------------------------
 
 def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' , 
                               folder_name = 'Bar_plots',
@@ -4659,8 +4755,9 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
     print('###############################################')
 
 
-#%% ########## 1.15) ICPMS 2 Bar plotter #############
-#####################################
+#--------------------------------------------
+#%% ########## 1.15) ICPMS 2 Bar plotter 
+#--------------------------------------------
 
 def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , 
                       ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
@@ -4821,9 +4918,9 @@ Setting b gives w. In fact the general equations for 2n bars per
     print('###############################################')
     
     
-
-#%%######## 1.16) ICPMS plotter #############
-#####################################
+#--------------------------------------------
+#%%######## 1.16) ICPMS plotter 
+#--------------------------------------------
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', 
                    pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
@@ -5034,9 +5131,9 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
     '''
     
 
- 
-#%% ########## 1.17) ICPMS plotter 3 bentonites #############
-#####################################
+ #--------------------------------------------
+#%% ########## 1.17) ICPMS plotter 3 bentonites
+#--------------------------------------------
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', 
                     plot_everything = False, pre_title_plt = "Concentration of ", 
@@ -5210,9 +5307,10 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
     print('###############################################')
 
     
-    
-#%%######### 1.18) ICPMS plotter blank appart #############
-#####################################
+
+#--------------------------------------------
+#%%######### 1.18) ICPMS plotter blank appart 
+#--------------------------------------------
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', 
             plot_everything = False, pre_title_plt = "Concentration of ", 
@@ -5524,9 +5622,9 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
     
     
 
-##############################################################################
-#%%### 1.19) ICPMS plotter blank Average of replicates, N datasets ############
-##############################################################################
+#--------------------------------------------
+#%%### 1.19) ICPMS plotter blank Average of replicates, N datasets 
+#--------------------------------------------
 
 def ICPMS_Plotter_mean_blk_N (
     x_list, std_x_list,
@@ -5679,8 +5777,8 @@ def ICPMS_Plotter_mean_blk_N (
     
 
 ##############################################################################
-#%%### 1.20) ICPMS multibar plotter ############
-##############################################################################
+#%%### 1.20) ICPMS multibar plotter 
+#--------------------------------------------
 
 def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     Xlabel = 'X axis', Ylabel = 'Y axis', Title= 'PLot', Savename = 'Plot1',
@@ -5742,8 +5840,8 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     
 
 ##############################################################################
-#%%### 1.21) ICPMS multibar plotter ############
-##############################################################################
+#%%### 1.21) ICPMS multibar plotter 
+#--------------------------------------------
 def ICPMS_MultiBar_plotter_N(
     dfs, dfs_std, Elements,
     dataset_labels=None,
@@ -5844,8 +5942,8 @@ def ICPMS_MultiBar_plotter_N(
     
  
 ####################################################
-#%% ######### 2.1) PSO fit #############################
-###################################################
+#%% ######### 2.1) PSO fit 
+#--------------------------------------------
 def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
             y_label = 'y', Color = 'b', save_name = '', Title = 'Linear PSO fit',
             Fit_type = 1):    
@@ -5988,8 +6086,9 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
     # perr = np.sqrt(np.diag(pcov))   # uncertainties
 
 
-#%% ######### 2.2) PFO fit #############################
-###################################################
+#--------------------------------------------
+#%% ######### 2.2) PFO fit 
+#--------------------------------------------
 def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_label = 'x',
             y_label = 'y', Color = 'b', save_name = '', Title = ' ', npo=100):   
     '''
@@ -6092,8 +6191,9 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
     return Ser_values
 
 
-#%% ######### 2.3) Freundlich isot fit #############################
-###################################################
+#--------------------------------------------
+#%% ######### 2.3) Freundlich isot fit 
+#--------------------------------------------
 def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
             x_label = 'log($C_e [ng/g]$)', y_label = 'log($Q_e [ng/g_{be}]$)',
             Color = 'b', save_name = '', Title = ' ', npo=100,
@@ -6275,8 +6375,9 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
 
 
 
-#%% ######### 2.4) Langmuir isot fit #############################
-###################################################
+#--------------------------------------------
+#%% ######### 2.4) Langmuir isot fit 
+#--------------------------------------------
 
 def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
              folder_name = 'Fits', x_label = '$C_e [ng/g]$', 
@@ -6494,9 +6595,9 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
     return fit
 
 
-
-#%% ######### 2.5) D-R iso fit #############################
-###################################################
+#--------------------------------------------
+#%% ######### 2.5) D-R iso fit 
+#--------------------------------------------#--------------------------------------------
 def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1, 
             folder_name = 'Fits', x_label = 'log($C_e [ng/g]$)', 
             y_label = 'log($Q_e [ng/g_{be}]$)',
@@ -6635,9 +6736,9 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
     return fit
     
 
-
-#%% ######### 4) TGA reader ##################### 
-##################################################
+#--------------------------------------------
+#%% ######### 4) TGA reader 
+#--------------------------------------------#--------------------------------------------
 
 
 def Read_TGA (name):
@@ -6681,9 +6782,9 @@ def Read_TGA (name):
         return df
     
     
- 
-#%% ######### 5.1) XRD reader F141 (Cold lab) #################### 
-######################################################
+#--------------------------------------------
+#%% ######### 5.1) XRD reader F141 (Cold lab) 
+#--------------------------------------------
  
 def Read_XRD_WB (name):
     '''
@@ -6745,7 +6846,7 @@ def Read_XRD_WB (name):
 
 
 # --------------------------------------------------------------
-#%% ######### 5.2) XRD reader, F130 (hot XRD) #################### 
+#%% ######### 5.2) XRD reader, F130 (hot XRD) 
 # --------------------------------------------------------------
 
 
@@ -6908,7 +7009,7 @@ def Read_XRD_F130 (name, t_paso = 10, Skip_rows = 266, Compute_d = 0,
 
 
 # --------------------------------------------------------------
-#%% ######### 5.3) XRD, Get interlaminar space bentonites #################### 
+#%% ######### 5.3) XRD, Get interlaminar space bentonites #--------------------------------------------
 # --------------------------------------------------------------
 
 
@@ -6983,8 +7084,9 @@ def XRD_Get_interl_sp (XRD_df, DosTheta_inter, Kalpha = 1.5401, n = 1):
     return Fit
 
 
-#%% ######### 6) FTIR, read and plot #################### 
-######################################################
+#--------------------------------------------
+#%% ######### 6) FTIR, read and plot 
+#--------------------------------------------
 
 def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
     '''
@@ -7065,7 +7167,7 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
 
 
 #--------------------------------------------
-#%% ------------ 7) Gamma analysis -----------
+#%% ------------ 7) Gamma analysis 
 #---------------------
 
 def Gamma_Bq_to_conc(df_A, df_A_std):

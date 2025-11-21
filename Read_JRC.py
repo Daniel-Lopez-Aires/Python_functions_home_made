@@ -3433,7 +3433,7 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
         
         
      #------------ To Do: -------------------------------------------------
-                .
+                .Apply to MR also?
     '''
 
     ######## 0) Pre adaptations ---------
@@ -3529,13 +3529,7 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
     '''
     
     ##### ppb
-    #Overwriting the Am241 with the only Am241 data
 
-    
-    
-    df_ppb.loc['Am241(LR)'] = Am241                 #ppb
-    df_ppb_std.loc['Am241(LR)'] = Am241_std             #std
-    
     #Now, to add the Pu241(LR), in order to add them where it should be, I
     #need to split the df, and merge them, as for the Sr corr function.
     #We will add it after the Pu240
@@ -3545,7 +3539,7 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
     df_ppb1_2 = df_ppb.iloc[:Pu240_row+1,:]        #1st half
         
     df_ppb2_2 = df_ppb.iloc[Pu240_row+1:,:]        #2nd half
-            #1st element there is Zr90
+            #1st element there is Am241
 
     df_ppb1_2.loc['Pu241(LR)'] = Pu241      #adding the new data
 
@@ -3553,9 +3547,9 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
     df_ppb_new = pd.concat([df_ppb1_2, df_ppb2_2])      #merging them again!
     
     #ANd similarly for the std:
-    df_ppb_std_1_2 = df_ppb_std.iloc[:Pu240_row,:]        #1st half
+    df_ppb_std_1_2 = df_ppb_std.iloc[:Pu240_row+1,:]        #1st half
         
-    df_ppb_std_2_2 = df_ppb_std.iloc[Pu240_row:,:]        #2nd half
+    df_ppb_std_2_2 = df_ppb_std.iloc[Pu240_row+1:,:]        #2nd half
             #1st element there is Zr90
 
     df_ppb_std_1_2.loc['Pu241(LR)'] = Pu241_std      #adding the new data
@@ -3565,9 +3559,14 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
     
 
     
+    #Now I will redefine the Am241 with the new data (should be done after slicing, if
+    #not for a rason I do not understand this does not work, old Am printed xD)
+        
+    df_ppb_new.loc['Am241(LR)'] = Am241                 #ppb
+    df_ppb_std_new.loc['Am241(LR)'] = Am241_std             #std
+        
     #rsd
     df_rsd_new = df_ppb_std_new/df_ppb_new * 100
-    
     
     ###### Returning #########
     #A dictionary with the 3 df will be returned, to keep it more gathered
@@ -3603,7 +3602,14 @@ def ICPMS_SNF_Leach_correction(df_ppb, df_ppb_std, df_sens,
     
     
     *Inputs:
-        .
+        .df_ppb: df with the ppb data, from ICPMS. Standard format
+        .df_ppb_std: df with teh ppb std
+        .df_sens: df with the sens [cps/ppb] from the ICPMS
+        .---:fis_ab: fission abundances [KORIGEN]. Default values: for my fuel, 
+                                        PWR, UO2, 63BU
+        .columns_blks: np.array([]) indicating the number of columns containing
+            blks. From excel, so column A = 1
+            
     *Outputs:
         .Dictionary with 3 df after the corrections:
             -ppb

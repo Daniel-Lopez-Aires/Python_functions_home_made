@@ -17,7 +17,9 @@ from statsmodels.formula.api import ols
 Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)   
 Markersize = 7
 
-#%% ###### 1) Linear fit function ############################
+
+#-----------------------------------------------------------------
+#%% ###### 1) Linear fit function 
 ####################################################################
 
 def LinearRegression(x, y, delta_x =0, delta_y =0, npo = 100, x_label = 'x', y_label = 'y', 
@@ -144,7 +146,8 @@ def linear(x, a, b):       #Definition of the function to use to fit the data
 '''
     
 
-#%%  #### 2) Quadratic fit function ############################
+#--------------------------------------------------------------------
+#%%  #### 2) Quadratic fit function 
 ####################################################################
 
 
@@ -259,7 +262,8 @@ def r_square(x, y, degree):
     return results
 
 
-#%%  ###### 3) Gaussian fit function ############################
+#--------------------------------------------------------------------------
+#%%                      3) Gaussian fit function 
 ####################################################################
     
 def Gaussian_fit(x, y, index_df = 0, N = 100):
@@ -319,7 +323,8 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
     
     Delta_mean = perr[1]                #error of the mean
     Delta_heigh = perr[0]               #error of the heigh
-    #Delta_sigma = 1 / (2 * sigma) * perr[2]              #error of the standar deviation if using variance as parameter   
+    #Delta_sigma = 1 / (2 * sigma) * perr[2]    
+                #error of the standar deviation if using variance as parameter   
     Delta_sigma = perr[2] 					#error of the standar deviation
   
   #source: 
@@ -366,13 +371,16 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
               'Res[%]' : Res, '\Delta(Res[%])' : Delta_Res
               }     #variable containing everyting
     
-    #Let´s print that so it appears in the command line:
-    print('\n#######################\n')
-    print('Gaussian fit parameters ########\n')
-    print(aux)
-    print('\n ###############')
-    
+
+    #To return it, we will convert it to a df:
     values = pd.DataFrame(aux, index = [index_df])  #dataframe creation
+    
+    #Let´s print that so it appears in the command line:
+    print('--------------------------------------------\n')
+    print('Gaussian fit parameters: \n')
+    print(values.round(2))
+    print(' #-------------------------------------------\n')
+    
     return values
 
 

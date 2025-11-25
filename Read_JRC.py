@@ -3557,8 +3557,7 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
     #merging them again
     df_ppb_std_new = pd.concat([df_ppb_std_1_2, df_ppb_std_2_2])        
     
-
-    
+  
     #Now I will redefine the Am241 with the new data (should be done after slicing, if
     #not for a rason I do not understand this does not work, old Am printed xD)
         
@@ -3572,8 +3571,6 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
     #A dictionary with the 3 df will be returned, to keep it more gathered
     output = {'dat': df_ppb_new, 'std': df_ppb_std_new, '%rsd': df_rsd_new}
     return output
-
-
 
 
 
@@ -6498,7 +6495,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
              (fit['\Delta(b)']/fit["b"])**2 )
         fit['%rsd Q_max'] = fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
         fit['%rsd K_L'] = 100 * fit["/Delta(K_L[M^{-1}])"] / fit["K_L[M^{-1}]"]
-    elif Fit_type ==2:       #Linearization 2!
+    elif Fit_type ==2:                                  #Linearization 2!
         fit = Fits.LinearRegression(Qe, Qe_Ce, delta_Qe, delta_Qe_Ce,
                                    x_label = x_label, y_label = y_label, 
                                    x_legend = '$Q_e$', 
@@ -6550,7 +6547,9 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
             return Qmax * K * Ce /(1+K*Ce) 
         # --- Initial guess: Qmax ~ max(Qe), KL ~ 1/mean(Ce)
         p0 = [np.max(Qe), 1/np.mean(Ce)]  
-        popt, pcov = curve_fit(Lang_fit_eq, Ce, Qe, p0=p0, maxfev=5000)
+        popt, pcov = curve_fit(Lang_fit_eq, Ce, Qe, p0=p0, maxfev=5000,
+                               absolute_sigma=True)
+            #GPT said that absolute_sigam True is key not to overamplify the errors!
         Qmax, KL = popt
         perr = np.sqrt(np.diag(pcov))  # errors
         dQmax, dKL = perr
@@ -6605,9 +6604,9 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
 #%% ######### 2.5) D-R iso fit 
 #--------------------------------------------#--------------------------------------------
 def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1, 
-            folder_name = 'Fits', x_label = 'log($C_e [ng/g]$)', 
-            y_label = 'log($Q_e [ng/g_{be}]$)',
-            Color = 'b', save_name = '', Title = ' '):   
+            folder_name = 'Fits', x_label = 'log($C_e$ [ng/g])', 
+            y_label = 'log($Q_e$ [ng/g_{be}])',
+            Color = 'b', save_name = '', Title = ' ', Qe_units = 'mol/kg_be'):   
     '''
     Function to do and compute the D-R fit model. Its equation is:
         
@@ -6649,6 +6648,7 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
                     this variable is followed by .png for saving
         .Color = 'b': color for the plot
         .Folder_name: folder name, where to store the fit plots
+        .Qe_units = string indicating Qe units. Default:'mol/kg_be'
     
     
     *Outputs
@@ -6673,17 +6673,17 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
 
     
     ############## 1) Calcs #################
-    R = 8.31446261815324    #J/(K*mol) molar gas constant
+    R = 8.31446261815324                                #J/(K*mol) molar gas constant
     
     #I need to compute the logarithms!
     logQe = np.log(Qe)    
-    delta_logQe = delta_Qe / np.abs(Qe)       #error of the natural log!
+    delta_logQe = delta_Qe / np.abs(Qe)                 #error of the natural log!
     
-    eps = R*T*np.log(1/Ce)                      #J/mol
+    eps = R*T*np.log(1/Ce)                                  #J/mol
     delta_eps = eps* np.sqrt((delta_T/T)**2 + (Ce**4))
     
     #Elevating it by square:
-    eps2 = eps*eps          #J2/mol2
+    eps2 = eps*eps                                   #J2/mol2
     delta_eps2 = np.sqrt(2) * eps * delta_eps
     
         #delta(log(1/Ce))/(1/Ce) = 1/(1/Ce**2)=Ce**2
@@ -6713,8 +6713,8 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
     '''
     fit['beta[mol2/J2]'] = -fit['a']         
     fit['\Delta(beta[mol2/J2])'] = fit['\Delta(a)'] 
-    fit['Q_s'] = 10**fit['b']        
-    fit['\Delta(Q_s)'] = fit['Q_s'] *fit['\Delta(b)']
+    fit['Q_s'+Qe_units] = 10**fit['b']        
+    fit['\Delta(Q_s'+Qe_units+')'] = fit['Q_s'+Qe_units] *fit['\Delta(b)']
     
     #Lets finally compute the mean free energy F, to see the nature of the process
     F = 1/np.sqrt(2*fit['beta[mol2/J2]'])   #J/mol
@@ -6722,16 +6722,17 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
         #After some uncertainty calcs I derived that formula
     
     #Now we can print which type of sorption is, based on F:
-    print('##################################################')
-    print(f' F = {F:.1e} +- {delta_F:.1e}' + 'J/mol')
-    if F*10**-3 < 8: #physi
-        print('F < 8KJ/mol, indicating it is physisorption ')
-    elif (F*10**-3 < 8 and F*10**-3 > 16): #chemi
-        print('F> 16kJ/mol, indicating it is chemisorption')
-    else : #F*10**-3 > 16     #WTF is that?
-        print('8KJ/mol < F < 16KJ/mol, Ion exchange/soft chemisorption')
+    print('Obtained result:')
+    print(f' F = {F:.1e} +- {delta_F:.1e}' + ' J/mol')
+    if F*10**-3 < 8:                                        #physi
+        print('F < 8 KJ/mol ==> physisorption ')
+    elif (F*10**-3 > 8 and F*10**-3 < 16):                  #chemi
+        print('8 KJ/mol < F < 16 KJ/mol ==> Ion exchange/soft chemisorption')
+    else :                                  #F*10**-3 > 16     #WTF is that?
+        print('F> 16 kJ/mol ==> chemisorption')
     
     print('##################################################')
+    print('End of the D-R fit function \n')
     
     #Finally we store them
     fit['F[J/mol]'] = F    
@@ -7173,9 +7174,88 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
 
 
 #--------------------------------------------
-#%% ------------ 7) Gamma analysis 
+#%% ------------ 7) Gamma/Alpha spectra analysis 
 #---------------------
 
+
+
+#----------------------
+#           7.1 ) Peak fit spectra
+#-------------------
+
+def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
+    '''
+    Function that will receive a df containing an spectra (alpha, gamma, etc) and
+    will do the peak fitting to the desired peak.
+    
+    *Inputs:
+        .x_dat: df series with the x data
+        .y_dat : df series with the y data
+        .peak interval: array with the interval (in index), from eye spot. Eg: [100, 500]
+        .Fig_savename: string for the name of the plot. Default: 'Fit'
+        
+    *Output
+        .
+    '''
+
+
+    #           0) Data loading         #
+    'Since a df series is given, and my fit function needs array, we conver to an array'
+    
+    x_peak_ser = x_dat[peak_interval[0]:peak_interval[1]]       #peak interval, df series
+    x_peak = x_peak_ser.values                          #peak interval, array
+    y_peak_ser = y_dat[peak_interval[0]:peak_interval[1]]       #peak interval, df series
+    y_peak = y_peak_ser.values 
+
+
+    #   ------- 1) Gaussian fit ---
+    #Trivial with my function. I will do a try except block because if wron interval,
+    #no peak fitting would be possible
+
+    try:                        #Try to do the fit
+        Peak_fit = Fits.Gaussian_fit(x_peak, y_peak)
+    except:                     #fit not possible
+        print('Gaussian fit not possible, please modify the peak interval!')
+        print('Returning NaN \n')
+        Peak_fit = np.NaN
+        
+    def gaussian(x, Heigh, Mean, Std_dev):      #redefined the fit function, for plotting
+      	return Heigh * np.exp(- (x-Mean)**2 / (2 * Std_dev**2)) 
+    
+    
+    # ------ 2) Plotting --------------
+    
+    x_vector = np.linspace(min(x_peak),max(x_peak))         #for the fit plotting
+
+    plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+    plt.plot( x_peak , y_peak, label = 'Peak data',linewidth = 1.5)  
+    #plt.plot(MS11_2['Energy'], MS11_2['Counts'], '.', label = 'Data',) 
+    try:                #try, if fit was possible
+        plt.plot(x_vector, gaussian(x_vector, Peak_fit['heigh'][0], Peak_fit['mean'][0], 
+        Peak_fit['sigma'][0]), '.', label = 'Peak fit', markersize = Markersize)           #fit
+    except:             #if fit was not possible, no extra plotting
+        print('')
+        
+    plt.title("Peak fitting", fontsize=22)           #title
+    plt.xlabel("x", fontsize=Font)                        #xlabel
+    plt.ylabel("y ", fontsize=Font)              #ylabel
+    plt.legend( fontsize=Font) 
+        # Set size of tick labels.
+    plt.tick_params(axis='both', labelsize=Font)              #size of axis
+    plt.grid(True) 
+    plt.savefig(Fig_savename + '.png', format='png', bbox_inches='tight')    
+    plt.show()
+
+
+    #.---------------- 3) Returning
+    #LEts return the peak fit info. Maybe I could also print the info?
+    return Peak_fit 
+
+
+
+#----------------------
+#%%           7. ) Bq to concentration
+#----------------------
 def Gamma_Bq_to_conc(df_A, df_A_std):
     '''
     Function that will read a df with the gamma report (pdf) and will compute the

@@ -2940,6 +2940,12 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
     df_dat_br = pd.concat(df_dat_br_list, axis=1)
     df_dat_std_br = pd.concat(df_dat_std_br_list, axis=1)
 
+
+    # --------- 6. Copmuting averaged Cleach
+    #I will compute here the average Cleach also,
+    Cleach_avg = df_C_leach.mean(axis = 1)
+    Cleach_avg_std = df_C_leach.std(axis = 1)
+    
     # === 6. Reporting ===
     if Nucl_rel is not None:
         print('####### Leached concentrations (dat) of relevant nuclides:')
@@ -2947,7 +2953,27 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
         print('########## Their uncertainties:')
         print(df_C_leach_std.loc[Nucl_rel])
         print('######################################\n')
+        
+        print('Average Cleach:')
+        print(Cleach_avg.loc[Nucl_rel])
+        print('Its std (from average):')
+        print(Cleach_avg_std.loc[Nucl_rel])
+        print('---------------------------------- \n')
+        '''
+        The MS concentration of those elemtns will also be printed, in order
+        to get a sense of the importance of the Cleach in MS
+        '''
+        print(' Concentration in the MS of those nuclides')
+        print(df_MS.loc[Nucl_rel].iloc[:,:4])  #printing 1st 4 MS!
+        print('That will give you a sense of how relevant is Cleach')
+        print('-----------------------------\n ')
+        #Could be also reelvant to print the MS conc of those elements, to
 
+        #Computing the relative Cleac/df_MS would also be nice
+        # print('Ratio <Cleach>/MS [%] to get a sense of how relevant Cleach is!')
+        # print((df_C_leach.mean(axis = 1).values/df_MS).loc[Nucl_rel])
+        # print('---------------------------------------\n')
+        
     # === 7. Return ===
     result = {
         'dat_br': df_dat_br,
@@ -2959,6 +2985,8 @@ def ICPMS_Removal_Bent_leach_ratio(data_dict, return_leached=False,
         result['C_leach'] = df_C_leach
         result['std_C_leach'] = df_C_leach_std
         result['%rsd_C_leach'] = df_C_leach_std/df_C_leach*100
+        result['<C_leach>'] = Cleach_avg                #Cleach avg of 3 replicates
+        result['<C_leach>_std'] = Cleach_avg_std
     return result
 
 
@@ -5232,22 +5260,27 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
             plt.title(pre_title_plt + df_cps['Sard'].index[i][:-4], fontsize=22, wrap=True)           #title
             #PLot bentonite 1, Sard
-            plt.plot(x['Sard'][:int(len(x['Sard'])/2)], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][:int(len(x['Sard'])/2)], 'o--', color = Bent_color['Sard'],
-                     markersize = Markersize, label = 'Repl_1 S') 
+            plt.plot(x['Sard'][:int(len(x['Sard'])/2)], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][:int(len(x['Sard'])/2)], 
+                'o--', color = Bent_color['Sard'], markersize = Markersize, label = 'Repl_1 S') 
                     #+1 needed since the df contain a row with the column names!
-            plt.plot(x['Sard'][int(len(x['Sard'])/2):], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][int(len(x['Sard'])/2):], 'o--', color = Bent_color['Sard'],
+            plt.plot(x['Sard'][int(len(x['Sard'])/2):], df_cps['Sard'].loc[df_cps['Sard'].index[i] ][int(len(x['Sard'])/2):], 
+                     'o--', color = Bent_color['Sard'],
                      markersize = Markersize, label = 'Repl_2 S') 
             #PLot bentonite 2, T
-            plt.plot(x['Tur'][:int(len(x['Tur'])/2)], df_cps['Tur'].loc[df_cps['Sard'].index[i] ][:int(len(x['Tur'])/2 )], 'o--', color = Bent_color['Tur'],
+            plt.plot(x['Tur'][:int(len(x['Tur'])/2)], df_cps['Tur'].loc[df_cps['Sard'].index[i] ][:int(len(x['Tur'])/2 )], 
+                     'o--', color = Bent_color['Tur'],
                      markersize = Markersize, label = 'Repl_1 T') 
                     #+1 needed since the df contain a row with the column names!
-            plt.plot(x['Tur'][int(len(x['Tur'])/2):], df_cps['Tur'].loc[df_cps['Sard'].index[i] ][int(len(x['Tur'])/2 ):], 'o--', color = Bent_color['Tur'],
+            plt.plot(x['Tur'][int(len(x['Tur'])/2):], df_cps['Tur'].loc[df_cps['Sard'].index[i] ][int(len(x['Tur'])/2 ):],
+                     'o--', color = Bent_color['Tur'],
                      markersize = Markersize, label = 'Repl_2 T') 
             #PLot bentonite 3, BK
-            plt.plot(x['BK'][:int(len(x['BK'])/2)], df_cps['BK'].loc[df_cps['Sard'].index[i] ][:int(len(x['BK'])/2 )], 'o--', color = Bent_color['BK'],
+            plt.plot(x['BK'][:int(len(x['BK'])/2)], df_cps['BK'].loc[df_cps['Sard'].index[i] ][:int(len(x['BK'])/2 )],
+                     'o--', color = Bent_color['BK'],
                      markersize = Markersize, label = 'Repl_1 BK') 
                     #+1 needed since the df contain a row with the column names!
-            plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[df_cps['Sard'].index[i] ][int(len(x['BK'])/2 ):], 'o--', color = Bent_color['BK'],
+            plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[df_cps['Sard'].index[i] ][int(len(x['BK'])/2 ):],
+                     'o--', color = Bent_color['BK'],
                      markersize = Markersize, label = 'Repl_2 BK') 
             plt.ylabel(y_label, fontsize= Font)              #ylabel
             plt.xlabel(x_label, fontsize = Font)
@@ -7186,7 +7219,7 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
 def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
     '''
     Function that will receive a df containing an spectra (alpha, gamma, etc) and
-    will do the peak fitting to the desired peak.
+    will do the peak fitting (gaussian) to the desired peak.
     
     *Inputs:
         .x_dat: df series with the x data

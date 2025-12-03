@@ -3507,9 +3507,9 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
     #-------------- Am241 real
     #Since Am241 is the dominant isotope in 241, will be computed as total - Pu computed
     Am241 = df_ppb.loc['Am241(LR)']- Pu241
-    Am241_std = np.sqrt(df_ppb_std.loc['Am241(LR)']**2 + Pu241_std)         #std
+    Am241_std = np.sqrt(df_ppb_std.loc['Am241(LR)']**2 + Pu241_std**2)         #std
     Am241_rsd = Am241_std / Am241 * 100                 #%rsd
-            #This blow up, from 20% to 50% !!!
+            #This blow up, from 20% to 50%, when Am241 \simeq Pu241!!
     
     # ------------- Sens correction ----------------
     'This is not needed since all sensitivities for actinides computed based on U238!'
@@ -3607,7 +3607,8 @@ def ICPMS_Pu_correction(df_ppb, df_ppb_std,
 #%%                 1.20) ICPMS SNF leach corrections (Cs, Pu so far)
 #------------------------------------------------------
 
-def ICPMS_SNF_Leach_correction(df_ppb, df_ppb_std, df_sens,
+def ICPMS_SNF_Leach_correction(df_ppb, df_ppb_std, df_sens, 
+            Correction_to_do = 'All',
         Pu241_fis_ab = 6.18, Pu242_fis_ab = 12.09, Pu239_fis_ab = 49.24, 
         Pu240_fis_ab = 28.37, Am241_fis_ab = 74.94, Am243_fis_ab = 25.01,
                 columns_blks = np.array([1,2,3]),
@@ -3623,7 +3624,8 @@ def ICPMS_SNF_Leach_correction(df_ppb, df_ppb_std, df_sens,
             .Pu(241) correction
             .
             
-    Hence, I need as input the inputs needed for both functions
+    Hence, I need as input the inputs needed for both functions. I will do one or
+    the other or both, user will tell that.
     
     
     *Inputs:
@@ -3634,39 +3636,72 @@ def ICPMS_SNF_Leach_correction(df_ppb, df_ppb_std, df_sens,
                                         PWR, UO2, 63BU
         .columns_blks: np.array([]) indicating the number of columns containing
             blks. From excel, so column A = 1
+        Correction_to_do: string indincating corrections to do. Default: 'All'
             
     *Outputs:
-        .Dictionary with 3 df after the corrections:
+        .Dictionary with a dictionary with the 3 df after the corrections:
             -ppb
             -ppb_std
             -ppb_rsd
+        and info on the correction appplied
     '''
     
-    
+    #I will tell which corrections to do. I will do Pu, and voluntarily, also Cs:
+        
+        
     #-------------------1) Pu correction -------------------
     #Start from the easier, Pu correction
     
-    
-    Dict_Pu_corr = ICPMS_Pu_correction(df_ppb, df_ppb_std, 
+    if Correction_to_do == 'Pu':                  #do Pu correction
+        print('Doing Pu correction.. ')
+        Dict_corr = ICPMS_Pu_correction(df_ppb, df_ppb_std, 
                                Pu241_fis_ab, Pu242_fis_ab,
                                Pu239_fis_ab, Pu240_fis_ab,
                                Am241_fis_ab, Am243_fis_ab)          #Pu correction
     
-    
+        Info = 'Pu correction'
+        
     # ---------------- 2) Cs correction ------------------
     
-    
-    Dict_CsPu_corr = ICPMS_Cs_correction(Dict_Pu_corr['dat'], Dict_Pu_corr['std'], 
+    elif Correction_to_do == 'Cs':              #do Pu correction
+        print('Doing Cs correction.. ')
+        print('Remember that this correction requires some pre-work in excel,' +
+              'doing Xe correction, to determine Ba, needed for Cs stimation!')
+        Dict_corr = ICPMS_Cs_correction(df_ppb, df_ppb_std, 
                             df_sens, columns_blks,
                                 Cs133_fis_ab, Ba134_fis_ab,
                                 Ba136_fis_ab, Ba137_fis_ab,
                                 Ba138_fis_ab)                   #Cs correction
+        Info = 'Cs correction'
+        
+        # -------- 3) Cs + pu correction 
+    elif Correction_to_do == 'All':         # do all ==> Cs and Pu
     
+        print('Doing Ou and Cs correction (in that order).. ')
+        Dict_Pu_corr = ICPMS_Pu_correction(df_ppb, df_ppb_std, 
+                               Pu241_fis_ab, Pu242_fis_ab,
+                               Pu239_fis_ab, Pu240_fis_ab,
+                               Am241_fis_ab, Am243_fis_ab)  #Pu corr
+        
+        Dict_corr = ICPMS_Cs_correction(Dict_Pu_corr['dat'], Dict_Pu_corr['std'], 
+                                df_sens, columns_blks,
+                                    Cs133_fis_ab, Ba134_fis_ab,
+                                    Ba136_fis_ab, Ba137_fis_ab,
+                                    Ba138_fis_ab)   #Cs corr after Pu corr
+        Info = 'Pu + Cs correction'
+        
+    else:                                           #Wrong case
+        print("Wrong Correction type given. Only accepted: 'All', 'Cs', 'Pu' ")
+        print('Returning NaN')
+        Dict_corr = np.Nan
+        Info = 'No correction applied MF!'
+        
+        
+    # -------------- 4) Return ----------------
+    #I will return a dictionray giving info on correciton done + the result
     
-    # -------------- 3) Return ----------------
-    
-    
-    return Dict_CsPu_corr
+    output = {'Data': Dict_corr, 'Info': Info}
+    return output
 
 
 

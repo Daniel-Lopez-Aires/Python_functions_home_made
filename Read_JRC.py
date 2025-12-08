@@ -5853,10 +5853,11 @@ def ICPMS_Plotter_mean_blk_N (
 
 def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     Xlabel = 'X axis', Ylabel = 'Y axis', Title= 'PLot', Savename = 'Plot1',
-    Log_y = False):
+    Log_y = False, Columns= 'All'):
     '''
-    Function that will do a multibar plot, with the number of abrs you give (Nbars),
-    of a given df, chosing the elements you desire. The df_std shoudl also be included!
+    Function containing a icpms df, that will do a multibar plot, being each
+    bar an element from the list you give. The df_std shoudl also be included!
+    All the columns (data) will be plotted
     
     
     *Inputs:
@@ -5868,38 +5869,69 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
         .Title: string with the title of the plot. Defalt: 'Plot'
         .Savename: string with the name of the file to save (png). Eg: 'Plot1'
         . Log_y: boolean to indicate if u want ylabel in logscale. Default: False
+        . COlumns: define columns to plot. Default: 'All' (plot all). eg: ['Dat 1']
+            to pot only the column 'Dat 1'
     *Outputs:
         No outputs, jsut generate a plot!
     
     '''
 
+    #Getting desired elements
+    
+    if Columns == 'All':            #we need to plot all the columns
+        cols = df.columns
+    else:       #plotting only desired columns   
+        cols = Columns          #selected columns
+    
+    
+    #Hence the df to plot are:
+    df_sel     = df.loc[:, cols]        #seleted columns of the df
+    df_sel_std = df_std.loc[:, cols]    #seleted columns of the df std
+    
     #Parameters for the multibar plot
     Nbars = len(Elements)       # number of bars to plot
-    w = (1 - b) / Nbars             #Width of each bar
-    offsets = (np.arange(Nbars) - (Nbars - 1) / 2) * w  #displacement between the bar
-            # Si N es par: [-3.5w, -2.5w, ..., +3.5w]
-            # Si N es impar: [-3w, -2w, ..., +3w]
-    X_axis =  np.linspace(1, df.shape[1], num =  df.shape[1]) #plotting all columns!
     
+
+    
+    #The x axis I will vary for the 1 column mode. IN such case, x axis will be
+    #the elements. Otherwise, the columns
+    
+        
     
     # === Plot ===
     plt.figure(figsize=(12, 8))
     plt.title(Title, fontsize=22, wrap=True)
 
-    for i, elem in enumerate(Elements):
-        plt.bar(X_axis + offsets[i], 
-            df.loc[elem],
-            yerr=df_std.loc[elem],
-            width=w, edgecolor="black",
-            label=elem,
-            align='center')
-    
+    if len(cols) == 1:          #single column plot
+        X_axis = np.arange(len(Elements))
+        
+        plt.bar(X_axis, df_sel.loc[Elements].values.flatten()  ,
+                yerr=df_sel_std.loc[Elements].values.flatten()  , 
+                edgecolor="black", align='center')
+            #No clue why I need .flatten to work xD
+        plt.xticks(X_axis, Elements )
+            #[x[:-4] for x in Elements] if I want to remove the LR!
+        #
+    else:                                       #multicolumns plot
+        #Plot parameters definintion
+        X_axis = np.arange(len(cols)) + 1
+        w = (1 - b) / Nbars             #Width of each bar
+        offsets = (np.arange(Nbars) - (Nbars - 1) / 2) * w  #displacement between the bar
+                # Si N es par: [-3.5w, -2.5w, ..., +3.5w]
+                # Si N es impar: [-3w, -2w, ..., +3w]
+        #plot
+        for i, elem in enumerate(Elements):
+            plt.bar(X_axis + offsets[i], 
+                    df_sel.loc[elem],yerr=df_sel_std.loc[elem],
+                    width=w, edgecolor="black", label=elem, align='center')
+            plt.xticks(X_axis, cols, rotation=90)          # Column names  
+        plt.legend(fontsize = Font)
+        #
     plt.ylabel(Ylabel, fontsize= Font)              #ylabel
     plt.xlabel(Xlabel, fontsize= Font)   
-    #plt.xticks(X_axis, Dict_el_MS['dat'].columns, rotation=90)
     if Log_y:       #do ylog scale
         plt.yscale('log') 
-    plt.legend(fontsize = Font)
+    
     plt.tick_params(axis='both', labelsize=Font)              #size of axis
     plt.minorticks_on()             #enabling minor grid lines
     plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        

@@ -314,13 +314,13 @@ def ICPMS_ppb_to_M(df_ppb, df_ppb_std, m_s = 1000, V_s =1,
         2) Density of the samples, which I could have, since I measured both
     
     The operation is easy:
-        ng/gtot *gtot/Vtot *mol/g = M ==> ppb * rho * At = M
+        ng/gtot *gtot/Vtot *mol/g = M ==> ppb * rho [g/L] * At = M
     '''
                     #
     
-    rho = m_s/V_s               #density of the samples
+    rho = m_s/V_s               #[g/L] density of the samples 
     Delta_rho = rho*np.sqrt((Delta_m_s/m_s)**2 + (Delta_V_s/V_s)**2)
-                #uncertainty of the density
+                                #[g/L] uncertainty of the density
                 
     #Creation of empty df to store the data
     df_M = pd.DataFrame( index =df_ppb.index, columns = df_ppb.columns )
@@ -3019,6 +3019,8 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
         .Ba: Ba134, 135, 136, 137, 138
         .Xe: Xe128, 129, 130, 131, 132, 134, 136
         
+    This function will OVERWRITE the Ba data (134,135,137), to remove the Cs
+    contribution!
     
     Note that for the std calcs, it was ASSUMED:
         i) NO std to natural abundances
@@ -3042,8 +3044,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
         
         
      #------------ To Do: -------------------------------------------------
-                .Rewrtie given Ba134,5,7 data with the obtained one, since the original
-                might have Cs interferences?
+                .optional to overwrite Ba isotopes??
                 .Link with abundance excel??
                 .Problem with uncertainties, from fis ratio on, std> variable,
                 since we do variable = 1- var 2, delta var = delta var 2, and 
@@ -3371,8 +3372,7 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     to know:
         Cs: Cs134, Cs135, Cs137
         Ba: Since the measured Ba134,135,137 are overstimated because of Cs intereferencs,
-        that woudl also be nice to have! Not to overwrite, I will add a _Cscorr to the name
-    Cs tot will not be saved!!!
+        that woudl also be nice to have! I will overwrite it!
     
     Note I all (LR) to all the names, which will be useful for plotting, since
     I plot and save name removing 4 last digits [:-4], which removed (LR)
@@ -3386,18 +3386,18 @@ def ICPMS_Cs_correction(df_ppb, df_ppb_std, df_sens,
     df_ppb.loc['Cs135(LR)'] = Cs135_fis_co
     df_ppb.loc['Cs137(LR)'] = Cs137_fis_co
     
-    df_ppb.loc['Ba134_Cscorr(LR)'] = Ba134_nat + Ba134_fis
-    df_ppb.loc['Ba135_Cscorr(LR)'] = Ba135_nat
-    df_ppb.loc['Ba137_Cscorr(LR)'] = Ba137_nat + Ba137_fis
+    df_ppb.loc['Ba134(LR)'] = Ba134_nat + Ba134_fis
+    df_ppb.loc['Ba135(LR)'] = Ba135_nat
+    df_ppb.loc['Ba137(LR)'] = Ba137_nat + Ba137_fis
     # The total Cs will also be given as output!
     #df_ppb.loc['Cs_tot(LR)'] = Cs_tot
     #df_ppb.loc['Cs_tot_ORIGEN133(LR)'] = Cs_tot_OR133
     #df_ppb.loc['Cs_tot_ORIGEN137(LR)'] = Cs_tot_OR137
     
     #### ppb_std
-    df_ppb_std.loc['Ba134_Cscorr(LR)'] = np.sqrt(Ba134_nat_std**2 + Ba134_fis_std**2)
-    df_ppb_std.loc['Ba135_Cscorr(LR)'] = Ba135_nat_std
-    df_ppb_std.loc['Ba137_Cscorr(LR)'] = np.sqrt(Ba137_nat_std**2 +Ba137_fis_std**2)
+    df_ppb_std.loc['Ba134(LR)'] = np.sqrt(Ba134_nat_std**2 + Ba134_fis_std**2)
+    df_ppb_std.loc['Ba135(LR)'] = Ba135_nat_std
+    df_ppb_std.loc['Ba137(LR)'] = np.sqrt(Ba137_nat_std**2 +Ba137_fis_std**2)
 
     df_ppb_std.loc['Cs134(LR)'] = Cs134_fis_co_std
     df_ppb_std.loc['Cs135(LR)'] = Cs135_fis_co_std

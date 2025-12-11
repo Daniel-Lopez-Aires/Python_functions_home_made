@@ -7278,6 +7278,61 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
 #---------------------
 
 
+#------------------------------------
+#%%         7.1) Alpha data load
+#--------------------------------
+
+def Alpha_dat_load(Filename, Xlim = False):
+    '''
+    Function that will read the alpha spectra, in .txt, and will also generate
+    a plot.
+    
+    Note this needs the prior use of Interspec, to convert the spectra file
+    from .spe to .txt, since the .spe can not be read, and the ascii file I
+    have not been able to properly read it, so far...
+    
+    *Inputs:
+        .Filename: string with the file name.
+        .Xlim: [keV]array contain the limits for the xaxis in the plot. 
+            Default: False (not provided)
+            
+    *Outputs:
+        .Df with the spectra info
+        
+    #------------ To Do:
+        .Figure a way to read the .spe to avoid Interspect use!
+        
+    '''
+    
+    #                               Data load
+    Dat = pd.read_csv(Filename, skiprows= 17,
+                        sep = ' ', index_col= 0)
+    
+    
+    #                           Data plotting
+    plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+    plt.title("Alpha spectra:" + Filename[:-4], fontsize=22, wrap=True) #title
+    plt.errorbar(x = Dat['Energy'], y =  Dat['Counts'],) 
+    plt.ylabel("Counts", fontsize= Font)              #ylabel
+    plt.xlabel("Energy (keV)", fontsize= Font)   
+    #plt.xticks(X_axis, Dict_el_MS['dat'].columns, rotation=90)
+    plt.yscale('log') 
+    plt.tick_params(axis='both', labelsize=Font)              #size of axis
+    plt.minorticks_on()             #enabling minor grid lines
+    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
+                                    #which both to plot major and minor grid lines
+    plt.grid(which = 'major')
+    if Xlim == True:
+        plt.xlim(Xlim)               #xlim, to remove background
+    plt.savefig(Filename[:-4] + '.png', format='png', bbox_inches='tight')
+    plt.show()  
+    
+    #-------------- Output 
+    
+    
+    return Dat
+    
+
 
 #----------------------
 #           7.1 ) Peak fit spectra

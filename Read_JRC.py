@@ -36,7 +36,7 @@ import os, sys                   #to import functions from other folders!!
 sys.path.insert(0, 
  '//net1.cec.eu.int/jrc-services/KRU-Users/lopedan/Desktop/PhD_Residuos_nucleares/Python/Functions')   
                                     #path where I have the functions
-sys.path.insert(0, '/home/dla/Python/Functions_homemade')
+sys.path.insert(0, '/home/dla/Python/Functions')
 import Fits, Peak_analyis_spectra
 import time as tr                                #to measure the running time
 from scipy.optimize import curve_fit             #Fit tool
@@ -76,25 +76,36 @@ Isot rele Cs are from the Cs sep
 Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)           
 Markersize = 7                  #markersize for all the plots
 
-#For my personal laptop
-#At_we_rad = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
-                       #   'To_read_atom_weight', index_col=0)   #read of the
+#-------------              For my personal laptop (linux)
+#
+At_we_rad = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
+          index_col=0, sheet_name = 'To_read_atom_weight_rad')   #read of the
                     #excel with the atomic weights
-#For guest laptop at JRC:  
-# At_we_rad = pd.read_excel('C:/Users/localadmin/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
-#                       index_col=0)
-At_we_rad = pd.read_excel('C:/Users/Administrator/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
-                      index_col=0, sheet_name = 'To_read_atom_weight_rad')  
-            #containing radioactive info, manually added by me 
-At_we_nat = pd.read_excel('C:/Users/Administrator/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
-                      index_col=0, sheet_name = 'To_read_atom_weight')      
-        #Path from guest laptop from JRC)       
-              
-Rad_dat_gamma = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx',  
+At_we_nat = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
+          index_col=0, sheet_name = 'To_read_atom_weight')              
+Rad_dat_gamma = pd.read_excel('/home/dla/Python/Rad_dat_DLA.xlsx',  
                         sheet_name= 'Gamma',   index_col=0)      
                     #half lifes and masses of radionuclides
-Rad_dat_alpha = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx',  
-                        sheet_name= 'Alpha',   index_col=0)   
+Rad_dat_alpha = pd.read_excel('/home/dla/Python/Rad_dat_DLA.xlsx',  
+                        sheet_name= 'Alpha',   index_col=0)  
+                        
+                        
+#-------------------------------------------------------------------------------------
+#                           For guest laptop at JRC (Windows):  
+# At_we_rad = pd.read_excel('C:/Users/localadmin/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
+#                       index_col=0)
+#At_we_rad = pd.read_excel('C:/Users/Administrator/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
+ #                     index_col=0, sheet_name = 'To_read_atom_weight_rad')  
+            #containing radioactive info, manually added by me 
+#At_we_nat = pd.read_excel('C:/Users/Administrator/Desktop/Python/at_wt_natural_elements_SVW.xlsx', 
+ #                     index_col=0, sheet_name = 'To_read_atom_weight')      
+        #Path from guest laptop from JRC)       
+              
+#Rad_dat_gamma = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx',  
+ #                       sheet_name= 'Gamma',   index_col=0)      
+                    #half lifes and masses of radionuclides
+#Rad_dat_alpha = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx',  
+ #                       sheet_name= 'Alpha',   index_col=0)   
         
 
 #--------------------------------------------         
@@ -927,7 +938,7 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     emasurement), then sens = Inf (cps /0). To avoid did, I will replace the Inf
     by the average values
     '''
-    aa = df_IS_sens.replace(np.Inf, df_IS_sens.mean(axis = 1),inplace = True)
+    df_IS_sens.replace(np.Inf, df_IS_sens.mean(axis = 1),inplace = True)
     #
     
     print('############################################ \n')
@@ -965,13 +976,14 @@ def IS_sens_calculator_plotter(df_cps_ppb, df_std,
     
     for i in range(0, df_IS_sens.shape[0]):   #looping through rows of the df
         if df_IS_sens.index[i][-4:] == '(LR)':      #low resolution
-            axL.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],
+            axL.plot(list(range(1, df_IS_sens.shape[1]+1)), df_IS_sens.iloc[i,:],
                      '-o' ,label = df_IS_sens.index[i]) 
             
         else:   #MR
-            axM.plot(list(range(0, df_IS_sens.shape[1])), df_IS_sens.iloc[i,:],
+            axM.plot(list(range(1, df_IS_sens.shape[1]+1)), df_IS_sens.iloc[i,:],
                      '-o' ,label = df_IS_sens.index[i])  
-    
+                #list(range(0, df_IS_sens.shape[1])) original
+                #list(range(1, df_IS_sens.shape[1]+1)) to macth excel columns
     #Final styling of the plot
     axL.legend(fontsize = Font)
     axM.legend(fontsize = Font)
@@ -1550,27 +1562,33 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     '''
     SUITE of ICPMS Data Processing!
     
-    Function that will apply all the steps for the automatization of the ICPMS data 
-    processing:
+    Function that will apply all the steps for the automatization of the ICPMS
+    data processing:
         1) Read cps amd ppb data and %rsd 
         2) Compute sens = cps/ppb and plot it
         3) Apply the sensitivity correction
         4) Plot the new sensitivtiy plots (should be straight lines)
         5) Substract ICPMS blanks
         6) Save that data (to calibrate after, by hand, for the moment..)
-    This function computes as well the std using quadratic uncertainty propagation. 
-    Note the excel sheets containing the std also contain info on the ppb, but 
-    that info is just nonsense, I didnt erase it not to have problem with
-    dimensions!
+    This function computes as well the std using quadratic uncertainty 
+    propagation. Note the excel sheets containing the std also contain info 
+    on the ppb, but that info is just nonsense, I didnt erase it not to have 
+    problem with dimensions!
     
     Important notes:
         . Ensure no blank is here!!
-        . To do 2), its needed that the ppb data table begins with IS conc [ppb]! 
-        Befpre there must be only the cps data, nothing else, no text nor anything!!
-        . To do 3), you define the IS cases (which IS are to be used), so beware, 
-                maybe your case its not (yet) defined!!  
+        . To do 2), its needed that the ppb data table begins with IS conc 
+        [ppb]! Befpre there must be only the cps data, nothing else, no text
+        nor anything!!
+        . To do 3), you define the IS cases (which IS are to be used), so 
+        beware, maybe your case its not (yet) defined!!  
         .For 6), you need to have installed xlsxwriter (conda install xslxwriter
                                                         for anaconda isntall)
+        .In case no IS is added to the blanks, you must write 0 in the IS conc.
+        Python will remove that sens value (cps/0 = Inf) and substitute it by
+        the average of the other values.
+        .In case of odd Sens, check %rsd, usually high %rsd reveal errors in the
+        measurement ==> you could dsicard them!
         
     *Inputs:
         .df_cps: df containing the cps data and also the ppb data, in the classic 
@@ -1599,10 +1617,11 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     
     
     ###### To Do: #######
-            .Automatize more stuff? such as the sens corrections, not by case 
-                        something better, more general??
+            .Automatize more stuff? such as the sens corrections, instead of
+            defining then manually case by case? something better, more general??
             .Output more things? Or less??
-            :Delete the ppb data when not needed, so in excels it doesnt exist neither?
+            :Delete the ppb data when not needed, so in excels it doesnt 
+                    exist neither?
     '''
     
     ##### 0 ) Std calc ###########
@@ -1613,15 +1632,15 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     df_std = ICPMS_std_calculator(df_cps, df_rsd)           #Std of the cps
     
     ###### 1) IS sens calc ######
-    df_IS_sens, df_IS_sens_std = IS_sens_calculator_plotter(df_cps, df_std, IS_meas, 
-        name_IS_sens_LR_plot = name_plot_LR_bef, 
+    df_IS_sens, df_IS_sens_std = IS_sens_calculator_plotter(df_cps, 
+    df_std, IS_meas, name_IS_sens_LR_plot = name_plot_LR_bef, 
         name_IS_sens_MR_plot = name_plot_MR_bef)         
                 #calculation the IS correction
                 #I define names of the plot, so the other ones have the default name
     
-    print('\n ########################')
+    print('--------------------------------------------')
     print('Step 1. done, computed IS sens :) ')
-    print('#############################')
+    print('--------------------------------------------')
         #printing that tha step went good, would be good for debuggind!
         
         
@@ -1630,9 +1649,9 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
                                         df_IS_sens_std, IS_meas)
                                #applying the IS correction to the cps data
     
-    print('\n ########################')
+    print('--------------------------------------------')
     print('Step 2.1 done, applyed the IS correction :)) ')
-    print('#############################')    
+    print('--------------------------------------------')
     
     df_IS_sens_co, df_IS_sens_co_std = IS_sens_calculator_plotter(df_IS_co, 
                             df_IS_co_std, IS_meas, 
@@ -1649,18 +1668,18 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     df_Blks_co, df_Blks_co_std = ICPMS_ICPMSBlanks_corrector(df_IS_co, 
                                     df_IS_co_std, ICPblk_columns)    
                                         #correcting for ICPMS blanks
-    print('\n ########################')
+    print('\n ------------------------------------')
     print('Step 3 (final). done, applyed the Blk correction :))) ')
-    print('#############################')
+    print('--------------------------------------------\n')
 
     ##### 4) Saving and Output #########
     '''
-    Here I want to save the df after IS correction, and after the Blk correction. 
-    Both steps would be nice, for debugging!
+    Here I want to save the df after IS correction, and after the Blk 
+    correction. Both steps would be nice, for debugging!
     
     This requires installings xlsxwriter
     '''
-    writer = pd.ExcelWriter(excel_name, engine = 'xlsxwriter')      #excel writer
+    writer = pd.ExcelWriter(excel_name, engine = 'xlsxwriter')  #excel writer
 
     #########Blk correction data
     df_Blks_co.to_excel(writer, sheet_name = 'Blk_correction', startrow = 6, 
@@ -1701,8 +1720,8 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     
     ##########Is correction data
     '''
-    In this sheets I will also include the sensitivity calc, both, corrected and
-    before the correction!
+    In this sheets I will also include the sensitivity calc, both, corrected 
+    and before the correction!
     '''
     df_IS_co.to_excel(writer, sheet_name = 'IS_correction', startrow = 6, 
                       freeze_panes = (6, 1), header = False)        
@@ -1767,7 +1786,10 @@ def ICPMS_data_process(df_cps, df_rsd, ICPblk_columns,
     '''
     
     To_save = {'ppb_Blk_co' : df_Blks_co, 'ppb_std_Blk_co' : df_Blks_co_std,
-               'ppb_Is_co' : df_IS_co, 'ppb_std_co': df_IS_co_std} #to return
+    'ppb_Is_co' : df_IS_co, 'ppb_std_co': df_IS_co_std,
+    'Sens_bef_IS_corr' :df_IS_sens, 'Sens_bef_IS_corr_std' :df_IS_sens_std,
+    'Sens_aft_IS_corr' :df_IS_sens_co, 'Sens_aft_IS_corr_std':df_IS_sens_co_std } 
+                        #to return
     
     
     print('------------------------------------------------------')

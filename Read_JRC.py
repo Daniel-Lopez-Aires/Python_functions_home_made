@@ -7304,7 +7304,7 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
 #%%         7.1) Alpha data load
 #--------------------------------
 
-def Alpha_dat_load(Filename, Xlim = False):
+def Alpha_dat_load(Filename, Xlim = None):
     '''
     Function that will read the alpha spectra, in .txt, and will also generate
     a plot.
@@ -7316,7 +7316,7 @@ def Alpha_dat_load(Filename, Xlim = False):
     *Inputs:
         .Filename: string with the file name.
         .Xlim: [keV]array contain the limits for the xaxis in the plot. 
-            Default: False (not provided)
+            Default: None (not provided)
             
     *Outputs:
         .Df with the spectra info
@@ -7344,7 +7344,7 @@ def Alpha_dat_load(Filename, Xlim = False):
     plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
                                     #which both to plot major and minor grid lines
     plt.grid(which = 'major')
-    if Xlim == True:
+    if Xlim is not None:
         plt.xlim(Xlim)               #xlim, to remove background
     plt.savefig(Filename[:-4] + '.png', format='png', bbox_inches='tight')
     plt.show()  

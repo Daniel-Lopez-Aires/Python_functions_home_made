@@ -6805,7 +6805,7 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
     delta_eps = eps* np.sqrt((delta_T/T)**2 + (Ce**4))
     
     #Elevating it by square:
-    eps2 = eps*eps                                   #J2/mol2
+    eps2 = eps*eps                                   #J**2/mol**2
     delta_eps2 = np.sqrt(2) * eps * delta_eps
     
         #delta(log(1/Ce))/(1/Ce) = 1/(1/Ce**2)=Ce**2
@@ -6835,7 +6835,7 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
     '''
     fit['beta[mol2/J2]'] = -fit['a']         
     fit['\Delta(beta[mol2/J2])'] = fit['\Delta(a)'] 
-    fit['Q_s'+Qe_units] = 10**fit['b']        
+    fit['Q_s'+Qe_units] = np.exp(fit['b'] )       
     fit['\Delta(Q_s'+Qe_units+')'] = fit['Q_s'+Qe_units] *fit['\Delta(b)']
     
     #Lets finally compute the mean free energy F, to see the nature of the process
@@ -6847,16 +6847,20 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
     print('Obtained result:')
     print(f' F = {F:.1e} +- {delta_F:.1e}' + ' J/mol')
     if F*10**-3 < 8:                                        #physi
-        print('F < 8 KJ/mol ==> physisorption ')
+        print('F < 8 KJ/mol ==> Physisorption (Weak outer-sphere complexes on the surface.) ')
+        sorp_type = 'Physisorption'               #storing it, to save it
     elif (F*10**-3 > 8 and F*10**-3 < 16):                  #chemi
         print('8 KJ/mol < F < 16 KJ/mol ==> Ion exchange/soft chemisorption')
+        sorp_type = 'Ion exchange/soft chemisorption'
     else :                                  #F*10**-3 > 16     #WTF is that?
-        print('F> 16 kJ/mol ==> chemisorption')
-    
-    print('##################################################')
+        print('F> 16 kJ/mol ==> Chemisorption (Strong inner-sphere bonding on edge aluminol/silanol groups.)')
+        sorp_type = 'Chemisorption'
+
+    print('--------------------------------------------------------')
     print('End of the D-R fit function \n')
     
     #Finally we store them
+    fit['Sorption_Type'] = sorp_type
     fit['F[J/mol]'] = F    
     fit['\Delta(F[J/mol])'] = delta_F
     

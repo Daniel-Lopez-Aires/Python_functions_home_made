@@ -294,7 +294,8 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
 	ii) Sometimes computer error occurs and Std_dev is <0, although the fit is good.
 		This is just a computer error, ignore it. This issue can not be solved
 		by fitting with the variance = std_dev^2 for the moment, in the future I
-		may think how to fix this :)
+		may think how to fix this.. For the moment using std dev and putting np.abs()
+		seems to work xD
 
     """
     ########## 3.1) Fit calc ################3
@@ -315,7 +316,7 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
     
     heigh = opt_values[0]                       		#heigh of the fit
     mean = opt_values[1]                        	#mean value of the fit 
-    sigma = opt_values[2]                       #variance of the fit STD DEV!!
+    sigma = np.abs(opt_values[2])                       #variance of the fit STD DEV!!
     #sigma = np.sqrt(opt_values[2]) 			#std deviation of the fit if using variance as parameter
     
     perr = np.sqrt(np.diag(cov_of_opt_val))        #standard deviation error ('el 
@@ -325,7 +326,7 @@ def Gaussian_fit(x, y, index_df = 0, N = 100):
     Delta_heigh = perr[0]               #error of the heigh
     #Delta_sigma = 1 / (2 * sigma) * perr[2]    
                 #error of the standar deviation if using variance as parameter   
-    Delta_sigma = perr[2] 					#error of the standar deviation
+    Delta_sigma = np.abs(perr[2])			#error of the standar deviation
   
   #source: 
   #https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html

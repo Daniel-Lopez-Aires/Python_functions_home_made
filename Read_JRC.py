@@ -6431,14 +6431,14 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     K_F is ng/g_be * (ng/g_tot)**n = ng**n+1/(g_be * g_tot**n)
         '''
         fit['n'] = 1/fit['a']         
-        fit['\Delta(n)'] = fit['\Delta(a)']/ fit['a'] **2
+        fit['std(n)'] = fit['\Delta(a)']/ fit['a'] **2
         fit['K[L^n/(kg*mol^{n-1})]'] = 10**fit['b']        
-        fit['\Delta(K[L^n/(kg*mol^{n-1})])'] = fit['K[L^n/(kg*mol^{n-1})]'] *fit[
+        fit['std(K[L^n/(kg*mol^{n-1})])'] = fit['K[L^n/(kg*mol^{n-1})]'] *fit[
             '\Delta(b)'] * np.log(10)
     #Return the %rsd will be useful to know how relevants are the aprameters!
-        fit['%rsd K'] = fit['\Delta(K[L^n/(kg*mol^{n-1})])'] / fit['K[L^n/(kg*mol^{n-1})]'
+        fit['%rsd K'] = fit['std(K[L^n/(kg*mol^{n-1})])'] / fit['K[L^n/(kg*mol^{n-1})]'
                                                                    ] * 100
-        fit['%rsd n'] = fit['\Delta(n)'] / fit['n'] * 100
+        fit['%rsd n'] = fit['std(n)'] / fit['n'] * 100
         '''
         K_F error may be higher than you expected, but since you work with lgoaritm
         this could happen!
@@ -6464,9 +6464,9 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
         
         fit = pd.Series({
         'K[L^n/(kg*mol^{n-1})]': K,
-        '\Delta(K[L^n/(kg*mol^{n-1})])': dK,
+        'std(K[L^n/(kg*mol^{n-1})])': dK,
         'n' : n,
-        '\Delta(n)' : dn,
+        'std(n)' : dn,
         'r': R2,
         '%rsd K' : dK/K*100, '%rsd n': dn/n*100})
         
@@ -6489,6 +6489,79 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
         plt.show()
         #
         #
+    # elif Fit_type == 2:        #Do lin and non-linear, and give the best (not done)
+    #     """
+    #     For this case, I will do both fits, but, I will only report the best
+    #     fit. How would I qunaity the best? 
+        
+    #     I could look at
+    #         .Best r
+    #         .Smaller %rsd, for both n and K.
+            
+    #     I will try to look at the 3 things.
+    #     """
+    #     #Lin type calc
+    #     logCe = np.log10(Ce)                        #cal of the log
+    #     logQe = np.log10(Qe)
+    #     delta_logCe = delta_Ce / (np.abs(Ce) * np.log(10))   #error of the log10!!
+    #     delta_logQe = delta_Qe / (np.abs(Qe) * np.log(10))
+    # ############# 2)Fit ######################
+    #     fit = Fits.LinearRegression(logCe, logQe, delta_logCe, delta_logQe,
+    #                                x_label = x_label, y_label = y_label, 
+    #                                x_legend = 'log($C_e$)', y_legend = 'log($Q_e$)',
+    #                                Color = Color, 
+    #                                save_name = folder_name +'/' + save_name, 
+    #                                Title = Title)       
+
+    #     fit['n'] = 1/fit['a']         
+    #     fit['std(n)'] = fit['\Delta(a)']/ fit['a'] **2
+    #     fit['K[L^n/(kg*mol^{n-1})]'] = 10**fit['b']        
+    #     fit['std(K[L^n/(kg*mol^{n-1})])'] = fit['K[L^n/(kg*mol^{n-1})]'] *fit[
+    #         '\Delta(b)'] * np.log(10)
+    # #Return the %rsd will be useful to know how relevants are the aprameters!
+    #     fit['%rsd K'] = fit['std(K[L^n/(kg*mol^{n-1})])'] / fit['K[L^n/(kg*mol^{n-1})]'
+    #                                                                ] * 100
+    #     fit['%rsd n'] = fit['std(n)'] / fit['n'] * 100
+    #     '''
+    #     K_F error may be higher than you expected, but since you work with lgoaritm
+    #     this could happen!
+    #     '''
+        
+    #     #NL fit
+    #     def Fre_fit_eq(C,K, n):         #fre fit eq, non linear (original)
+    #         return K*C**(1/n)
+    #     # --- Initial guess: K ~ max (Qe)/max(Ce), n  ~ 1
+    #     p0 = [np.max(Qe)/np.max(Ce), 1]  
+    #     popt, pcov = curve_fit(Fre_fit_eq, Ce, Qe, p0=p0, maxfev=10000)
+    #     K,n = popt
+    #     perr = np.sqrt(np.diag(pcov))  # errors
+    #     dK, dn = perr
+
+    #     # --- Predicted values
+    #     Qe_pred = Fre_fit_eq(Ce, *popt)
+
+    #     # --- Goodness of fit (R^2)
+    #     ss_res = np.sum((Qe - Qe_pred) ** 2)
+    #     ss_tot = np.sum((Qe - np.mean(Qe)) ** 2)
+    #     R2 = 1 - (ss_res / ss_tot)
+        
+    #     fitNL = pd.Series({
+    #     'K[L^n/(kg*mol^{n-1})]': K,
+    #     'std(K[L^n/(kg*mol^{n-1})])': dK,
+    #     'n' : n,
+    #     'std(n)' : dn,
+    #     'r': R2,
+    #     '%rsd K' : dK/K*100, '%rsd n': dn/n*100})
+        
+            
+    #     #-------------- Best fit selection
+    #     diff_rsd_K = fitNL['%rsd K'] - fit['%rsd K']        #Diff in %rsd of K
+    #     diff_rsd_n = fitNL['%rsd n'] - fit['%rsd n'] 
+        
+        
+        #if fit['r'] < fitNL['r']:       #Lin fit has better r
+            #Now I need to further check the %rsd, how are them?
+
     else:       #wrong type given
         print('Wrong fit type given. Accepted 1(Linear) and 0 (non linear)')
         fit = np.nan
@@ -6513,7 +6586,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
     Langmuir fit of an adsorption isotherm Q_e = f (C_e), the sorbed 
     quantity as a function of the equilibrium concentration. 
     Its equation is
-        Q_e = Q_max * K_L/(1+K_L* C_e) * C_e
+        Q_e = Q_max * K_L* C_e/(1+K_L* C_e) 
         
     Being K_L the sorption rate. Note it has a maximum!
     
@@ -6528,7 +6601,7 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         Here you plot Qe (x) vs Qe/Ce (y)
     I will do these function so that you can do one of the 2 linearizations, or
     the normal version. ANd the untis? If [Ce] = M, [Qe] = mol /kg_bent, 
-    [K_L] = M^{-1}
+    [K_L] = M^{-1} = 1/M
     
     *Inputs
         .Ce, Qe: df series containing C_e and Q_e data. Expected the averaged
@@ -6610,13 +6683,13 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
          
         """          
         fit["Q_max[mol/kg_be]"] = 1/ fit["a"]
-        fit["\Delta(Q_max[mol/kg_be])"] = fit['\Delta(a)']/fit['a']**2
-        fit["K_L[M^{-1}]"] = 1/ (fit["b"] * fit["Q_max[mol/kg_be]"] )
-        fit["/Delta(K_L[M^{-1}])"] = fit["K_L[M^{-1}]"] * np.sqrt(
-             (fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"])**2 + 
+        fit["std(Q_max[mol/kg_be])"] = fit['\Delta(a)']/fit['a']**2
+        fit["K_L[1/M]"] = 1/ (fit["b"] * fit["Q_max[mol/kg_be]"] )
+        fit["std(K_L[1/M])"] = fit["K_L[1/M]"] * np.sqrt(
+             (fit["std(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
-        fit['%rsd Q_max'] = fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
-        fit['%rsd K_L'] = 100 * fit["/Delta(K_L[M^{-1}])"] / fit["K_L[M^{-1}]"]
+        fit['%rsd Q_max'] = fit["std(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
+        fit['%rsd K_L'] = 100 * fit["std(K_L[1/M])"] / fit["K_L[1/M]"]
     elif Fit_type ==2:                                  #Linearization 2!
         fit = Fits.LinearRegression(Qe, Qe_Ce, delta_Qe, delta_Qe_Ce,
                                    x_label = x_label, y_label = y_label, 
@@ -6647,16 +6720,16 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
             delta Qm = Qm * sqrt( (delta b/b)**2 + (delta KL/KL)**2 )
          
      """          
-        fit["K_L[M^{-1}]"] = -fit["a"]
-        fit["Q_max[mol/kg_be]"] = fit["b"] / fit["K_L[M^{-1}]"]
+        fit["K_L[1/M]"] = -fit["a"]
+        fit["Q_max[mol/kg_be]"] = fit["b"] / fit["K_L[1/M]"]
         
-        fit["/Delta(K_L[M^{-1}])"] = fit['\Delta(a)']        
-        fit["\Delta(Q_max[mol/kg_be])"] = fit["Q_max[mol/kg_be]"] * np.sqrt(
-             (fit["/Delta(K_L[M^{-1}])"]/fit["K_L[M^{-1}]"])**2 + 
+        fit["std(K_L[1/M])"] = fit['\Delta(a)']        
+        fit["std(Q_max[mol/kg_be])"] = fit["Q_max[mol/kg_be]"] * np.sqrt(
+             (fit["std(K_L[1/M])"]/fit["K_L[1/M]"])**2 + 
              (fit['\Delta(b)']/fit["b"])**2 )
 
-        fit['%rsd Q_max'] = fit["\Delta(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
-        fit['%rsd K_L'] = 100 * fit["/Delta(K_L[M^{-1}])"] / fit["K_L[M^{-1}]"]   
+        fit['%rsd Q_max'] = fit["std(Q_max[mol/kg_be])"]/fit["Q_max[mol/kg_be]"] * 100
+        fit['%rsd K_L'] = 100 * fit["std(K_L[1/M])"] / fit["K_L[1/M]"]   
 
     elif Fit_type == 0:           #no linear fit, normal fit!
         print("#------------------------------- ")
@@ -6687,9 +6760,9 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         
         fit = pd.Series({
         'Q_max[mol/kg_be]': Qmax,
-        '\Delta(Q_max[mol/kg_be])': dQmax,
-        'K_L[M^{-1}]': KL,
-        '/Delta(K_L[M^{-1}])': dKL,
+        'std(Q_max[mol/kg_be])': dQmax,
+        'K_L[1/M]': KL,
+        'std(K_L[1/M])': dKL,
         'r': R2,
         '%rsd K_L' : dKL/KL*100, '%rsd Q_max': dQmax/Qmax*100})
         
@@ -6860,7 +6933,7 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
     print('End of the D-R fit function \n')
     
     #Finally we store them
-    fit['Sorption_Type'] = sorp_type
+    #fit['Sorption_Type'] = sorp_type
     fit['F[J/mol]'] = F    
     fit['\Delta(F[J/mol])'] = delta_F
     
@@ -7361,7 +7434,7 @@ def Alpha_dat_load(Filename, Xlim = None):
 
 
 #----------------------
-#           7.1 ) Peak fit spectra
+#           7.2 ) Peak fit spectra
 #-------------------
 
 def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
@@ -7372,7 +7445,8 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
     *Inputs:
         .x_dat: df series with the x data
         .y_dat : df series with the y data
-        .peak interval: array with the interval (in index), from eye spot. Eg: [100, 500]
+        .peak interval: array with the interval (in index), from eye spot. 
+        Eg: [100, 500]
         .Fig_savename: string for the name of the plot. Default: 'Fit'
         
     *Output
@@ -7409,11 +7483,14 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
     x_vector = np.linspace(min(x_peak),max(x_peak))         #for the fit plotting
 
     plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-    plt.plot( x_peak , y_peak, label = 'Peak data',linewidth = 1.5)  
-    #plt.plot(MS11_2['Energy'], MS11_2['Counts'], '.', label = 'Data',) 
+    plt.plot( x_peak , y_peak, label = 'Peak data',linewidth = 1.5)
     try:                #try, if fit was possible
         plt.plot(x_vector, gaussian(x_vector, Peak_fit['heigh'][0], Peak_fit['mean'][0], 
-        Peak_fit['sigma'][0]), '.', label = 'Peak fit', markersize = Markersize)           #fit
+        Peak_fit['sigma'][0]), '.', 
+        label= 'Fit: y = ' + f' = {Peak_fit["heigh"][0]:.2f} * exp('  + 
+        f' -(x-{Peak_fit["mean"][0]:.2f})^2 / 2*{Peak_fit["sigma"][0]:.2f}^2)' +
+        '\nRes = ' + f'{Peak_fit["Res[%]"][0]:.1f}' + '%', 
+            markersize = Markersize) #fit
     except:             #if fit was not possible, no extra plotting
         print('')
         
@@ -7434,8 +7511,64 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
 
 
 
+# --------------------------------------------------------------------
+#               7.3) Alpha combined analysis
+#---------------------------------------------------------------------
+
+def Alpha_main_fun(Filename, peak_interval1, peak_interval2, Xlim = None):
+    """
+    Main function for the analysis of an alpha spectra. It combine:
+        1) Function to read alpha spectra
+        2) Function to do the peak fitting
+     
+     2) Will be done to 2 peaks, since my spectra have 2 peaks. The peak fits, as
+     well as the spectra, will e plotted and saved in the same folder where the
+     spectra .txt file is.
+     
+     
+     *Inputs:
+         .Filename: string with the name. Could also contain folder. Eg:
+             'Alpha/29773_SAdLe1_6_rep2_100uL_10h_20251215_Det2.txt'
+        .peak_interval1/2: array containing the x limits (Energy) of the peak
+        1 and 2. Eg: [500, 600]. This is index,not energies!
+
+    *Output:
+        .Dictionary with
+            -THe spectra
+            -The peak fitting info
+            
+            
+    #------------ To Do:
+            .Inlcude integral of the peak (trapz, see Garantia Juevenil)
+            .
+     
+    """
+    
+    
+    #----------- 1) Spectra load
+    
+    Spec = Alpha_dat_load(Filename, Xlim)        #Spectra data
+    
+    
+    #----------2) peak fitting
+    
+    Peak_1 = Peak_fit_spectra(Spec['Energy'], Spec['Counts'], 
+            peak_interval1, Fig_savename = Filename[:-4] + 'Peak_1')
+    Peak_2 = Peak_fit_spectra(Spec['Energy'], Spec['Counts'], 
+        peak_interval2, Fig_savename = Filename[:-4] + 'Peak_2')
+    
+    #We will merge both data in a DataFrame
+    Peak_df = pd.concat([Peak_1, Peak_2], axis = 0)
+    Peak_df.index = [1,2]                        #redefining indexes
+    
+    #           3) Output
+    output = {"Spectra": Spec, "Peak_fit": Peak_df}
+    
+    return output
+    
+
 #----------------------
-#%%           7. ) Bq to concentration
+#%%           8. ) Bq to concentration
 #----------------------
 def Gamma_Bq_to_conc(df_A, df_A_std):
     '''

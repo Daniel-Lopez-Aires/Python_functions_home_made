@@ -7450,16 +7450,25 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
         .Fig_savename: string for the name of the plot. Default: 'Fit'
         
     *Output
-        .
+        .1 row df containing all the relevant info of the peak
     '''
 
 
-    #           0) Data loading         #
+    #           0) Chosing the desired interval        #
+    """
+    To pick the interval, you will give limits, and it will select all the data
+    within that interval
+    """
+    ROI = (x_dat > peak_interval[0]) & (x_dat < peak_interval[1]) 
+            #Region Of Interest
     'Since a df series is given, and my fit function needs array, we conver to an array'
     
-    x_peak_ser = x_dat[peak_interval[0]:peak_interval[1]]       #peak interval, df series
-    x_peak = x_peak_ser.values                          #peak interval, array
-    y_peak_ser = y_dat[peak_interval[0]:peak_interval[1]]       #peak interval, df series
+    x_peak_ser = x_dat[ROI]      
+                                                #peak interval, df series
+    x_peak = x_peak_ser.values                           #peak interval, array
+    #Now to get the counts, we need to use the same index, but just change variable
+    y_peak_ser = y_dat[ROI]    
+                        #peak interval, df series
     y_peak = y_peak_ser.values 
 
 
@@ -7474,14 +7483,14 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
         print('Returning NaN \n')
         Peak_fit = np.NaN
         
-    def gaussian(x, Heigh, Mean, Std_dev):      #redefined the fit function, for plotting
+    def gaussian(x, Heigh, Mean, Std_dev):  #redefined the fit function, for plotting
       	return Heigh * np.exp(- (x-Mean)**2 / (2 * Std_dev**2)) 
     
     
     # ------ 2) Plotting --------------
     
     x_vector = np.linspace(min(x_peak),max(x_peak))         #for the fit plotting
-
+    #
     plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
     plt.plot( x_peak , y_peak, label = 'Peak data',linewidth = 1.5)
     try:                #try, if fit was possible
@@ -7505,8 +7514,81 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
     plt.show()
 
 
-    #.---------------- 3) Returning
+    #------------------ 3) Integral
+    '''
+    Okay, I will do the integral, it might be needed. how to stimate its error?
+    
+    Chatgpt said that alpha/gamma spec software do for integration:
+        Nnet = N_ROI -B*n_ROI
+        
+    being:
+        N_ROI + sum of counts in the ROI (Region of Interest)
+        B = average counts of background per channel
+        n_roi = number of channels in ROI
+        
+    Better not diong trapz since thats continuous, but radiocativyt counting is not
+    !
+    
+    About uncertainties, the std of the counts are (Poisson)
+            std = sqrt(N)
+            
+    
+    Hence, first issue is to define the background. What you can do is to 
+    stimate it, so a good way is to choose 2 interval, to the left and right of 
+    the peak of interest. TO move it, you could due it base on the FWHM of the 
+    peak. hence, someting like:
+            ROI = [E1, E2]
+            ROI_bg1 = [E1-k*FWHM <E < E1-m * FWHM]
+            ROI_bg2 = [E2-k*FWHM <E < E2-m * FWHM]
+            
+            wit k = 5, m = 1.5 typically.
+    
+    And, to stimate the std of the background, you can do:
+                    std_bg = sqrt(N_bg)/n_bg
+                    
+    being N_bg = sum bg counts in both intervals and
+    n_bg number of channels in both intervals. Hence this is an stimaiton of 
+    its std.
+    '''
+    
+    bg_L = [peak_interval[0]-5*Peak_fit['FWHM'][0], 
+               peak_interval[0]-1.5*Peak_fit['FWHM'][0]]     #bacground interval
+                   #to the left of the peak
+    bg_R = [peak_interval[1]-5*Peak_fit['FWHM'][0], 
+               peak_interval[1]-1.5*Peak_fit['FWHM'][0]]     #bacground interval
+                   #to the right of the peak    
+                   
+    ROI_bg_L = (x_dat > bg_L[0]) & (x_dat < bg_L[1]) #ROI for background
+    ROI_bg_R = (x_dat > bg_R[0]) & (x_dat < bg_R[1]) 
+    
+    
+    B = np.mean(np.concatenate([y_dat[ROI_bg_L], y_dat[ROI_bg_R]])) 
+            #background counts, averaging the 2 regions
+    std_B = np.sqrt(np.sum(y_dat[ROI_bg_L])+np.sum(y_dat[ROI_bg_R]) ) / np.sum ( 
+        ROI_bg_L + ROI_bg_R)  #std of B = std (sum bg counts) / number of channels
+    #print('B: ' + str(B))                  #Debug purpose, print B
+        
+    def Integrate_ROI(mask):
+        N_roi = np.sum(y_peak)      #number of counts in the interval
+        n = np.sum(mask)            #number of channel in the interval
+        N_net = N_roi - B*n
+        #And the uncertainty? You timate it based on the region
+        std = np.sqrt(N_roi + (n*std_B)**2)
+        return N_net, N_roi, n, std
+    
+    ########
+    
+    N, N_raw, n, N_std = Integrate_ROI(ROI)            #Performing the integration
+    
+    #now lets add that info to the variable
+    Peak_fit["Integral"] = N
+    Peak_fit['Integral_std'] = N_std
+    
+    
+    #.---------------- 4) Returning
     #LEts return the peak fit info. Maybe I could also print the info?
+    
+    
     return Peak_fit 
 
 

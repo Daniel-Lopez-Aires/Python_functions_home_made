@@ -7381,7 +7381,7 @@ def Read_FTIR (name, Type = 'A', Plot = 'A', Sep = ','):
 #%%         7.1) Alpha data load
 #--------------------------------
 
-def Alpha_dat_load(Filename, Xlim = None):
+def Alpha_dat_load(Filename, Xlim = None, Logplot = False):
     '''
     Function that will read the alpha spectra, in .txt, and will also generate
     a plot.
@@ -7394,7 +7394,7 @@ def Alpha_dat_load(Filename, Xlim = None):
         .Filename: string with the file name.
         .Xlim: [keV]array contain the limits for the xaxis in the plot. 
             Default: None (not provided)
-            
+        .Logplot : Boolean to indicate i log plot is desired or not. Default: False
     *Outputs:
         .Df with the spectra info
         
@@ -7415,7 +7415,8 @@ def Alpha_dat_load(Filename, Xlim = None):
     plt.ylabel("Counts", fontsize= Font)              #ylabel
     plt.xlabel("Energy (keV)", fontsize= Font)   
     #plt.xticks(X_axis, Dict_el_MS['dat'].columns, rotation=90)
-    plt.yscale('log') 
+    if Logplot:
+        plt.yscale('log') 
     plt.tick_params(axis='both', labelsize=Font)              #size of axis
     plt.minorticks_on()             #enabling minor grid lines
     plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
@@ -7437,14 +7438,14 @@ def Alpha_dat_load(Filename, Xlim = None):
 #           7.2 ) Peak fit spectra
 #-------------------
 
-def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
+def Peak_fit_spectra(E, C, ROI, Fig_savename = 'Fit'):
     '''
     Function that will receive a df containing an spectra (alpha, gamma, etc) and
     will do the peak fitting (gaussian) to the desired peak.
     
     *Inputs:
-        .x_dat: df series with the x data
-        .y_dat : df series with the y data
+        .E: df series with the Energy (x data)
+        .C : df series with the Counts (y data)
         .peak interval: array with the interval (in index), from eye spot. 
         Eg: [100, 500]
         .Fig_savename: string for the name of the plot. Default: 'Fit'
@@ -7459,15 +7460,15 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
     To pick the interval, you will give limits, and it will select all the data
     within that interval
     """
-    ROI = (x_dat > peak_interval[0]) & (x_dat < peak_interval[1]) 
+    ROI = (E > ROI[0]) & (E < ROI[1]) 
             #Region Of Interest
     'Since a df series is given, and my fit function needs array, we conver to an array'
     
-    x_peak_ser = x_dat[ROI]      
+    x_peak_ser = E[ROI]      
                                                 #peak interval, df series
     x_peak = x_peak_ser.values                           #peak interval, array
     #Now to get the counts, we need to use the same index, but just change variable
-    y_peak_ser = y_dat[ROI]    
+    y_peak_ser = C[ROI]    
                         #peak interval, df series
     y_peak = y_peak_ser.values 
 
@@ -7509,81 +7510,14 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
     plt.legend( fontsize=Font) 
         # Set size of tick labels.
     plt.tick_params(axis='both', labelsize=Font)              #size of axis
-    plt.grid(True) 
+    plt.minorticks_on()             #enabling minor grid lines
+    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
+                                    #which both to plot major and minor grid lines
+    plt.grid(which = 'major')
     plt.savefig(Fig_savename + '.png', format='png', bbox_inches='tight')    
     plt.show()
 
 
-    #------------------ 3) Integral
-    '''
-    Okay, I will do the integral, it might be needed. how to stimate its error?
-    
-    Chatgpt said that alpha/gamma spec software do for integration:
-        Nnet = N_ROI -B*n_ROI
-        
-    being:
-        N_ROI + sum of counts in the ROI (Region of Interest)
-        B = average counts of background per channel
-        n_roi = number of channels in ROI
-        
-    Better not diong trapz since thats continuous, but radiocativyt counting is not
-    !
-    
-    About uncertainties, the std of the counts are (Poisson)
-            std = sqrt(N)
-            
-    
-    Hence, first issue is to define the background. What you can do is to 
-    stimate it, so a good way is to choose 2 interval, to the left and right of 
-    the peak of interest. TO move it, you could due it base on the FWHM of the 
-    peak. hence, someting like:
-            ROI = [E1, E2]
-            ROI_bg1 = [E1-k*FWHM <E < E1-m * FWHM]
-            ROI_bg2 = [E2-k*FWHM <E < E2-m * FWHM]
-            
-            wit k = 5, m = 1.5 typically.
-    
-    And, to stimate the std of the background, you can do:
-                    std_bg = sqrt(N_bg)/n_bg
-                    
-    being N_bg = sum bg counts in both intervals and
-    n_bg number of channels in both intervals. Hence this is an stimaiton of 
-    its std.
-    '''
-    
-    bg_L = [peak_interval[0]-5*Peak_fit['FWHM'][0], 
-               peak_interval[0]-1.5*Peak_fit['FWHM'][0]]     #bacground interval
-                   #to the left of the peak
-    bg_R = [peak_interval[1]-5*Peak_fit['FWHM'][0], 
-               peak_interval[1]-1.5*Peak_fit['FWHM'][0]]     #bacground interval
-                   #to the right of the peak    
-                   
-    ROI_bg_L = (x_dat > bg_L[0]) & (x_dat < bg_L[1]) #ROI for background
-    ROI_bg_R = (x_dat > bg_R[0]) & (x_dat < bg_R[1]) 
-    
-    
-    B = np.mean(np.concatenate([y_dat[ROI_bg_L], y_dat[ROI_bg_R]])) 
-            #background counts, averaging the 2 regions
-    std_B = np.sqrt(np.sum(y_dat[ROI_bg_L])+np.sum(y_dat[ROI_bg_R]) ) / np.sum ( 
-        ROI_bg_L + ROI_bg_R)  #std of B = std (sum bg counts) / number of channels
-    #print('B: ' + str(B))                  #Debug purpose, print B
-        
-    def Integrate_ROI(mask):
-        N_roi = np.sum(y_peak)      #number of counts in the interval
-        n = np.sum(mask)            #number of channel in the interval
-        N_net = N_roi - B*n
-        #And the uncertainty? You timate it based on the region
-        std = np.sqrt(N_roi + (n*std_B)**2)
-        return N_net, N_roi, n, std
-    
-    ########
-    
-    N, N_raw, n, N_std = Integrate_ROI(ROI)            #Performing the integration
-    
-    #now lets add that info to the variable
-    Peak_fit["Integral"] = N
-    Peak_fit['Integral_std'] = N_std
-    
     
     #.---------------- 4) Returning
     #LEts return the peak fit info. Maybe I could also print the info?
@@ -7592,12 +7526,135 @@ def Peak_fit_spectra(x_dat, y_dat, peak_interval, Fig_savename = 'Fit'):
     return Peak_fit 
 
 
+#----------------------------------------------
+#               7.3) Peak dsicrete integration (radioactivity)
+
+def Spectrometry_peak_integration(E, C, ROI, FWHM = 25, m = 1.5,
+        k = 5, Fig_savename = "Spectra_ROI", Plot = True):
+    """
+    This function will do the discrete integration of a peak, to count the total
+    counts. As GPT said, alphga/gamma spectr sw usually do to integrate the counts:
+        
+        Nnet = N_ROI -B*n_ROI
+    
+    being:
+    N_ROI + sum of counts in the ROI (Region of Interest)
+    B = average counts of background per channel
+    n_roi = number of channels in ROI
+    
+    Better not diong trapz since thats continuous, but radiocativyt counting is not
+    !
+
+    About uncertainties, the std of the counts are (Poisson)
+        std = sqrt(N)
+        
+
+    ence, first issue is to define the background. What you can do is to 
+    stimate it, so a good way is to choose 2 interval, to the left and right of 
+    the peak of interest. TO move it, you could due it base on the FWHM of the 
+    peak. hence, someting like:
+        ROI = [E1, E2]
+        ROI_bg1 = [E1-k*FWHM <E < E1-m * FWHM]
+        ROI_bg2 = [E2-k*FWHM <E < E2-m * FWHM]
+        
+        wit k = 5, m = 1.5 typically.
+
+    And, to stimate the std of the background, you can do:
+                std_bg = sqrt(N_bg)/n_bg
+                
+    being N_bg = sum bg counts in both intervals and
+    n_bg number of channels in both intervals. Hence this is an stimaiton of 
+    ts std.    
+    
+    
+    *Inputs:
+        .E : array Energy axis (KeV)
+        C : array Counts per channel
+        roi : array    [Emin, Emax] in MeV
+        fwhm : float
+        Detector FWHM in MeV (default 25 keV = 0.025 MeV)
+        m, k : float
+        Background window distances in units of FWHM
+        .Plot. Boolean to indicate if you want to plot the ROI. Default: True
+        . Fig_savename = "Spectra_ROI" string for the name of the plot with the ROI
+        
+    *Outputs:
+        Nnet : net peak counts
+        sigma : 1σ uncertainty
+        B : background per channel
+    """
+
+    #--------------------- 0) Getting and plotting the ROI
+    E1 = ROI[0]
+    E2 = ROI[1]            #Getting the limits of the ROI
+
+    # --- define ROI mask
+    roi_mask = (E >= E1) & (E <= E2)      #
+        #That gives booleans, True or False
+
+    #plot
+    if Plot:
+        plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+        plt.plot( E , C, label = 'data',linewidth = 1.5)
+        plt.plot( E[roi_mask] , C[roi_mask], label = 'ROI',linewidth = 1.5)
+        plt.title("ROI for the integration", fontsize=22)           #title
+        plt.xlabel("E [keV]", fontsize=Font)                        #xlabel
+        plt.ylabel("Counts ", fontsize=Font)              #ylabel
+        plt.legend( fontsize=Font) 
+        # Set size of tick labels.
+        plt.tick_params(axis='both', labelsize=Font)              #size of axis
+        plt.minorticks_on()             #enabling minor grid lines
+        plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
+                                    #which both to plot major and minor grid lines
+        plt.grid(which = 'major')
+        plt.savefig(Fig_savename + '.png', format='png', bbox_inches='tight')    
+        plt.show()
+
+    #------------------ 1) Background stimation
+
+    # --- define background masks
+    bkgL = (E >= E1 - k*FWHM) & (E <= E1 - m*FWHM)
+    bkgR = (E >= E2 + m*FWHM) & (E <= E2 + k*FWHM)
+
+    bkg_mask = bkgL | bkgR      #Mark channel as bacground if it is in the left window
+            #or right windows
+
+    # --- safety check
+    if np.sum(bkg_mask) < 10:
+        raise ValueError("Background windows too small — increase k or reduce m")
+
+    # --- counts
+    Nroi = np.sum(C[roi_mask])          #Total counts of the ROI
+    nroi = np.sum(roi_mask)             #Total number of channels in the ROI
+
+    Nbkg = np.sum(C[bkg_mask])          #Total counts of the bg ROI
+    nbkg = np.sum(bkg_mask)             #Total number of channels in the bg ROI
+
+    # --- background per channel
+    B = Nbkg / nbkg
+
+    # --- net counts
+    Nnet = Nroi - B*nroi
+
+    # --- uncertainty
+    sigma_B = np.sqrt(Nbkg) / nbkg
+    sigma = np.sqrt(Nroi + (nroi*sigma_B)**2)
+
+    
+    #-------------------- 3) Output
+    output = {"N": Nnet, "N_std": sigma, "B": B}    
+            #variable to return
+    df = pd.Series(output)        
+    
+    return df
+    
+    
 
 # --------------------------------------------------------------------
-#               7.3) Alpha combined analysis
+#               7.4) Alpha combined analysis
 #---------------------------------------------------------------------
 
-def Alpha_main_fun(Filename, peak_interval1, peak_interval2, Xlim = None):
+def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot"):
     """
     Main function for the analysis of an alpha spectra. It combine:
         1) Function to read alpha spectra
@@ -7611,9 +7668,11 @@ def Alpha_main_fun(Filename, peak_interval1, peak_interval2, Xlim = None):
      *Inputs:
          .Filename: string with the name. Could also contain folder. Eg:
              'Alpha/29773_SAdLe1_6_rep2_100uL_10h_20251215_Det2.txt'
-        .peak_interval1/2: array containing the x limits (Energy) of the peak
+        .ROI1/2: array containing the x limits (Energy) of the peak
         1 and 2. Eg: [500, 600]. This is index,not energies!
-
+        .Fig_savename = "Plot"
+        .Xlim: Energy interval for the plot fo the ROI
+        
     *Output:
         .Dictionary with
             -THe spectra
@@ -7621,7 +7680,6 @@ def Alpha_main_fun(Filename, peak_interval1, peak_interval2, Xlim = None):
             
             
     #------------ To Do:
-            .Inlcude integral of the peak (trapz, see Garantia Juevenil)
             .
      
     """
@@ -7630,21 +7688,69 @@ def Alpha_main_fun(Filename, peak_interval1, peak_interval2, Xlim = None):
     #----------- 1) Spectra load
     
     Spec = Alpha_dat_load(Filename, Xlim)        #Spectra data
+    E = Spec['Energy']              #[keV]
+    C = Spec['Counts']          #Counts
     
+    #----------- 2) Peak integration
     
-    #----------2) peak fitting
-    
-    Peak_1 = Peak_fit_spectra(Spec['Energy'], Spec['Counts'], 
-            peak_interval1, Fig_savename = Filename[:-4] + 'Peak_1')
-    Peak_2 = Peak_fit_spectra(Spec['Energy'], Spec['Counts'], 
-        peak_interval2, Fig_savename = Filename[:-4] + 'Peak_2')
+    Int_1 = Spectrometry_peak_integration(Spec['Energy'], Spec['Counts'], 
+        ROI1, FWHM = 25, m = 1.5,k = 5, 
+        Plot = False, Fig_savename= Filename[:-4] + 'ROI1')
+    Int_2 = Spectrometry_peak_integration(Spec['Energy'], Spec['Counts'], 
+        ROI2, FWHM = 25, m = 1.5,  k = 5, Plot = False,
+        Fig_savename= Filename[:-4] + 'ROI2')
     
     #We will merge both data in a DataFrame
-    Peak_df = pd.concat([Peak_1, Peak_2], axis = 0)
-    Peak_df.index = [1,2]                        #redefining indexes
+    Int_df = pd.concat([Int_1, Int_2], axis = 1)
+    Int_df.columns = ['Peak 1','Peak 2']      
+    
+    #Having the total integration could be nice, so lest do it
+    Int_df["Total"] = pd.Series({"N": Int_1['N'] + Int_2['N'], 
+                    "N_std": np.sqrt(Int_1['N_std']**2 + Int_2['N_std']**2),
+                    "B": Int_1['B'] + Int_2['B']})  
+            #Addition of total number of counts, its std, and B total + sum
+    
+    
+    #       2.5) Plotting of both ROI together..
+    roi_mask1 = (E >= ROI1[0]) & (E <= ROI1[1]) #Interval for ROI 1
+    roi_mask2 = (E >= ROI2[0]) & (E <= ROI2[1])   # Same for ROI 2
+    
+    plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
+    plt.plot( E , C, label = 'Data',linewidth = 1.5)
+    plt.plot( E[roi_mask1] , C[roi_mask1] ,label = 'ROI_1',linewidth = 1.5)
+    plt.plot( E[roi_mask2] , C[roi_mask2],label = 'ROI_2',linewidth = 1.5)
+    plt.title("Spectra with the 2 ROIs for the integration", fontsize=22) #title
+    plt.xlabel("E [keV]", fontsize=Font)                        #xlabel
+    plt.ylabel("Counts ", fontsize=Font)              #ylabel
+    plt.legend( fontsize=Font) 
+    # Set size of tick labels.
+    plt.tick_params(axis='both', labelsize=Font)              #size of axis
+    plt.minorticks_on()             #enabling minor grid lines
+    plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        
+                                #which both to plot major and minor grid lines
+    plt.grid(which = 'major')
+    if Xlim is not None:
+        plt.xlim(Xlim)               #xlim, to remove background
+    plt.savefig(Fig_savename + '.png', format='png', bbox_inches='tight')    
+    plt.show()
+
+    #---------- 3) peak fitting
+    '''
+    Not done for the moment, since:
+        .Different ROI than the one needed for the peak integration needed
+        .Peaks not truly gaussian-shaped, due to tailing, sum, etc
+    '''
+    # Peak_1 = Peak_fit_spectra(Spec['Energy'], Spec['Counts'], 
+    #         ROI1, Fig_savename = Filename[:-4] + 'Peak_1')
+    # Peak_2 = Peak_fit_spectra(Spec['Energy'], Spec['Counts'], 
+    #     ROI2, Fig_savename = Filename[:-4] + 'Peak_2')
+    
+    # #We will merge both data in a DataFrame
+    # Peak_df = pd.concat([Peak_1, Peak_2], axis = 0)
+    # Peak_df.index = [1,2]                        #redefining indexes
     
     #           3) Output
-    output = {"Spectra": Spec, "Peak_fit": Peak_df}
+    output = {"Spec": Spec, "Int": Int_df}
     
     return output
     

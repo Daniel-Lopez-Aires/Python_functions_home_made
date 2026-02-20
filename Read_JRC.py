@@ -2223,12 +2223,7 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
     I shuold then remove those columns
     from there, and replace negatives values for 0, for a good plot
     
-    
-    WELL, I MUST MODIFY EVERYTHING. I should do now
-    1) C_0 * V/m
-    2) C_eq * V_eq /m
-    3) 1) - 2)
-    4) 3) / C_e
+
                                                                                                       
     '''
     
@@ -4424,6 +4419,8 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' )
     #Finally we will also get the total activity:
     A.loc['A_tot'] = A.sum(axis = 0, skipna = True)
     A_std.loc['A_tot'] = A_std.sum(axis = 0, skipna = True)
+    
+    #Improve this bro!!! Atot adds up LR and MR, should not do that!
     
     #Lets print the total activity, with no decimals
     print('#-------------------------------------------------------#')
@@ -7785,8 +7782,144 @@ def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot",
     return output
     
 
+
+#--------------------------------------------
+#%%                     8) Relative activity removal rate
+#--------------------------------------------
+
+def ICPMS_Asq_calc (df_MS, df_MS_std, df_dat, df_dat_std, 
+        ret_Ao__Aeq = False, Nrepl = 3):
+    '''
+    Function that will compute the relative activty removal. Strongly based on
+    the ICPMS adsorption function! Essentially, it will do:
+            Asq = (A0-A_f)/A_0 * 100
+    
+    Beware of the units you use, they should be the same!
+
+    *Inputs:
+        .df_dat: dataframe containing the data, the full data, with the 3 
+        replicates. Should be Dfs corrected
+            Format: isotopes as index, columns the samples, 1st 1st replicate, 
+            then 2nd replicate.
+        .df_dat_std: similar df but with their std
+        .df_MS: df containng the mother solution data, A_0
+        .df_MS_std= similar df but with their std
+        .Nrepl: number of replicates. Default: 3
+    
+    *Outputs:
+        .Dictionary with Asq, Asq_std
+        .If desired, dictionary including also A_0-A_eq and its std
+        '''
+    
+    ########## 0) Precalcs ##########
+    #Defining needed variables, based on the ICPS fun
+    
+    '''
+    We will make it more efficient by doing the calcs on a replicate base, so
+    in a for loop per replicate, the calcs will be done (gpt based)
+    '''
+    print('############# Qe calc comment: #########################')
+    print('Are all the variable in order? It is mandatory since we will split them!')
+    print('######################################\n')
+    
+    #Splitting replicates
+    N_sa = df_dat.shape[1]      #number of samples
+    samples_per_repl = N_sa // Nrepl       #samples per repl = number of MS
+    
+    #lets get the replicates data in a list:
+    repl_dat = []           #ppb/M data per repl
+    repl_dat_std = []           #[ppb/M] std of the data
+    
+    for r in range(Nrepl):
+        start = r * samples_per_repl            #1st sample of the replicate
+        end = (r + 1) * samples_per_repl        #Last sample of the replicate
+        repl_dat.append(df_dat.iloc[:, start:end])          #dat
+        repl_dat_std.append(df_dat_std.iloc[:, start:end])      #dat std
+    
+    #Now we can proceed with the calcs
+    ########### 1) Calcs ###########
+    '''
+    
+    I must treat the 3 experiments are different, I should substract the blank 1
+    to the 1st emasurements and the 2 to the others. Since I ordered it in the 
+    right way (1st replicacte 1, then replicate 2, I could) split it easily :D
+            df.shape gives the shape of the df, n_rows, n_columns
+    
+    Note the df have number of samples * 3 replicates columns.
+    
+    Then, I will create a new dataframe substracting that data. To do so, I 
+    need to get rid of the isotopes column, since is text, and then add it again.
+    Watch, the substraction is easy with a pandas mehotd.
+
+    I shuold then remove those columns
+    from there, and replace negatives values for 0, for a good plot                                                                                                 
+    '''
+    
+    #storing variables
+    repl_A0__Aeq = []    
+    repl_A0__Aeq_std = []           #std
+    repl_Asq = []
+    repl_Asq_std = []
+    
+    for r in range(Nrepl):             #calcs per replicate
+        '''
+        Note that I have N different mother solutions, which also means N different
+        samples. I could do that with a for loop, but I found a better version. 
+        I can ubstrcat df ignoring their indexes by doing df.values!
+        '''
+        Ceq__C0 = pd.DataFrame(repl_dat[r].values - 
+            df_MS.values, index = df_MS.index, columns = repl_dat[r].columns)
+        Ceq__C0_std = pd.DataFrame( np.sqrt(repl_dat_std[r].values**2 + 
+            df_MS_std.values**2), index = df_MS.index, columns = repl_dat[r].columns)
+        A0__Aeq = -Ceq__C0      #Obtaining C0-C_eq
+        A0__Aeq_std = np.abs(Ceq__C0_std)      #Obtaining C0- std
+        
+        Asq = A0__Aeq / df_MS.values * 100
+                #They have different row names, thats why the .values
+        Asq_std = np.abs(Asq) * np.sqrt( (A0__Aeq_std/ A0__Aeq)**2 + 
+                                        (df_MS_std/df_MS).values**2)
+        
+        #Before storing them, I will remova back the NaN, by doing Qe to 9999999999,
+        #since it
+        #could give errors (like that the number is easy noticeable!)
+        # Qe.fillna(99999999999, inplace = True)
+        # Qe_std.fillna(99999999999, inplace = True)
+        
+        #Finally, lets store it
+        repl_A0__Aeq.append(A0__Aeq)
+        repl_A0__Aeq_std.append(A0__Aeq_std)
+        repl_Asq.append(Asq)
+        repl_Asq_std.append(Asq_std)
+        
+    #Now we create a df out of them, concatenating them
+        #we convert to numeric, in case it is needed
+    df_A0__Aeq = pd.concat(repl_A0__Aeq, axis = 1)
+    df_A0__Aeq_std = pd.concat(repl_A0__Aeq_std, axis = 1)
+    df_Asq = pd.concat(repl_Asq, axis = 1)
+    df_Asq_std = pd.concat(repl_Asq_std, axis = 1)
+    
+    df_A0__Aeq =df_A0__Aeq.apply(pd.to_numeric) 
+    df_A0__Aeq_std =df_A0__Aeq_std.apply(pd.to_numeric) 
+    df_Asq =df_Asq.apply(pd.to_numeric) 
+    df_Asq_std =df_Asq_std.apply(pd.to_numeric)     
+
+    ########### 2) Return #############
+    #Here the if for returning or not A_0 - A(t) applies
+    
+    results = {
+               'Asq' : df_Asq, 'Asq_std': df_Asq_std, 
+               'Asq_%rsd' : df_Asq_std/df_Asq*100, }
+    if ret_Ao__Aeq:            #if you want to retreieve it
+        results['A0-Aeq'] = df_A0__Aeq
+        results['A0-Aeq_std'] = df_A0__Aeq_std
+        results['A0-Aeq_%rsd'] = df_A0__Aeq_std/df_A0__Aeq*100
+        
+    
+    return results
+
+
 #----------------------
-#%%           8. ) Bq to concentration
+#%%           9. ) Bq to concentration
 #----------------------
 def Gamma_Bq_to_conc(df_A, df_A_std):
     '''

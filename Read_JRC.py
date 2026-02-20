@@ -2317,7 +2317,6 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
         results['C0-Ceq'] = df_C0__Ceq
         results['C0-Ceq_std'] = df_C0__Ceq_std
         results['C0-Ceq_%rsd'] = df_C0__Ceq_std/df_C0__Ceq*100
-    return results
         
     
     return results
@@ -4342,7 +4341,7 @@ def ICPMS_Homogenize(df_ref, df, Return_extra_mass = 0):
 #%%                 1.24 )ICPMS Get activity 
 ###############################################
     
-def ICPMS_Get_Activity (df_ppb, df_ppb_std, Type = 'Gamma' ):
+def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' ):
     '''
     Function that, starting from the df with the ICPMS concentrations, will
     compute the totala activity of the desired radionuclides. Assuming concentration
@@ -4365,6 +4364,9 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Type = 'Gamma' ):
             .each column is a sample
         .df_ppb_std: df with the ppb std, in the same format
         .Type: type of the activity. Default: 'Gamma'. Alpha accepted also.
+        .Conc_units: string indicating the units of the conc data. 'ppb' or 'M'
+            accepted. Note function might break if other unit is provided, I did
+            not fully adapt the function for other type
         
     *Output
         .dictionary with 2 df containing the activity and its ucnertainty
@@ -4393,26 +4395,42 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Type = 'Gamma' ):
         a_values = np.nan    
     
     # Compute activity: conc(ppb) × SA(Bq/g) × 1e-9 (ppb → g/g)
-    A = df_ppb.multiply(a_values * 1e-9, axis=0)  
-    
-    A_std = df_ppb_std.multiply(a_values * 1e-9, axis=0)  #std of A
-    
-    #The columns with no radioactive data will be removed (have NaN as values)
+    if Conc_units == 'ppb':         #ppb the unts
+            #conc(ppb) × SA(Bq/g) × 1e-9 (ppb → g/g)
+        A = df_ppb.multiply(a_values * 1e-9, axis=0)  #[Bq/gtot]
+        A_std = df_ppb_std.multiply(a_values * 1e-9, axis=0)  #[Bq/gtot] std of A
+    elif Conc_units == 'M':
+        M_values = Rad_dat_alpha['M (g/mol)'].reindex(base_isotopes).to_numpy() 
+                #molar mass number
+        A = df_ppb.multiply(a_values * M_values, axis = 0)
+                #[Bq/L]   , conc (mol/L) * SA (Bq/g) * M (g/mol) = Bq/L
+                
+        A_std = df_ppb_std.multiply(a_values * M_values, axis=0)
+                    #[Bq/L] std of A
+        
+    else:
+        print('Wrong type of unit given, please give/use "ppb" or "M" ')
+        print('A = nan will be given')
+        print('Beware, possibly the function will fail somewhere!')
+        A = np.nan
+        A = np.nan
+        
+    #The columns with no radioactive data will be removed (have NaN as  values)
     A.dropna(axis = 0, inplace = True, how = 'all')
             #how = all indicates only removing when all values are NaN ! 
             #(error in Astd otherwise, since for BIC NaN in ppb
     A_std.dropna(axis = 0, inplace = True, how = 'all')
     
     #Finally we will also get the total activity:
-    A.loc['A_tot[Bq/gtot]'] = A.sum(axis = 0, skipna = True)
-    A_std.loc['A_tot[Bq/gtot]'] = A_std.sum(axis = 0, skipna = True)
+    A.loc['A_tot'] = A.sum(axis = 0, skipna = True)
+    A_std.loc['A_tot'] = A_std.sum(axis = 0, skipna = True)
     
     #Lets print the total activity, with no decimals
     print('#-------------------------------------------------------#')
-    print('Total activity/total mass [Bq/g tot]:')
-    print(A.loc["A_tot[Bq/gtot]"].round() )
+    print('Total activity/total mass [Bq/g_tot or Bq/L]:')
+    print(A.loc["A_tot"].round() )
     print('----- And its uncertainty: -------------\n')
-    print(A_std.loc["A_tot[Bq/gtot]"].round() )
+    print(A_std.loc["A_tot"].round() )
     print('#------------------End of the function --------------------------#')
     ############## Returning ######################
     #THe rsd will also be computed an returned
@@ -4420,8 +4438,16 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Type = 'Gamma' ):
     A_rsd = A_std/A * 100           #rsd
     
     #Returning a df
-    result = {'Act [Bq/gtot]': A, 'Delta[Act[Bq/gtot]]': A_std, '%rsd': A_rsd}
-    
+    if Conc_units == 'ppb':
+        result = {'Act [Bq/gtot]': A, 'Delta[Act[Bq/gtot]]': A_std, '%rsd': A_rsd}
+    elif Conc_units == 'M':
+         result = {'Act [Bq/L]': A, 'Delta[Act[Bq/L]]': A_std, '%rsd': A_rsd}   
+    else:
+        print('Wrong type of unit given, please give/use "ppb" or "M" ')
+        print('result = nan will be returned')   
+        result = np.nan
+        
+        
     return result
     
     
@@ -7654,7 +7680,8 @@ def Spectrometry_peak_integration(E, C, ROI, FWHM = 25, m = 1.5,
 #               7.4) Alpha combined analysis
 #---------------------------------------------------------------------
 
-def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot"):
+def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot",
+                   Show_Title= False):
     """
     Main function for the analysis of an alpha spectra. It combine:
         1) Function to read alpha spectra
@@ -7672,7 +7699,8 @@ def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot"):
         1 and 2. Eg: [500, 600]. This is index,not energies!
         .Fig_savename = "Plot"
         .Xlim: Energy interval for the plot fo the ROI
-        
+        .Show_Title: boolean to indicate if the title should be included in the
+            plot with the 2 ROI. Default: False
     *Output:
         .Dictionary with
             -THe spectra
@@ -7719,7 +7747,9 @@ def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot"):
     plt.plot( E , C, label = 'Data',linewidth = 1.5)
     plt.plot( E[roi_mask1] , C[roi_mask1] ,label = 'ROI_1',linewidth = 1.5)
     plt.plot( E[roi_mask2] , C[roi_mask2],label = 'ROI_2',linewidth = 1.5)
-    plt.title("Spectra with the 2 ROIs for the integration", fontsize=22) #title
+    if Show_Title:          #If True, give the title
+        plt.title("Spectra with the 2 ROIs for the integration", fontsize=22) 
+                    #title
     plt.xlabel("E [keV]", fontsize=Font)                        #xlabel
     plt.ylabel("Counts ", fontsize=Font)              #ylabel
     plt.legend( fontsize=Font) 

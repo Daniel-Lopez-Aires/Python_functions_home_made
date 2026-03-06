@@ -4429,6 +4429,8 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' )
     print('----- And its uncertainty: -------------\n')
     print(A_std.loc["A_tot"].round() )
     print('#------------------End of the function --------------------------#')
+    
+    
     ############## Returning ######################
     #THe rsd will also be computed an returned
     
@@ -7678,7 +7680,7 @@ def Spectrometry_peak_integration(E, C, ROI, FWHM = 25, m = 1.5,
 #---------------------------------------------------------------------
 
 def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot",
-                   Show_Title= False):
+                   Show_Title= False, Plot_ROI = True):
     """
     Main function for the analysis of an alpha spectra. It combine:
         1) Function to read alpha spectra
@@ -7698,6 +7700,8 @@ def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot",
         .Xlim: Energy interval for the plot fo the ROI
         .Show_Title: boolean to indicate if the title should be included in the
             plot with the 2 ROI. Default: False
+        .Plot_ROI: Boolean to indicate wheter you can to plot the ROI or not
+            in the spectra. Default: True
     *Output:
         .Dictionary with
             -THe spectra
@@ -7742,14 +7746,16 @@ def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot",
     
     plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
     plt.plot( E , C, label = 'Data',linewidth = 1.5)
-    plt.plot( E[roi_mask1] , C[roi_mask1] ,label = 'ROI_1',linewidth = 1.5)
-    plt.plot( E[roi_mask2] , C[roi_mask2],label = 'ROI_2',linewidth = 1.5)
+    if Plot_ROI:        #If True, plot the ROI
+        plt.plot( E[roi_mask1] , C[roi_mask1] ,label = 'ROI_1',linewidth = 1.5)
+        plt.plot( E[roi_mask2] , C[roi_mask2],label = 'ROI_2',linewidth = 1.5)
     if Show_Title:          #If True, give the title
         plt.title("Spectra with the 2 ROIs for the integration", fontsize=22) 
                     #title
     plt.xlabel("E [keV]", fontsize=Font)                        #xlabel
     plt.ylabel("Counts ", fontsize=Font)              #ylabel
-    plt.legend( fontsize=Font) 
+    if Plot_ROI:        #This only makes sense if ROI are also plotted
+        plt.legend( fontsize=Font) 
     # Set size of tick labels.
     plt.tick_params(axis='both', labelsize=Font)              #size of axis
     plt.minorticks_on()             #enabling minor grid lines

@@ -4416,11 +4416,23 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' )
             #(error in Astd otherwise, since for BIC NaN in ppb
     A_std.dropna(axis = 0, inplace = True, how = 'all')
     
+    
+    
+    #Improve this bro!!! Atot adds up LR and MR, should not do that! How? Easy,
+    #something like split, and add both
+    res = [x[-4:] for x in A.index]         #have (LR) or (MR)
+    A['Res'] = res
+        #A.index[0][-4:] gives that
+    
+    Res = A.groupby(A['Res']).sum()         #Gives sum both LR and MR!
+    
+    #bro this fucking works! Replicate for A_std, and report (std is sum of the
+    # squares, so take care
+    
+    
     #Finally we will also get the total activity:
     A.loc['A_tot'] = A.sum(axis = 0, skipna = True)
     A_std.loc['A_tot'] = A_std.sum(axis = 0, skipna = True)
-    
-    #Improve this bro!!! Atot adds up LR and MR, should not do that!
     
     #Lets print the total activity, with no decimals
     print('#-------------------------------------------------------#')

@@ -4368,7 +4368,7 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' )
     '''
     
     
-    ################ 0) Pre calcs
+    #------- 0) Pre calcs ------------
     
     
     #Gettind theisotopes of the df, removving (LR)/(MR)
@@ -4416,34 +4416,44 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' )
             #(error in Astd otherwise, since for BIC NaN in ppb
     A_std.dropna(axis = 0, inplace = True, how = 'all')
     
-    
-    
-    #Improve this bro!!! Atot adds up LR and MR, should not do that! How? Easy,
-    #something like split, and add both
+    # -------- Computing total Activity -------------
+
+    #I need to take care, since I have same elements in LR and MR. I can do it splitting them, and add both
     res = [x[-4:] for x in A.index]         #have (LR) or (MR)
-    A['Res'] = res
-        #A.index[0][-4:] gives that
+    A['Res'] = res 		#Storing it in the df
+    #A_std['Res] = res 		#Doing the same but for the std df
+    A_sum = A.groupby(A['Res']).sum()         #Gives sum both LR and MR!
+    A_sum.index = ['A_tot(LR)', 'A_tot(MR)']        #Redefining names, better
+    #The std will not be so trivial
+    A_std2 = A_std**2 		#Squared (for uncertainty sum)
+    A_std2['Res'] = res 
+
+    A_std_sum = np.sqrt(A_std2.groupby(A_std2['Res']).sum()  ) #std of the sum
+    A_std_sum.index = ['A_tot(LR)', 'A_tot(MR)']
+    #Not sure if that works. Summing uncertanties as the square
     
-    Res = A.groupby(A['Res']).sum()         #Gives sum both LR and MR!
+    #Now I would like to add the sum results to the df. I could add then like:
+    A = pd.concat([A, A_sum], axis = 0)
+    A_std = pd.concat([A_std, A_std_sum], axis = 0)
     
-    #bro this fucking works! Replicate for A_std, and report (std is sum of the
-    # squares, so take care
+    #Old version, adding both LR and MR
+    #A.loc['A_tot'] = A.sum(axis = 0, skipna = True)
+    #A_std.loc['A_tot'] = A_std.sum(axis = 0, skipna = True)
     
-    
-    #Finally we will also get the total activity:
-    A.loc['A_tot'] = A.sum(axis = 0, skipna = True)
-    A_std.loc['A_tot'] = A_std.sum(axis = 0, skipna = True)
-    
-    #Lets print the total activity, with no decimals
+    #Now I can remove the 'REs' column from the A df, since I do not need it
+    A.drop(['Res'], axis = 1, inplace = True)   
+                #Removing the column 'Res' (had MR or LR)
+
+    #Lets print the total activity, with no decimals, for LR
     print('#-------------------------------------------------------#')
-    print('Total activity/total mass [Bq/g_tot or Bq/L]:')
-    print(A.loc["A_tot"].round() )
+    print('Total activity/total mass [Bq/g_tot or Bq/L] for LR:')
+    print(A.loc['A_tot(LR)'].round() )
     print('----- And its uncertainty: -------------\n')
-    print(A_std.loc["A_tot"].round() )
+    print(A_std.loc['A_tot(LR)'].round() )
     print('#------------------End of the function --------------------------#')
     
     
-    ############## Returning ######################
+    #------------ Returning -------------
     #THe rsd will also be computed an returned
     
     A_rsd = A_std/A * 100           #rsd

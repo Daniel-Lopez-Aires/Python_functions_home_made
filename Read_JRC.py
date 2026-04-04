@@ -75,6 +75,7 @@ Isot rele Cs are from the Cs sep
 """
 Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)           
 Markersize = 7                  #markersize for all the plots
+Linewidth = 3                   #Linewidth, for error and hlines and so
 
 #-------------              For my personal laptop (linux)
 #
@@ -5763,7 +5764,7 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
     
 
 #--------------------------------------------
-#%%### 1.19) ICPMS plotter blank Average of replicates, N datasets 
+#%%          1.19) ICPMS plotter blank Average of replicates, N datasets 
 #--------------------------------------------
 
 def ICPMS_Plotter_mean_blk_N (
@@ -5774,7 +5775,8 @@ def ICPMS_Plotter_mean_blk_N (
     labels=None, colors=None, Fmts = None,
     folder_name='Plots', pre_title_plt='Concentration of ',
     pre_save_name='Conc', Nucl_rel=Elem_rel,
-    Logscale=False, Blank_here=False, plot_everything=False, font_size= Font ):
+    Logscale=False, Blank_here=False, plot_everything=False, font_size= Font,
+    Include_Title = True):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, 
     initially time, the cps and the rstd, for the 2 bentonites, plotting the average 
@@ -5861,7 +5863,8 @@ def ICPMS_Plotter_mean_blk_N (
 
         if relevant or plot_everything:
             plt.figure(figsize=(11, 8))
-            plt.title(pre_title_plt + element_name, fontsize=22, wrap=True)
+            if Include_Title:                       #include title
+                plt.title(pre_title_plt + element_name, fontsize=22, wrap=True)
 
             for k in range(N):      #loop plotting, for all the datasets
                 try:                #to see if the element is there    
@@ -5880,12 +5883,14 @@ def ICPMS_Plotter_mean_blk_N (
 
                 if Blank_here:
                     plt.hlines(y[0], min(x), max(x), color=Color, linestyle='-', 
-                               label=Label + ' MS')
+                               label=Label + ' MS', linewidth= Linewidth)
                     plt.errorbar(x[1:], y[1:], yerr=sy[1:], xerr=sx[1:], 
-                        color=Color, label=Label, fmt = Fmt, markersize=7)
+                        color=Color, label=Label, fmt = Fmt, markersize= Markersize,
+                        elinewidth = Linewidth)
                 else:
                     plt.errorbar(x, y, yerr=sy, xerr=sx, 
-                                 color=Color, label=Label, fmt = Fmt, markersize=7)
+                        color=Color, label=Label, fmt = Fmt, markersize= Markersize,
+                        elinewidth = Linewidth)
 
             plt.xlabel(x_label, fontsize=font_size)
             plt.ylabel(y_label, fontsize=font_size)
@@ -5910,15 +5915,15 @@ def ICPMS_Plotter_mean_blk_N (
 
     # === 5. Report Timing ===
     t_run = tr.time() - t_start
-    print('###############################################')
+    print('-------------------------------------------')
     print(f'Plotting completed for {N} datasets in {t_run:.2f} seconds.')
-    print('###############################################')
+    print('-------------------------------------------------\n')
     
     
 
-##############################################################################
-#%%### 1.20) ICPMS multibar plotter 
-#--------------------------------------------
+#--------------------------------------------------------------
+#%%                 1.20) ICPMS multibar plotter 
+#------------------------------------------------------
 
 def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     Xlabel = 'X axis', Ylabel = 'Y axis', Title= 'PLot', Savename = 'Plot1',
@@ -6996,11 +7001,12 @@ def D_R_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, T = 293.15, delta_T = .1,
 
 def Read_TGA (name):
     '''
-    Function that reads the .txt file from TGA/DTA (HeHeHe), returning a dataframe with the
-    relevant data (omitting intro).
-
+    Function that reads the .txt file from TGA/DTA (HeHeHe), returning a dataframe
+    with therelevant data (omitting intro).
     '''
-    
+    print('-----------------------------/n')
+    print('Function deprecated, use pd read csv instead!!')
+    print('-----------------------------/n')
     with open(name) as file_obj:
         lines = file_obj.readlines()
         #print('the number of lines of the document is',len(lines))

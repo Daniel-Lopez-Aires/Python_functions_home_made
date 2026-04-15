@@ -5773,10 +5773,9 @@ def ICPMS_Plotter_mean_blk_N (
     element_index,
     x_label, y_label,
     labels=None, colors=None, Fmts = None,
-    folder_name='Plots', pre_title_plt='Concentration of ',
-    pre_save_name='Conc', Nucl_rel=Elem_rel,
-    Logscale=False, Blank_here=False, plot_everything=False, font_size= Font,
-    Include_Title = True):
+    folder_name='Plots', pre_title_plt= False,
+    pre_save_name = 'Conc', Nucl_rel=Elem_rel,
+    Logscale=False, Blank_here=False, plot_everything=False, font_size= Font):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, 
     initially time, the cps and the rstd, for the 2 bentonites, plotting the average 
@@ -5800,8 +5799,8 @@ def ICPMS_Plotter_mean_blk_N (
         . plot_everything: string defining if you want to plot all the elements 
             or only the relevant ones. Default value: False (only plot relevants)
         .pre_title_plt : title of the graph, part that appears before the name 
-            of the elements (thats why pre title). Detault value: 
-            "Concentration of " (note the space after of, so the element is not
+            of the elements (thats why pre title). If False is given, no title will be included. Detault value: 
+            False. Titles should be like: "Concentration of " (note the space after of, so the element is not
             together with that!)
         . pre_save_name: name of the graph files to save. Default: 'Conc', 
             giving Conc_Mg24.png for ex    
@@ -5863,7 +5862,7 @@ def ICPMS_Plotter_mean_blk_N (
 
         if relevant or plot_everything:
             plt.figure(figsize=(11, 8))
-            if Include_Title:                       #include title
+            if pre_title_plt != False:  #If the variable is not False, include title
                 plt.title(pre_title_plt + element_name, fontsize=22, wrap=True)
 
             for k in range(N):      #loop plotting, for all the datasets

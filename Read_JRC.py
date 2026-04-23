@@ -4381,10 +4381,13 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' )
     if Type == 'Gamma':         #Gamma activity wanted
         print('---------------- Radiation type: Gamma ------\n')
         a_values = Rad_dat_gamma['a (Bq/g)'].reindex(base_isotopes).to_numpy() 
+        M_values = Rad_dat_gamma['M (g/mol)'].reindex(base_isotopes).to_numpy() 
+                #molar mass number
                 #specific activity
     elif Type == 'Alpha':          #Alpha activity wanted
         print('---------------- Radiation type: Alpha ------\n')
         a_values = Rad_dat_alpha['a (Bq/g)'].reindex(base_isotopes).to_numpy() 
+        M_values = Rad_dat_alpha['M (g/mol)'].reindex(base_isotopes).to_numpy() 
     else:
         print('Wrong type of radiaotion type given, please give "Gamma" or "Alpha only')
         print('using nan as specific activiy')
@@ -4396,8 +4399,6 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' )
         A = df_ppb.multiply(a_values * 1e-9, axis=0)  #[Bq/gtot]
         A_std = df_ppb_std.multiply(a_values * 1e-9, axis=0)  #[Bq/gtot] std of A
     elif Conc_units == 'M':
-        M_values = Rad_dat_alpha['M (g/mol)'].reindex(base_isotopes).to_numpy() 
-                #molar mass number
         A = df_ppb.multiply(a_values * M_values, axis = 0)
                 #[Bq/L]   , conc (mol/L) * SA (Bq/g) * M (g/mol) = Bq/L
                 
@@ -4412,6 +4413,8 @@ def ICPMS_Get_Activity (df_ppb, df_ppb_std, Conc_units = 'ppb', Type = 'Gamma' )
         A = np.nan
         
     #The columns with no radioactive data will be removed (have NaN as  values)
+    # A also contains 0 sometimes. I will put 0s as NaN, and then remove them
+    A.replace(0, np.nan, inplace = True)
     A.dropna(axis = 0, inplace = True, how = 'all')
             #how = all indicates only removing when all values are NaN ! 
             #(error in Astd otherwise, since for BIC NaN in ppb

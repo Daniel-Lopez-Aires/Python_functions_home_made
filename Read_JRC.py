@@ -7957,7 +7957,8 @@ def ICPMS_Asq_calc (df_MS, df_MS_std, df_dat, df_dat_std,
 #----------------------
 #%%           9. ) Bq to concentration
 #----------------------
-def Gamma_Bq_to_conc(df_A, df_A_std):
+def Gamma_Bq_to_conc(df_A, df_A_std, mass_total = 1, 
+                     mass_total_std = 1 *0.3, rad_type = 'Gamma'):
     '''
     Function that will read a df with the gamma report (pdf) and will compute the
     concentration.
@@ -7970,10 +7971,14 @@ def Gamma_Bq_to_conc(df_A, df_A_std):
         
         x part * 1 mol /N_A part * M g /1 mol = x * M/N_A
         
+    For the std of the concentration, assumed no error in the total mass error!
     
     *Inputs:
-        .df_A: df with the activity data. Each row a sample, index the nuclei, with (LR)
-        to be able to merge with ICPMS, if needed
+        .df_A(_std): df with the activity (std) data. Each row a sample, 
+        index the nuclei, 
+        with (LR) to be able to merge with ICPMS, if needed
+        .mass_total(std) =  total mass (std)of each sample [g]. 
+            Default: 1 g (1*0.3, 30% uncertainty)
         
     *Outputs:
         .
@@ -7993,30 +7998,66 @@ def Gamma_Bq_to_conc(df_A, df_A_std):
     TO convert to concentration, ppb, since I had 1g of sample, would be trivial:
             ASSUMPTION, NOT using 100% mass, assuming 1, so I need to do 10**9/1!
     '''
-    Rad_dat = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx', 
-                        sheet_name= 'Gamma',
-                      index_col=0)  #Radioactive data
-    Rad_dat_rel =Rad_dat.loc[df_A.index]         #Containing only the isotopes that were measured!
+    # Rad_dat = pd.read_excel('C:/Users/Administrator/Desktop/Python/Rad_dat_DLA.xlsx', 
+    #                     sheet_name= 'Gamma',
+    #                   index_col=0)  #Radioactive data
+    
+            #Containing only the isotopes that were measured!
 
     #That contain the rad data for all the nuclei, we need to get our reelvant ones
+    
+    if rad_type == 'Gamma':
+        Rad_dat = Rad_dat_gamma
+    elif rad_type == 'Alpha':
+        Rad_dat = Rad_dat_alpha
+    else:   #Wrong type
+        print('Wrong radiation type, only accepted Gamma and Alpha!')
+        print('The function will break! ')
+    
+    #--------------- 0) Cleaning-------------------------
+    #In the A df the isotopes are with (LR), but in the excel without, so I need
+    #to match that
+    
+    df_A_new = df_A.copy()
+    df_A_new.index = [x[:-4] for x in df_A.index]   #A df, without (LR) in index
+    
+    df_A_new_std = df_A_std.copy() 
+    df_A_new_std.index = df_A_new.index 
+    
+    Rad_dat_rel =Rad_dat.loc[df_A_new.index]         
+    
     #------------ 1) N calculation (number of atoms) ------
-    N = df_A/Rad_dat_rel['Lambda (s-1)']                    #number of particles
-    N_std = df_A_std/Rad_dat_rel['Lambda (s-1)']            #std
-    #N_Cs134 = Act3_meas_Df.loc['Cs134(LR)']/Rad_dat_rel['Lambda (s-1)'] #particles
-    #N_Cs134_std = Act3_meas_std_Df.loc['Cs134(LR)']/Rad_dat['Lambda (s-1)']['Cs134']  #particles std
-
+    
+    N = df_A_new.multiply(1/Rad_dat_rel['Lambda (s-1)'], axis = 0)  #Number of particles
+    N_std = df_A_new_std.multiply(1/Rad_dat_rel['Lambda (s-1)'], axis = 0) #std
+    
+    #That contains NaN, since Rad dat have many isotopes, which might not be present
+    #in the dataset. Hence, we remove those extra data:
+    
+    #N.dropna(inplace = True)
+    #N_std.dropna(inplace = True)
+    
 
     #---------- 2) Conversion to mass
     
-    df_m = N*Rad_dat_rel['M (g/mol)']/N_A       #[g] mass of the isotopes
-    df_m_std = N_std * Rad_dat_rel['M (g/mol)']/N_A   #[std], only with error of N!!
+    df_m = N.multiply(Rad_dat_rel['M (g/mol)']/N_A, axis = 0)  
+                                            #[g] mass of the isotopes
+    df_m_std =  N_std.multiply(Rad_dat_rel['M (g/mol)']/N_A, axis = 0)  
+                            #std    
 
-    #Concnetration calcs
+    #df_m.dropna(inplace = True)
+    #df_m_std.dropna(inplace = True)
 
-    # df_Conc = N/N_A*19**9/m_sa
-    # Gamma3_ppb_Cs134 = N_Cs134/N_A*Rad_dat['M (g/mol)'].loc['Cs134']*10**9/1        #[ppb] Cs134
-    # Gamma3_ppb_std_Cs134 = N_Cs134_std/N_A*Rad_dat['M (g/mol)'].loc['Cs134']*10**9/1      #[ppb] std Cs134
-
-    'Work in progress....'
-    return
+    #Concentration calc is esy. Just isotope mass/total mass.
+    df_C =  df_m/mass_total * 10**9                 #[ng/g = ppb]
+    df_C_std = df_C * np.sqrt((df_m_std/df_m)**2+(mass_total_std/mass_total)**2 )
+                #std. Assuming initial mass with NO error!
+    df_C_rsd = df_C_std/df_C * 100                    #rsd
+    
+    
+    #---------------- 3) Returns ---------
+    
+    Results = {'C[ppb]': df_C, 'C_std[ppb]': df_C_std, 'C_rsd': df_C_rsd}
+    
+    return Results
         

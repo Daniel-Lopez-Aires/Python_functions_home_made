@@ -5928,12 +5928,14 @@ def ICPMS_Plotter_mean_blk_N (
 #------------------------------------------------------
 
 def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
-    Xlabel = 'X axis', Ylabel = 'Y axis', Title= 'PLot', Savename = 'Plot1',
+    Xlabel = 'X axis', Ylabel = 'Y axis', Title = False, Savename = 'Plot1',
     Log_y = False, Columns= 'All'):
     '''
     Function containing a icpms df, that will do a multibar plot, being each
     bar an element from the list you give. The df_std shoudl also be included!
-    All the columns (data) will be plotted
+    All the columns (data) will be plotted.
+    For the legend, it is assumed the columns are elements in the ICPMS formatting,
+    i.e., Co59(LR). The (LR) will be removed.
     
     
     *Inputs:
@@ -5942,7 +5944,8 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
                 ['Sr(LR)', 'Si(MR)']
         .b: blank space between the bar groups. b < 1
         .Xlabel/Ylabel: string with the label for the x/y axis. Default: 'X/Y axis'
-        .Title: string with the title of the plot. Defalt: 'Plot'
+        .Title: string with the title of the plot, if desired. If no title is desired,
+		set False. Defalt: False (no title)
         .Savename: string with the name of the file to save (png). Eg: 'Plot1'
         . Log_y: boolean to indicate if u want ylabel in logscale. Default: False
         . COlumns: define columns to plot. Default: 'All' (plot all). eg: ['Dat 1']
@@ -5976,7 +5979,8 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     
     # === Plot ===
     plt.figure(figsize=(12, 8))
-    plt.title(Title, fontsize=22, wrap=True)
+    if Title:          #If the variable is not False, include title
+    	plt.title(Title, fontsize=22, wrap=True)
 
     if len(cols) == 1:          #single column plot
         X_axis = np.arange(len(Elements))
@@ -5999,7 +6003,8 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
         for i, elem in enumerate(Elements):
             plt.bar(X_axis + offsets[i], 
                     df_sel.loc[elem],yerr=df_sel_std.loc[elem],
-                    width=w, edgecolor="black", label=elem, align='center')
+                    width=w, edgecolor="black", label=elem[:-4], align='center')
+                    # [:-4] to remove the (LR)
             plt.xticks(X_axis, cols, rotation=90)          # Column names  
         plt.legend(fontsize = Font)
         #
@@ -6015,7 +6020,6 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     plt.grid(which = 'major')
     plt.savefig(Savename + '.png', format='png', bbox_inches='tight')
     plt.show() 
-    
     
 
 ##############################################################################

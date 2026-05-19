@@ -5924,7 +5924,7 @@ def ICPMS_Plotter_mean_blk_N (
     
 
 #--------------------------------------------------------------
-#%%                 1.20) ICPMS multibar plotter 
+#%%            1.20) ICPMS multibar plotter 
 #------------------------------------------------------
 
 def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
@@ -6022,8 +6022,8 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
     plt.show() 
     
 
-##############################################################################
-#%%### 1.21) ICPMS multibar plotter 
+#--------------------------------------------
+#%%      1.21) ICPMS multibar plotter 
 #--------------------------------------------
 def ICPMS_MultiBar_plotter_N(
     dfs, dfs_std, Elements,
@@ -6118,14 +6118,14 @@ def ICPMS_MultiBar_plotter_N(
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#@@@@@@@@@@@@@@@@@@@@@@@@@@ End ICPMS shit xD @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@q    
+#           End ICPMS shit xD    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     
  
-####################################################
-#%% ######### 2.1) PSO fit 
+#--------------------------------------------
+#%%          2.1) PSO fit 
 #--------------------------------------------
 def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
             y_label = 'y', Color = 'b', save_name = '', Title = 'Linear PSO fit',
@@ -6196,10 +6196,10 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
                                         (delta_t /t )**2 )  #error, unused!!
         #Fit
         fit = Fits.LinearRegression(t, t__Q, delta_t, Delta_t__Q,
-                                   x_label = x_label, y_label = y_label, 
-                                   Color = Color, 
-                save_name = folder_name +'/' + save_name, Title = Title)       
-                            #Fit (i dont use npo variable, fit variable)
+            x_label = x_label, y_label = y_label, 
+        Color = Color, save_name = folder_name +'/' + save_name, 
+        Title = Title)       
+            #Fit (i dont use npo variable, fit variable)
         ################ 3) Model parameters ################
         '''
         From that I can also get Qe and K easy: y = ax + b;
@@ -6463,10 +6463,9 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
         delta_logQe = delta_Qe / (np.abs(Qe) * np.log(10))
     ############# 2)Fit ######################
         fit = Fits.LinearRegression(logCe, logQe, delta_logCe, delta_logQe,
-                                   x_label = x_label, y_label = y_label, 
-                                   x_legend = 'log($C_e$)', y_legend = 'log($Q_e$)',
-                                   Color = Color, 
-                                   save_name = folder_name +'/' + save_name, 
+         x_label = x_label, y_label = y_label, 
+         x_legend = 'log($C_e$)', y_legend = 'log($Q_e$)',
+         Color = Color, save_name = folder_name +'/' + save_name, 
                                    Title = Title)       
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
@@ -6532,9 +6531,11 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
         Ce_range = np.linspace(min(Ce), max(Ce), 200)
         plt.figure(figsize=(11,8))
         plt.errorbar(Ce, Qe, xerr=delta_Ce, yerr=delta_Qe,
-               fmt='o', color=Color, label='Data', markersize = Markersize)
+        fmt='o', color=Color, label='Data', 
+        markersize = Markersize, elinewidth = Linewidth)
         plt.plot(Ce_range, Fre_fit_eq(Ce_range, *popt),
-           '--', color=Color, label=f'Fit (R²={R2:.3f})')
+           '--', color=Color, label=f'Fit (R²={R2:.3f})',
+           linewidth = Linewidth)
         plt.xlabel('$C_e$ [M]', fontsize = Font)
         plt.ylabel('$Q_e$ [mol/kg$_{be}$]', fontsize = Font)
         plt.title(f'{Title}', fontsize=22)
@@ -6713,12 +6714,10 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
     
     if Fit_type ==1:         #Linearizaiton 1
         fit = Fits.LinearRegression(Ce, Ce_Qe, delta_Ce, delta_Ce_Qe,
-                                   x_label = x_label, y_label = y_label, 
-                                   x_legend = '$C_e$', 
-                                   y_legend = '$C_e/Q_e$',
-                                   Color = Color, 
-                                   save_name = folder_name +'/' + save_name, 
-                                   Title = Title)       
+            x_label = x_label, y_label = y_label, 
+            x_legend = '$C_e$', y_legend = '$C_e/Q_e$',
+            Color = Color, save_name = folder_name +'/' + save_name, 
+                Title = Title)       
                             #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
             #
@@ -6750,13 +6749,11 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         fit['%rsd K_L'] = 100 * fit["std(K_L[1/M])"] / fit["K_L[1/M]"]
     elif Fit_type ==2:                                  #Linearization 2!
         fit = Fits.LinearRegression(Qe, Qe_Ce, delta_Qe, delta_Qe_Ce,
-                                   x_label = x_label, y_label = y_label, 
-                                   x_legend = '$Q_e$', 
-                                   y_legend = '$Q_e/C_e$',
-                                   Color = Color, 
-                                   save_name = folder_name +'/' + save_name, 
-                                   Title = Title)       
-                            #Fit (i dont use npo variable, fit variable)
+         x_label = x_label, y_label = y_label, 
+         x_legend = '$Q_e$', y_legend = '$Q_e/C_e$',
+         Color = Color, save_name = folder_name +'/' + save_name, 
+         Title = Title)       
+            #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
             #
         print("#-------------------------------")
@@ -6828,9 +6825,11 @@ def Lang_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, Fit_type = 1,
         Ce_range = np.linspace(min(Ce), max(Ce), 200)
         plt.figure(figsize=(11,8))
         plt.errorbar(Ce, Qe, xerr=delta_Ce, yerr=delta_Qe,
-               fmt='o', color=Color, label='Data', markersize = Markersize)
+               fmt='o', color=Color, label='Data', 
+        markersize = Markersize, elinewidth = Linewidth)
         plt.plot(Ce_range, Lang_fit_eq(Ce_range, *popt),
-           '--', color=Color, label=f'Fit (R²={R2:.3f})')
+           '--', color=Color, label=f'Fit (R²={R2:.3f})',
+           linewidth = Linewidth)
         plt.xlabel('$C_e$ [M]', fontsize = Font)
         plt.ylabel('$Q_e$ [mol/kg$_{be}$]', fontsize = Font)
         plt.title(f'{Title}', fontsize=22)
@@ -7779,7 +7778,7 @@ def Alpha_main_fun(Filename, ROI1, ROI2, Xlim = None, Fig_savename = "Plot",
     roi_mask2 = (E >= ROI2[0]) & (E <= ROI2[1])   # Same for ROI 2
     
     plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
-    plt.plot( E , C, label = 'Data',linewidth = 1.5)
+    plt.plot( E , C, label = 'Data', linewidth = Linewidth)
     if Plot_ROI:        #If True, plot the ROI
         plt.plot( E[roi_mask1] , C[roi_mask1] ,label = 'ROI_1',linewidth = 1.5)
         plt.plot( E[roi_mask2] , C[roi_mask2],label = 'ROI_2',linewidth = 1.5)

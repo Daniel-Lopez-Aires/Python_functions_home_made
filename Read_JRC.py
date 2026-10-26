@@ -5,20 +5,21 @@ Created on Mon Mar 13 10:29:58 2023
 @author: lopedan
 
 This script will contain all the functions I create to read files 
-from experimental measurements, say TGA, XRD, etc (the ones that needed ofc)
+from experimental measurements, say TGA, XRD, etc 
+(the ones that needed ofc)
 
-I will include in all the plots, minor grid lines, for better analysis from the
-plot!
+I will include in all the plots, minor grid lines, for better analysis 
+from the plot!
 
 old: plt.grid(True)             #Only major grid
 
 new: plt.minorticks_on()             #enabling minor grid lines
 plt.grid(which = 'minor', linestyle=':', linewidth=0.5) 
-                    #which both to plot major and minor grid lines
+        #which both to plot major and minor grid lines
 plt.grid(which = 'major')
 
-For printing a break of line, \n goes at the end of the print, not at the 
-beginning!
+For printing a break of line, \n goes at the end of the print, 
+not at the beginning!
 """
 
 #--------------------------------------------
@@ -73,15 +74,17 @@ N_A = 6.022e23                              #[part/mol] Avogadro Number
 """
 Isot rele Cs are from the Cs sep
 """
-Font = 18               #Fontsize, for the plots (labels, ticks, legends, etc)           
-Markersize = 7                  #markersize for all the plots
-Linewidth = 3                   #Linewidth, for error and hlines and so
+Font = 25      #Fontsize, for the plots (ticks, legends)           
+Font_labelAx = 30 		#Font for the label of the axis
+        #3 is too much, if other font is 20
+Markersize = 10#7           #markersize for all the plots
+Linewidth = 3       #Linewidth, for error and hlines and so
 
 #-------------              For my personal laptop (linux)
 #
 At_we_rad = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
-          index_col=0, sheet_name = 'To_read_atom_weight_rad')   #read of the
-                    #excel with the atomic weights
+          index_col=0, sheet_name = 'To_read_atom_weight_rad')   
+    #read of the excel with the atomic weights
 At_we_nat = pd.read_excel('/home/dla/Python/at_wt_natural_elements_SVW.xlsx',
           index_col=0, sheet_name = 'To_read_atom_weight')              
 Rad_dat_gamma = pd.read_excel('/home/dla/Python/Rad_dat_DLA.xlsx',  
@@ -2323,86 +2326,116 @@ def ICPMS_KdQe_calc_Ad (df_MS, df_MS_std, df_dat, df_dat_std, df_VoM_disol,
 #--------------------------------------------
 
 
-def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
+def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, 
+        Nrepl = 2, Debug = 0):
     '''
-    Function that will compute the mean and std of:
-        .the measuring sequence (df). Note we measure 2 or 3 replicates,
+    Function that will compute the mean and the standar deviation of:
+    .the measuring sequence (df). Note we measure 2 or 3 replicates,
         OR
-        .a df series, like the shaking time
-    so this function will ocmpute the average and sigma, ready to plot them :)
+    .a df series, like the shaking time
+    This function will ocmpute the average and sigma, 
+    ready to plot them :)
 
-    If we have N measurements: x_1, x_2,..., x_N, the mean value is simply
+    If we have N measurements: x_1, x_2,..., x_N, the mean 
+    value is simply
         <x> = sum (x_i) /N , i=1,..N
     The variance (with respect to the mean value) is
         var = sigma**2 = sum(x_i-<x>)**2, i =1, ..N
-    The std is 
+    The std of the distribution is 
         std = sqrt(var)/N-1 
     
-    A modification will be done, since, if replicates are consitent, the std
-    of the average will be low. But maybe each replciate have a non negligible
-    std, making the average std wrong. In this case, the std of the average will
-    be the average of the std of the replicates. That will be done for each
-    element.
+    We would be as well intersted in the standard deviation of the
+    mean, which is:
+        std_mean = std /sqrt(N)
+    This I was not applying in the past! (10/26). 
+    
+    A modification was be done, since, if replicates are consitent, 
+    the std of the average will be low. But maybe each 
+    replicate have a non negligible std, making the average 
+    std wrong. Hence, the uncertainty chosen will be the greatest of
+    those 2:
+        1) Std of the average
+        2) Average of the stds of each measurement 
+    That will be done for each element. This modification has been
+    removed (10/26), since I think that it is wrong. Maricones
+    also agree to that
 
     *Inputs:
-        .df_dat: dataframe containing the data, the full data, with the 2 
-        or 3 replicates. Should be Dfs corrected
-            Format: isotopes as index, columns the samples, 1st 1st replicate, 
-            then 2nd replicate.
-        .df_dat_std: same but with the std. Default: None (so older code works)
-        .Nrepl: number of replicates. Default value = 2. 3 also accepted
+        .df_dat: dataframe containing the data, the full data, 
+        with the 2 or 3 replicates. Should be Dfs corrected
+            Format: isotopes as index, columns the samples, 1st 
+            1st replicate, then 2nd replicate.
+        .df_dat_std: same but with the std. Default: None 
+        (so older code works)
+        .Nrepl: number of replicates. Default value = 2. 3 
+        also accepted
     
     *Output:
         .Dictionary containing df with
             .< >
             .std
             .%rsd
-        The df have same column names: Data + number. Data and not sample, 
-        not to mix it, since the Data 1 may be from replicates 2 for ex, in 
-        case of Qe, kd. But could be from replicates 1 for variables like 
+        The df have same column names: Data + number. Data 
+        and not sample, not to mix it, since the Data 1 may
+        be from replicates 2 for ex, in  case of Qe, kd. 
+        But could be from replicates 1 for variables like 
         Conc for ex
         
         '''
     
     #df_dat.replace(0, np.nan, inplace=True)     
-                #replace 0 values with NaN, to avoid Div0 error!
+   #replace 0 values with NaN, to avoid Div0 error!
     
-    ######### 0) Data processing ##############
-    #We are converting the data into a df, so if it is a series, will be converted
-    #to a DF:
+    # -------------- 0) Data processing  ------------------------
+    #We are converting the data into a df, so if it is a series, 
+    #will be converted to a DF:
     is_series = isinstance(df_dat, pd.Series)
     if is_series:
-        df_dat = df_dat.to_frame(name="value").T  # make it a 1-row DataFrame
-        if df_dat_std is not None:  #do the same for df_std if it exist
+        df_dat = df_dat.to_frame(name="value").T  
+                # make it a 1-row DataFrame
+        if df_dat_std is not None:  
+            #do the same for df_std if it exist
             df_dat_std = df_dat_std.to_frame(name="value").T
 
     ncols = df_dat.shape[1]             #number of samples
     if ncols % Nrepl != 0:
-        raise ValueError(f"Number of columns ({ncols}) not divisible by Nrepl={Nrepl}")
+        raise ValueError(
+        f"Number of columns ({ncols}) not divisible by Nrepl={Nrepl}")
 
     # Reshape into (n_rows, N_sa, Nrepl)
-    N_sa = ncols // Nrepl           #number of samples per repl
-    colnames = [f"Data {i+1}" for i in range(N_sa)]     #names of the columns
-        #for the new df
+    N_sa = ncols // Nrepl        #number of samples per repl
+    colnames = [f"Data {i+1}" for i in range(N_sa)]     
+            #names of the columns for the new df
         
-    ########### 1) compute and collect mean and std ###########
+    #------------- 1) compute and collect mean and std ----------
     #GPT based
     
-    means, stds = [], []            #to store the values, mean and std of repl
-    std_repl = []       #to accumulat the average of the std between replicates
+    means, stds = [], [] 
+            #to store the values, mean and std of repl
+    std_repl = []       
+        #to accumulat the average of the std between replicates
     
     for i in range(N_sa):
-        cols = [i + j*N_sa for j in range(Nrepl)] #column numbers for the 3 replicates
-                    #of a given sample
-        df_temp = df_dat.iloc[:, cols]  #df with the 3 replicates for each sample
-        means.append(df_temp.mean(axis=1) )     #store the mean value
-        stds.append(df_temp.std(axis=1) ) #store the std 
+        cols = [i + j*N_sa for j in range(Nrepl)] 
+        #column numbers for the 3 replicates of a given sample
+        df_temp = df_dat.iloc[:, cols]  
+            #df with the 3 replicates for each sample
+        means.append(df_temp.mean(axis=1) )  #store the mean value
+        stds.append(df_temp.std(axis=1))
+                #store std
+        #stds.append(df_temp.std(axis=1)/np.sqrt(Nrepl) ) 
+            #store the std of the mean value !
         
-        if df_dat_std is not None:      #if dat_std is provided, compute avg and std of the stds
-            df_temp_std = df_dat_std.iloc[:, cols]      #same but for the stds
-            std_repl.append(df_temp_std.mean(axis = 1) )    #doing mean of stds
+        if df_dat_std is not None:     
+        #if dat_std is provided, compute avg and std of the stds
+            df_temp_std = df_dat_std.iloc[:, cols]      
+        #df with the 3 replicates for each sample, but have stds
+            std_repl.append(df_temp_std.mean(axis = 1) )    
+                #doing mean of stds
         else:      #no dat_std provided, so using the other value
-             std_repl.append(df_temp.std(axis=1) )      #using the value of the < > calc
+             #std_repl.append(df_temp.std(axis=1)/np.sqrt(Nrepl) )      
+                 #using the value of the < > calc
+             std_repl.append(df_temp.std(axis=1) ) 
              
              
     #------ Final storing in df ------------
@@ -2414,16 +2447,22 @@ def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
     df_std_repl.columns = colnames
     
     '''
-    #Now I will chose the higher one, or std (from mean calc), or <stds (repl)>
+    #Now I will chose the higher one of the deviations:
+        i) Deviation of the mean performed ( std (mean)/sqrt(N) )
+        ii) Mean value of the stds of each single measurement,
+                        <stds>
     
-    But, in case that one of the data has NaN, the max of a number and NaN is NaN,
-    so, in order to retreieve the number, I will subtitute in the comparison NaN
-    for 0, but only in this operation, after will still be NaN. 
+    But, in case that one of the data has NaN, the max of a number 
+    and NaN is NaN, so, in order to retreieve the number, I will
+    subtitute in the comparison NaN for 0, but only in this
+    operation, after will still be NaN. 
     '''
-    
-    df_final_std = pd.DataFrame( np.maximum(df_std.replace(np.nan,0).values, 
-                df_std_repl.replace(np.nan,0).values),
-                index=df_std.index, columns=colnames )      #the final std to be used
+    df_final_std = df_std #using as std the std of the mean!
+    #df_final_std = pd.DataFrame( 
+    #    np.maximum(df_std.replace(np.nan,0).values, 
+     #   df_std_repl.replace(np.nan,0).values),
+      #  index=df_std.index, columns=colnames )  
+            #the final std to be used, comparison done here!
     
     # If original was Series, return as Series
     if is_series:
@@ -2436,124 +2475,19 @@ def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
     df_rsd = df_final_std / np.abs(df_mean.replace(0, np.nan) ) * 100 
     
     if Debug:           #return both stds to compare them!
-        Output = {'< >': df_mean, 'std': df_final_std, '%rsd' : df_rsd,
-                  'std_repls' : df_std_repl, 'std_from_mean' : df_std}
+        Output = {'< >': df_mean, 'std': df_final_std,
+        '%rsd' : df_rsd,
+        'std_repls' : df_std_repl, 'std_from_mean' : df_std}
 
     else:
-        Output = {'< >': df_mean, 'std': df_final_std, '%rsd' : df_rsd}
+        Output = {'< >': df_mean, 'std': df_final_std,
+        '%rsd' : df_rsd}
 
 
     return Output
         
     
-    ########### 1) Calcs ###########
-    '''
-    The operations to perform are:
-        1) < > of each sample number (1,2,..) 
-        2) std if each sample number (Divideb by N-1, as excel do when suing
-            STDEV() function! )
-    
-    Those cals are really easy since they are implemented in pandas. I just 
-    need to sort the proper way of sepparating the df and getting the results, 
-    see below. I need to discriminate whether the data is a df or a Series.
-    
-    '''
-    
 
-    
-    
-    
-#     if type(df_dat) == pd.core.frame.DataFrame :         #If True data is a df
-
-#         df_mean = pd.DataFrame()         #Empty df to store the values
-#         df_std = pd.DataFrame()        #Empty df to store the std
-    
-#         if Nrepl == 2:          #Standard case, 2 replicates
-#               df_1 = df_dat.iloc[ :, 0: round( ( df_dat.shape[1] ) / 2 ) ]      
-#                           #1st replicate
-#               df_2 = df_dat.iloc[ :, round( ( df_dat.shape[1] ) / 2 ) :  ]       
-#                           #replicate 2
-#         #
-#               for i in range(df_1.shape[1]):   
-#                   #loop thorugh all elements, but with index to work with 2 df
-#                   df_temp = df_dat.iloc[:, [i, i+ df_1.shape[1] ] ]        
-#                           #df containing the 2 replicates of the number i
-            
-#                 #TO store temporarily those values I create an auxiliary df
-#                   df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )
-#                   df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )
-
-#                 #And I add that to the storing df (add as columns)
-#                   df_mean['Data ' + str(i +1) ] = df_aux1
-#                   df_std['Data ' + str(i +1) ] = df_aux2
-        
-
-#         elif Nrepl == 3:            #3 replicates
-#         #Gathering the replicates sepparately    
-#             df_1 = df_dat.iloc[:, : round(df_dat.shape[1] / 3)]
-#             df_2 = df_dat.iloc[:, round(df_dat.shape[1] / 3): 2*round(df_dat.shape[1] / 3)]
-#             df_3 = df_dat.iloc[:, 2*round(df_dat.shape[1] / 3) :]
-        
-#             for i in range(df_1.shape[1]):         #loop thorugh all elements, but with index to work with 2 df
-#                 df_temp = df_dat.iloc[:, [i, i+ df_1.shape[1], i+ 2 * df_1.shape[1] ] ]        
-#                                                 #df containing the 3 replicates of the number i
-            
-#                 #TO store temporarily those values I create an auxiliary df
-#                 df_aux1 = pd.DataFrame(data = df_temp.mean(1), columns = [i] )      #< >. 1 indicates compute by columns
-#                 df_aux2 = pd.DataFrame(data = df_temp.std(1), columns = [i] )       # Std 
-
-#                 #And I add that to the storing df (add as columns)
-#                 df_mean['Data ' + str(i +1) ] = df_aux1
-#                 df_std['Data ' + str(i +1) ] = df_aux2
-
-#     elif type(df_dat) == pd.core.frame.Series :      #if data is a serie
-#         df_mean = pd.Series()         #Empty df to store the values
-#         df_std = pd.Series()        #Empty df to store the std
-        
-#         if Nrepl == 2:          #Standard case, 2 replicates
-#               df_1 = df_dat.iloc[ 0: round( ( df_dat.shape[0] ) / 2 ) ]      #1st replicate
-#               df_2 = df_dat.iloc[ round( ( df_dat.shape[0] ) / 2 ) :  ]       #replicate 2
-#             #
-#               for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
-#                 df_temp = df_dat.iloc[[i, i+ df_1.shape[0] ] ]        #df containing the 2 replicates of the number i
-                
-#                 #TO store temporarily those values I create an auxiliary df
-#                 #df_temp.mean and .std gives mean and std
-                
-#                 df_mean['Data ' + str(i +1 ) ] = df_temp.mean()      #<>
-#                 df_std['Data ' + str(i +1 ) ] = df_temp.std()         #std
-
-        
-#         elif Nrepl == 3:            #3 replicates
-#         #Gathering the replicates sepparately    
-#             df_1 = df_dat.iloc[: round(df_dat.shape[0] / 3)]
-#             df_2 = df_dat.iloc[round(df_dat.shape[0] / 3): 2*round(df_dat.shape[0] / 3)]
-#             df_3 = df_dat.iloc[ 2*round(df_dat.shape[0] / 3) :]
-            
-#             for i in range(df_1.shape[0]):         #loop thorugh all elements, but with index to work with 2 df
-#                 df_temp = df_dat.iloc[ [i, i+ df_1.shape[0], i+ 2 * df_1.shape[0] ] ]        
-#                                                     #df containing the 3 replicates of the number i
-
-#                 #And I add that to the storing df (add as columns)
-#                 df_mean['Data ' + str(i +1) ] = df_temp.mean()
-#                 df_std['Data ' + str(i +1) ] = df_temp.std()    
-    
-    
-#     else:       #weird data
-#         print('############################')
-#         print('\n Bro WTF? Wrong data type! pd.Series or pd.DataFrame only!')
-#         print('############################')
-        
-#         df_mean = False
-#         df_std = False
-    
-# ########### 2) Return #############
-#     #Returning a dictionary
-    
-#     Output = {'< >': df_mean, 'std': df_std, '%rsd' : df_std/df_mean*100}
-
-#     return Output    
-           #return
 
 
 #--------------------------------------------
@@ -2561,29 +2495,30 @@ def ICPMS_MeanStd_calculator (df_dat, df_dat_std = None, Nrepl = 2, Debug = 0):
 #--------------------------------------------
 
 def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
-                               rho = 1, delta_rho = .001, MS_here = True, 
-                         ret_Nmass = False ):
+    rho = 1, delta_rho = .001, MS_here = True, ret_Nmass = False ):
     '''
-    Function that will compute the cumulative concentration of a given nuclide.
-    This assume mass not measured, so needs the volume and density to compute
-    the mass of the sample, to compute the cumulative conc. 
+    Function that will compute the cumulative concentration of a given
+    nuclide. This assume mass not measured, so needs the volume and
+    density to compute the mass of the sample, to compute the
+    cumulative conc. 
     
-    This is, imagine I have several samples, with a given [Cs133]. This code 
-    will compute the total [Cs133], the concentration if all the samples are 
-    merged into a single one. IN a succesive way, so:
+    This is, imagine I have several samples, with a given [Cs133]. 
+    This code will compute the total [Cs133], the concentration if
+    all the samples are merged into a single one. IN a succesive
+    way, so:
         .sample 2 cumulative = sample 1 + smaple 2
         .sample 3 cumulative = sample 1 + sample 2 + sample 3
-    Until the last one, which will contain the total cumulative concentration.
-    The formula is:
+    Until the last one, which will contain the total cumulative 
+    concentration. The formula is:
     
-    [X]_tot = m_X_tot/m_Tot = sum (m_X)/sum(m_tot) = sum([X]*m_tot) / sum (m_tot)
-    = sum([X]*rho*V) / sum(V*Rho),
+    [X]_tot = m_X_tot/m_Tot = sum (m_X)/sum(m_tot) = sum([X]*m_tot) / 
+    sum (m_tot) = sum([X]*rho*V) / sum(V*Rho),
     
-    being [X] the concentration of X, the nuclide of interest, m_tot the mass 
-    of each sample, and m_Tot the total mass of all the solution, the sum of m_tot.
-    There it is assumed we do not know the masses, rather volumes, so the calcs
-    is based on the volumes, and densities. Volumes are given as input, as well
-    as densities.
+    being [X] the concentration of X, the nuclide of interest, m_tot 
+    the mass of each sample, and m_Tot the total mass of all the
+    solution, the sum of m_tot. There it is assumed we do not know
+    the masses, rather volumes, so the calcs is based on the volumes,
+    and densities. Volumes are given as input, as well as densities.
     
     *Input
         .df_ppb: df with the ppb values of the samples
@@ -2592,13 +2527,15 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
                 or not. Default: True
         .rho: density, np array or single value. Default: 1g/mL
         .delta_rho: np array with rho uncertainty. Default: .001g/mL
-        .V: np.array containing the volumes of the samples, or single value.
-                eg: V+ np.array([100,100,100,100,100]) for 5 samples
+        .V: np.array containing the volumes of the samples, or single
+        value.
+             eg: V+ np.array([100,100,100,100,100]) for 5 samples
         .delta_V: np array or single value, for the uncertainty of V. 
                 Default: 5mL
         
-        .ret_Nmass: boolean to indicate weather the df with the nuclide mass
-            should ber etunred or not. Default: False, not return it
+        .ret_Nmass: boolean to indicate weather the df with the 
+        nuclide mass should ber etunred or not. Default: False,
+        not return it
     *Output
         . df with the cumulative conc, for each sample
         .df with the std of the cumulative conc
@@ -2609,28 +2546,30 @@ def ICPMS_Cumulative_conc_calc(df_ppb, df_ppb_std, V, delta_V = 5,
     
     ########### 0) Pre work ###############
     """
-    The uncertainty of the volume was a number, but should be an array, but
-    we can do it easily
+    The uncertainty of the volume was a number, but should be an array,
+    but we can do it easily
     
     !!!!!!!
-    In the future, I might need to do the same I do here, but for densities....
+    In the future, I might need to do the same I do here, but for 
+    densities....
     !!!!!!!!!
     """
     delta_V = delta_V * np.ones(len(V))         #array creation
     
     ########### 1) Mass of nuclide (Nmass) calc ####################
     '''
-    1st step, to calc m_X = [X] * m_tot = [X] * rho * V, for each sample
+    1st step, to calc m_X = [X] * m_tot = [X] * rho * V, for each
+    sample
     '''
     if MS_here:     #exclude 1st column of the ppb df, the MS
         df_Nmass = df_ppb.iloc[:,1:]*V*rho
         df_Nmass_std = df_Nmass * np.sqrt((delta_V/V)**2 + (delta_rho/rho)**2 +
-                            (df_ppb_std.iloc[:,1:]/df_ppb.iloc[:,1:])**2)
+                (df_ppb_std.iloc[:,1:]/df_ppb.iloc[:,1:])**2)
                 #Uncertainty of Nmass
     else:       #MS not here
         df_Nmass = df_ppb*V*rho
-        df_Nmass_std = df_Nmass * np.sqrt((delta_V/V)**2 + (delta_rho/rho)**2 +
-                            (df_ppb_std/df_ppb)**2) 
+        df_Nmass_std = df_Nmass * np.sqrt((delta_V/V)**2 + 
+        (delta_rho/rho)**2 +(df_ppb_std/df_ppb)**2) 
     
     ############## 2) Cumulative concentration calc ###################
     '''
@@ -4623,7 +4562,7 @@ def ICPMS_Correlation_test(data, element_list, type = 'Spe'):
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#                                PLOTTERS
+#                 PLOTTERS
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
@@ -4715,17 +4654,18 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
             plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
             plt.title(pre_title_plt + df_1.index[i][:-4], fontsize=22, wrap=True)           #title
             if isinstance(df_2, pd.Series):                         #if df_2 is a pd.Series
-                aa =  plt.bar( X_axis, df_1.loc[df_1.index[i]], yerr = df_2, edgecolor="black", 
-                               align='center') 
+                aa =  plt.bar( X_axis, df_1.loc[df_1.index[i]], 
+                yerr = df_2, edgecolor="black", align='center') 
             else:               #df_2 is a DataFrame
-                aa = plt.bar( X_axis, df_1.loc[df_1.index[i]], yerr = df_2.loc[df_1.index[i]], edgecolor="black", 
-                             align='center')  ##df version!! works!
+                aa = plt.bar( X_axis, df_1.loc[df_1.index[i]], 
+                yerr = df_2.loc[df_1.index[i]], edgecolor="black", 
+                align='center')  ##df version!! works!
                 #
             if Logs == True:                  #put scale
                 plt.yscale('log')  
             #
-            plt.ylabel(ylabel_1, fontsize= Font)              #ylabel
-            plt.xlabel('Sample', fontsize = Font )
+            plt.ylabel(ylabel_1, fontsize= Font_labelAx)              #ylabel
+            plt.xlabel('Sample', fontsize = Font_labelAx )
             plt.tick_params(axis='both', labelsize= Font)              #size of axis
             plt.minorticks_on()             #enabling minor grid lines
             plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
@@ -4764,14 +4704,14 @@ def ICPMS_1Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , folder_name = 'Bar_plo
 #--------------------------------------------
 
 def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' , 
-                              folder_name = 'Bar_plots',
-                      pre_title_plt = "Concentration of ", 
-                      pre_save_name = 'Conc_rsd', Nucl_rel = Isot_rel, 
-                      plot_everything = False, Logs = False ):
+    folder_name = 'Bar_plots',pre_title_plt = "Concentration of ", 
+    pre_save_name = 'Conc_rsd', Nucl_rel = Isot_rel, 
+             plot_everything = False, Logs = False ):
     '''
     Function that will do a single bar plots of ICPMS data, using
-    the 2nd data as the errorbars. This function inlcudes a hline plot, with the
-    data from another df, df_3. It will plot the 1st column of that df.
+    the 2nd data as the errorbars. This function inlcudes a hline plot, 
+    with the data from another df, df_3. It will plot the 1st column 
+    of that df.
     
     Function created for the Cs sep plotting
     
@@ -4858,8 +4798,8 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
             if Logs == True:                  #put scale
                 plt.yscale('log')  
             #
-            plt.ylabel(ylabel_1, fontsize= Font)              #ylabel
-            plt.xlabel('Sample', fontsize = Font )
+            plt.ylabel(ylabel_1, fontsize= Font_labelAx)    #ylabel
+            plt.xlabel('Sample', fontsize = Font_labelAx )
             plt.tick_params(axis='both', labelsize= Font)              #size of axis
             plt.minorticks_on()             #enabling minor grid lines
             plt.grid(which = 'minor', linestyle=':', linewidth=0.5)        #which both to plot major and minor grid lines
@@ -4899,10 +4839,10 @@ def ICPMS_1Bar_1line_plotter (df_1, df_2, df_3, ylabel_1 = 'I [cps]' ,
 #--------------------------------------------
 
 def ICPMS_Barplotter (df_1, df_2, ylabel_1 = 'I [cps]' , 
-                      ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
-                      pre_title_plt = "Concentration of ", 
-                      pre_save_name = 'Conc_rsd', Nucl_rel = Isot_rel, 
-                      plot_everything = False, Logs = 0 ):
+    ylabel_2 = "$\sigma_{rel}$ [%]", folder_name = 'Bar_plots',
+    pre_title_plt = "Concentration of ", 
+    pre_save_name = 'Conc_rsd', Nucl_rel = Isot_rel, 
+    plot_everything = False, Logs = 0 ):
     '''
     Function that will do bar plots of the raw data from the ICPMS, the cps and
     the rstd. By raw I mean withoutany corrections/calibrations (neither the 
@@ -5006,8 +4946,8 @@ Setting b gives w. In fact the general equations for 2n bars per
             a = plt.bar(X_axis - w/2, df_1.loc[df_1.index[i]], width = w, edgecolor="black", 
                         label = ylabel_1, align='center') 
             #-2 not to plot the blank!! Remove it to plot it!
-            plt.ylabel(ylabel_1, fontsize= Font)              #ylabel
-            plt.xlabel('Sample', fontsize = Font )
+            plt.ylabel(ylabel_1, fontsize= Font_labelAx)  #ylabel
+            plt.xlabel('Sample', fontsize = Font_labelAx )
             plt.tick_params(axis='both', labelsize= Font)              #size of axis
             if Logs ==1 or Logs == 3:           #put log scale
                 plt.yscale('log') 
@@ -5062,9 +5002,8 @@ Setting b gives w. In fact the general equations for 2n bars per
 #--------------------------------------------
 
 def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots', 
-                   pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
-                   Nucl_rel = Isot_rel, 
-                   plot_everything = False, Nrepl = 2 ):
+   pre_title_plt = "Concentration of ", pre_save_name = 'Conc',
+   Nucl_rel = Isot_rel, plot_everything = False, Nrepl = 2 ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable,
     initially time, the cps and the rstd. This assume we have 2 replicates, 
@@ -5157,8 +5096,8 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x[int(len(x)/2):], row[int(len(x)/2) :], 'ro--', 
                      markersize = Markersize, label = 'Repl_2') 
-                plt.ylabel(y_label, fontsize= Font)              #ylabel
-                plt.xlabel(x_label, fontsize = Font)
+                plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                plt.xlabel(x_label, fontsize = Font_labelAx)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
                 plt.minorticks_on()             #enabling minor grid lines
@@ -5177,8 +5116,8 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                          markersize = Markersize, label = 'Repl_1') 
                     plt.plot(x[int(len(x)/2):], row[int(len(x)/2):], 'ro--', 
                          markersize = Markersize, label = 'Repl_2') 
-                    plt.ylabel(y_label, fontsize= Font)              #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
+                    plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font_labelAx)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     #plt.yscale('log') 
                     plt.minorticks_on()             #enabling minor grid lines
@@ -5212,8 +5151,8 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                      markersize = Markersize, label = 'Repl_2') 
                 plt.plot(x[2* int(len(x)/3):], row[2* int(len(x)/3) :], 'go--', 
                      markersize = Markersize, label = 'Repl_3') 
-                plt.ylabel(y_label, fontsize= Font)              #ylabel
-                plt.xlabel(x_label, fontsize = Font)
+                plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                plt.xlabel(x_label, fontsize = Font_labelAx)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
                 plt.minorticks_on()             #enabling minor grid lines
@@ -5235,8 +5174,8 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
                      markersize = Markersize, label = 'Repl_2') 
                     plt.plot(x[2* int(len(x)/3):], row[2* int(len(x)/3) :], 'go--', 
                      markersize = Markersize, label = 'Repl_3') 
-                    plt.ylabel(y_label, fontsize= Font)              #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
+                    plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font_labelAx)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     #plt.yscale('log') 
                     plt.minorticks_on()             #enabling minor grid lines
@@ -5275,11 +5214,12 @@ def ICPMS_Plotter (x, df_cps, x_label, y_label, folder_name = 'Plots',
 #--------------------------------------------
 
 def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots', 
-                    plot_everything = False, pre_title_plt = "Concentration of ", 
-                    pre_save_name = 'Conc', Nucl_rel = Isot_rel ):
+    plot_everything = False, pre_title_plt = "Concentration of ", 
+    pre_save_name = 'Conc', Nucl_rel = Isot_rel ):
     '''
-    Function that will plots of the data from the ICPMS (cps) vs another variable,
-    initially time, for the 3 bentonites. This assume we have 2 replicates, 
+    Function that will plots of the data from the ICPMS (cps) vs 
+    another variable, initially time, for the 3 bentonites. This assume 
+    we have 2 replicates, 
     1 series after the other. Stimated running time around 80s.
     
     *Inputs:
@@ -5390,8 +5330,8 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
             plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[df_cps['Sard'].index[i] ][int(len(x['BK'])/2 ):],
                      'o--', color = Bent_color['BK'],
                      markersize = Markersize, label = 'Repl_2 BK') 
-            plt.ylabel(y_label, fontsize= Font)              #ylabel
-            plt.xlabel(x_label, fontsize = Font)
+            plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+            plt.xlabel(x_label, fontsize = Font_labelAx)
             plt.tick_params(axis='both', labelsize= Font)              #size of axis
             #plt.yscale('log') 
             plt.minorticks_on()             #enabling minor grid lines
@@ -5424,8 +5364,8 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
                     #+1 needed since the df contain a row with the column names!
                 plt.plot(x['BK'][int(len(x['BK'])/2):], df_cps['BK'].loc[df_cps['Sard'].index[i] ][int(len(x['BK'])/2 ):], 'o--', color = Bent_color['BK'],
                      markersize = Markersize, label = 'Repl_2 BK') 
-                plt.ylabel(y_label, fontsize= Font)              #ylabel
-                plt.xlabel(x_label, fontsize = Font)
+                plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                plt.xlabel(x_label, fontsize = Font_labelAx)
                 plt.tick_params(axis='both', labelsize= Font)              #size of axis
                 #plt.yscale('log') 
                 plt.minorticks_on()             #enabling minor grid lines
@@ -5457,9 +5397,9 @@ def ICPMS_Plotter3 (x, df_cps, x_label, y_label, folder_name = 'Plots',
 #--------------------------------------------
 
 def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots', 
-            plot_everything = False, pre_title_plt = "Concentration of ", 
-            pre_save_name = 'Conc', Nrepl = 2, Blank_here = False, 
-            Nucl_rel = Isot_rel, Logs = 0 ):
+    plot_everything = False, pre_title_plt = "Concentration of ", 
+    pre_save_name = 'Conc', Nrepl = 2, Blank_here = False, 
+    Nucl_rel = Isot_rel, Logs = 0 ):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable,
     initially time, the cps and the rstd. This assume we have 2 replicates, 
@@ -5605,8 +5545,8 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                                  markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2, y_2.loc[y_2.index[i] ], 'ro--', 
                                  markersize = Markersize, label = 'Repl_2')          #repl 2
-                    plt.ylabel(y_label, fontsize= Font)              #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
+                    plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font_labelAx)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if Logs == 3:                               #x and y in log scale
                         plt.xscale('log')
@@ -5644,8 +5584,8 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                                  markersize = Markersize, label = 'Repl_2')          #repl 2
                         plt.plot(x_3, y_3.loc[y_2.index[i] ], 'go--', 
                                  markersize = Markersize, label = 'Repl_3')          #repl 3 
-                    plt.ylabel(y_label, fontsize= Font)              #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
+                    plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font_labelAx)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if Logs == 3:                               #x and y in log scale
                         plt.xscale('log')
@@ -5682,8 +5622,8 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                                  markersize = Markersize, label = 'Repl_1')          #repl 1
                         plt.plot(x_2.loc[x_2.index[i]], y_2.loc[y_2.index[i] ], 'ro--', 
                                  markersize = Markersize, label = 'Repl_2')          #repl 2
-                    plt.ylabel(y_label, fontsize= Font)              #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
+                    plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font_labelAx)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if Logs == 3:                               #x and y in log scale
                         plt.xscale('log')
@@ -5725,8 +5665,8 @@ def ICPMS_Plotter_blk (x, df_cps, x_label, y_label, folder_name = 'Plots',
                                  markersize = Markersize, label = 'Repl_2')          #repl 2                                           
                         plt.plot(x_3.loc[x_3.index[i]], y_3.loc[y_3.index[i] ], 'go--', 
                                  markersize = Markersize, label = 'Repl_3')          #repl 3       
-                    plt.ylabel(y_label, fontsize= Font)              #ylabel
-                    plt.xlabel(x_label, fontsize = Font)
+                    plt.ylabel(y_label, fontsize= Font_labelAx)              #ylabel
+                    plt.xlabel(x_label, fontsize = Font_labelAx)
                     plt.tick_params(axis='both', labelsize= Font)              #size of axis
                     if Logs == 3:                               #x and y in log scale
                         plt.xscale('log')
@@ -5778,7 +5718,8 @@ def ICPMS_Plotter_mean_blk_N (
     labels=None, colors=None, Fmts = None,
     folder_name='Plots', pre_title_plt= False,
     pre_save_name = 'Conc', Nucl_rel=Elem_rel,
-    Logscale=False, Blank_here=False, plot_everything=False, font_size= Font):
+    Logscale=False, Blank_here=False, plot_everything=False, 
+    font_size= Font_labelAx):
     '''
     Function that will plots of the data from the ICPMS (cps) vs another variable, 
     initially time, the cps and the rstd, for the 2 bentonites, plotting the average 
@@ -5884,26 +5825,29 @@ def ICPMS_Plotter_mean_blk_N (
                 Label = labels[k]
 
                 if Blank_here:
-                    plt.hlines(y[0], min(x), max(x), color=Color, linestyle='-', 
-                               label=Label + ' MS', linewidth= Linewidth)
+                    plt.hlines(y[0], min(x), max(x), color=Color, 
+                    linestyle='-', 
+                    label=Label + ' MS', linewidth= Linewidth)
                     plt.errorbar(x[1:], y[1:], yerr=sy[1:], xerr=sx[1:], 
-                        color=Color, label=Label, fmt = Fmt, markersize= Markersize,
+                        color=Color, label=Label, fmt = Fmt, 
+                        markersize= Markersize,
                         elinewidth = Linewidth)
                 else:
                     plt.errorbar(x, y, yerr=sy, xerr=sx, 
-                        color=Color, label=Label, fmt = Fmt, markersize= Markersize,
+                        color=Color, label=Label, fmt = Fmt, 
+                        markersize= Markersize,
                         elinewidth = Linewidth)
 
             plt.xlabel(x_label, fontsize=font_size)
             plt.ylabel(y_label, fontsize=font_size)
-            plt.tick_params(axis='both', labelsize=font_size)
+            plt.tick_params(axis='both', labelsize= Font)
             if Logscale:
                 plt.xscale('log')
                 plt.yscale('log')
             plt.minorticks_on()
             plt.grid(which='minor', linestyle=':', linewidth=0.5)
             plt.grid(which='major')
-            plt.legend(fontsize=font_size)
+            plt.legend(fontsize = Font)
 
             # Save
             safe_name = element_name.replace("(LR)", "_LR").replace("(MR)", "_MR")
@@ -5928,8 +5872,8 @@ def ICPMS_Plotter_mean_blk_N (
 #------------------------------------------------------
 
 def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
-    Xlabel = 'X axis', Ylabel = 'Y axis', Title = False, Savename = 'Plot1',
-    Log_y = False, Columns= 'All'):
+    Xlabel = 'X axis', Ylabel = 'Y axis', Title = False, 
+    Savename = 'Plot1', Log_y = False, Columns= 'All'):
     '''
     Function containing a icpms df, that will do a multibar plot, being each
     bar an element from the list you give. The df_std shoudl also be included!
@@ -6008,8 +5952,8 @@ def ICPMS_MultiBar_plotter(df, df_std, Elements, b = 0.2,
             plt.xticks(X_axis, cols, rotation=90)          # Column names  
         plt.legend(fontsize = Font)
         #
-    plt.ylabel(Ylabel, fontsize= Font)              #ylabel
-    plt.xlabel(Xlabel, fontsize= Font)   
+    plt.ylabel(Ylabel, fontsize= Font_labelAx)              #ylabel
+    plt.xlabel(Xlabel, fontsize= Font_labelAx)   
     if Log_y:       #do ylog scale
         plt.yscale('log') 
     
@@ -6097,8 +6041,8 @@ def ICPMS_MultiBar_plotter_N(
                 continue
 
     plt.xticks(X_axis, Elements, rotation=45, ha='right', fontsize=Font)
-    plt.ylabel(Ylabel, fontsize=Font)
-    plt.xlabel(Xlabel, fontsize=Font)
+    plt.ylabel(Ylabel, fontsize=Font_labelAx)
+    plt.xlabel(Xlabel, fontsize=Font_labelAx)
     if Log_y:
         plt.yscale('log')
 
@@ -6118,7 +6062,7 @@ def ICPMS_MultiBar_plotter_N(
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#           End ICPMS shit xD    
+#           End ICPMS plotter shit xD    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -6127,29 +6071,31 @@ def ICPMS_MultiBar_plotter_N(
 #--------------------------------------------
 #%%          2.1) PSO fit 
 #--------------------------------------------
-def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x', 
-            y_label = 'y', Color = 'b', save_name = '', Title = 'Linear PSO fit',
-            Fit_type = 1):    
+def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', 
+    x_label = 'x', y_label = 'y', Color = 'b', save_name = '', 
+    Title = 'Linear PSO fit', Fit_type = 1):    
     '''
-    Function to do and compute some variables relevant to the PSO (pseudo second 
-    order) kinetic model. THis model comes from
+    Function to do and compute some variables relevant to the PSO 
+    (pseudo second order) kinetic model. THis model comes from
     d(Q(t))/dt = K * (Q_e - Q(t))**2,
     whose solution is:
         Q(t) = Qe**2 * K * t / (1+Qe*K*t)
-    where Q_e = Q(t ==> \infty).
-    This funciton could do either the non-linear fit (that eq), or a linear one.
+    where Q_e = Q(t ==> \infty). Note that K has units of 1/(t*Q).
+    
+    This funciton could do either the non-linear fit (that eq), or a 
+    linear one.
     THe solution of that eq can be casted in linear form:
         t/Q(t) = 1/KQ_e**2 + t/Q_e
         
-    so, plotting t/Q(t) vs t is linear (y = ax + b), being 1/Q_e the slope, 
-    and 1/KQ_e**2 the intercept. 
+    so, plotting t/Q(t) vs t is linear (y = ax + b), being 1/Q_e the
+    slope, and 1/KQ_e**2 the intercept. 
     For the fit I will use my fit function.
     
-    You may need to select certain time intervals, and not all of them. Note 
-    the units are defined by t and t/Qt!
+    You may need to select certain time intervals, and not all of them.
+    Note the units are defined by t and t/Qt!
     
-    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe 
-    you need to modify it in the future??????
+    Note I add + (LR) to the column name in the fit serie!! Watch out, 
+    maybe you need to modify it in the future??????
     
     *Inputs
         .t, Q: df series containing the time and Q(t) data. Expected the averaged 
@@ -6166,10 +6112,13 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
          else will return NaN
     
     *Outputs
-        .df series with all the relevant info, from the fit and computed 
+        Depending on the fit type it will return 1 or 3 df:
+        .1st a df series with all the relevant info, from the fit and computed 
         quantities, errors (quadratic propagation) included The input units 
         define those units!! Remember saltpepper!
-    
+        . FOr the lin fit, It will also return
+            .df with t/Q
+            .df with std(t/Q)
     
     #------------- To Do -----------
         -Non linear fit version, to be developed still, not work well
@@ -6193,7 +6142,7 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
         #
         t__Q = t / Q          #t/Q(t) for S
         Delta_t__Q = np.abs(t__Q) * np.sqrt((delta_Q / Q )**2 + 
-                                        (delta_t /t )**2 )  #error, unused!!
+                (delta_t /t )**2 )  #error, unused!!
         #Fit
         fit = Fits.LinearRegression(t, t__Q, delta_t, Delta_t__Q,
             x_label = x_label, y_label = y_label, 
@@ -6242,9 +6191,9 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
         #If ss_tot is ~0 or ss_res negative, you’ve found the culprit.
         
         #Storage
-        fit = pd.Series({ 'Q_e': Qe, '\Delta(Q_e)' : dQe, '%rsd Qe': dQe/np.abs(Qe)*100,
-                         'K': K, '\Delta(K)': dK, '%rsd K': dK/K * 100,
-                         'r': R2})
+        fit = pd.Series({ 'Q_e': Qe, '\Delta(Q_e)' : dQe, 
+        '%rsd Qe': dQe/np.abs(Qe)*100,'K': K, '\Delta(K)': dK,
+        '%rsd K': dK/K * 100, 'r': R2})
         
     else:                                                        #Wong case
         print('Wrong fit type given. Accepted 1(Linear) and 0 (non linear)')
@@ -6252,7 +6201,10 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
         print('Returning nan!')
         
     ########## 4) Return ###########
-    
+    # if Fit_type == 1:
+    #     return fit, t__Q, Delta_t__Q
+    # else: 
+    #     return fit
     return fit
     
 
@@ -6272,25 +6224,31 @@ def PSO_fit(t, Q, delta_t=0, delta_Q =0, folder_name = 'Fits', x_label = 'x',
 #--------------------------------------------
 #%% ######### 2.2) PFO fit 
 #--------------------------------------------
-def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_label = 'x',
-            y_label = 'y', Color = 'b', save_name = '', Title = ' ', npo=100):   
+def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, 
+    folder_name = 'Fits', x_label = 'x',
+    y_label = 'y', Color = 'b', save_name = '', Title = ' ', npo=100):   
     '''
-    Function to do and compute some variables relevant to the PFO (pseudo first order) 
+    Function to do and compute some variables relevant to the PFO 
+    (pseudo first order) 
     kinetic model. THis model comes from
     d(Q(t))/dt = K * (Q_e - Q(t))
     
-    where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. THe solution of that is:
+    where Q_e = Q(t ==> \infty) , the equilibirum sorbed quantity. 
+    THe solution of that is:
         Q(t) = Q_e* (1- exp(-t*K_1) ) 
         
-    I could fit the data to that equation. Note that usually that is casted into linear form:
+    I could fit the data to that equation. Note that usually that is
+    casted into linear form:
             ln (Qe - Q) = ln Qe - K_1t,
-    And the Qe-Q you compute by using the experimetnal Qe, from the graph, and from the fit
-    you get the other. Bro, WFT??????
+    And the Qe-Q you compute by using the experimetnal Qe, from the 
+    graph, and from the fit you get the other. Bro, WFT??????
     
-    So I do the fit. You may need to select certain time intervals, and not all of them. 
+    So I do the fit. You may need to select certain time intervals, 
+    and not all of them. 
     Note the units are defined by t and Q!
     
-    Note I add + (LR) to the column name in the fit serie!! Watch out, maybe you need to modify it in the future??????
+    Note I add + (LR) to the column name in the fit serie!! Watch
+    out, maybe you need to modify it in the future??????
     
     *Inputs
         .t, Q: df series containing the time and Q(t) data. Expected the averaged values
@@ -6332,8 +6290,10 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
 
 
     ############# 1)Fit ######################
-    param, cov = curve_fit(PFO_eq, t, Q, p0 = p_0)        #easy, in principle! No initial stim of parameters given!
-    std = np.sqrt(np.diag(cov))     #std, since a cov amtrix is returned (read in the raw code)
+    param, cov = curve_fit(PFO_eq, t, Q, p0 = p_0)  
+        #easy, in principle! No initial stim of parameters given!
+    std = np.sqrt(np.diag(cov))     
+        #std, since a cov amtrix is returned (read in the raw code)
     
     ################ 2) Model parameters ################
     Qe = param[0]
@@ -6353,20 +6313,22 @@ def PFO_fit(t, Q, delta_t=0, delta_Q =0, p_0 = None, folder_name = 'Fits', x_lab
     
     fig = plt.figure(figsize=(11,8))  #width, heigh 6.4*4.8 inches by default
     ax = fig.add_subplot(111)
-    ax.errorbar(t, Q, delta_Q, delta_t, 'o', color = Color, markersize = Markersize, label = 'Data')
+    ax.errorbar(t, Q, delta_Q, delta_t, 'o', color = Color, 
+                markersize = Markersize, label = 'Data')
     ax.plot(t_vector, PFO_eq(t_vector, Qe, K1),'--', color = Color,
             label= 'Fit: ' + y_label + f' = {Qe:.1e} ' + '$\cdot$ [1- exp(-'+ x_label + '$\cdot$' +f'+{K1:.1e} )]')      #fit
             #.2f to show 2 decimals on the coefficients!
             #2e for scientific notation with 2 significative digits
     ax.set_title('PFO fit ' + Title, fontsize=22)          #title
-    ax.set_xlabel(x_label, fontsize= Font)                                    #xlabel
-    ax.set_ylabel(y_label, fontsize= Font)                                    #ylabel
+    ax.set_xlabel(x_label, fontsize= Font_labelAx)                                    #xlabel
+    ax.set_ylabel(y_label, fontsize= Font_labelAx)                                    #ylabel
     ax.tick_params(axis='both', labelsize= Font)            #size of tick labels  
     ax.grid(True)                                              #show grid
     ax.legend(fontsize = Font)             #legend
-                    #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
-    plt.savefig(folder_name +'/' + save_name +'.png', format='png', bbox_inches='tight')                
-                    ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
+   #Plot of the fit equation. (0,0) is lower-left corner, and (1,1) the upper right
+    plt.savefig(folder_name +'/' + save_name +'.png', format='png', 
+                bbox_inches='tight')                
+   ###This require some thoughts!!!!! to automatize the show of the equation!!!!!!!!!!!
     
     
     ########## 4) Return ###########
@@ -6383,8 +6345,8 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
             Fit_type = 1):   
     '''
     Function to do and compute some variables relevant to the Freundlich fit
-    of an adsorption isotherm Q_e = f (C_e), the sorbed quantity as a function
-    of the equilibrium concentration. Its equation is
+    of an adsorption isotherm Q_e = f (C_e), the sorbed quantity as 
+    a function of the equilibrium concentration. Its equation is
     
         Q_e = K_F * C_e**(1/n),           K_F, n constants
     Being 1/n the heterogeneity factor. n= 1 ==> linear sorption. That can also be
@@ -6457,17 +6419,19 @@ def Fre_fit(Ce, Qe, delta_Ce=0, delta_Qe =0, folder_name = 'Fits',
     
     if Fit_type ==1:                #linear type
     #
-        logCe = np.log10(Ce)                        #cal of the log
+        logCe = np.log10(Ce)             #cal of the log
         logQe = np.log10(Qe)
-        delta_logCe = delta_Ce / (np.abs(Ce) * np.log(10))   #error of the log10!!
+        delta_logCe = delta_Ce / (np.abs(Ce) * np.log(10))   
+                    #error of the log10!!
         delta_logQe = delta_Qe / (np.abs(Qe) * np.log(10))
     ############# 2)Fit ######################
-        fit = Fits.LinearRegression(logCe, logQe, delta_logCe, delta_logQe,
+        fit = Fits.LinearRegression(logCe, logQe, delta_logCe, 
+        delta_logQe,
          x_label = x_label, y_label = y_label, 
          x_legend = 'log($C_e$)', y_legend = 'log($Q_e$)',
          Color = Color, save_name = folder_name +'/' + save_name, 
                                    Title = Title)       
-                            #Fit (i dont use npo variable, fit variable)
+        #Fit (i dont use npo variable, fit variable)
                 #note that for the legnd I delete the units!!
     ################ 3) Model parameters ################
         '''
